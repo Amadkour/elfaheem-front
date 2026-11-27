@@ -186,7 +186,7 @@ void main() {
   group('payouts: the approve question moves real money', () {
     testWidgets('names the teacher, the amount WITH its currency and the method', (tester) async {
       tester.view.devicePixelRatio = 1;
-      tester.view.physicalSize = const Size(1400, 900);
+      tester.view.physicalSize = const Size(1400, 1400);
       addTearDown(tester.view.resetPhysicalSize);
       final api = FakeApi(finRoutes(), latency: const Duration(milliseconds: 30));
       final auth = await finSetUp(api);

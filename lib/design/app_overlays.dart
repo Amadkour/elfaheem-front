@@ -1,7 +1,7 @@
 // lib/design/app_overlays.dart
 //
 // The overlays of the dashboards: a dialog, a side drawer and the "unsaved changes" guard. Every one of them is
-// paper (cardBg) with the sheet radius (28), an editorial title, the warm scrim (`appScrimColor`) and the modal
+// paper (cardBg) with the sheet radius (24), an editorial title, the warm scrim (`appScrimColor`) and the modal
 // shadow in the theme's warm tone (D-612); the dialog settles in with `AppPopIn`, the drawer slides in from the end
 // edge on `AppEase.out` (280 ms in, 200 ms out) like the side sheet.
 //
@@ -43,7 +43,7 @@ Future<T?> showAppDialog<T>(
   );
 }
 
-/// The dialog's panel: paper, radius 28, the modal shadow, an editorial headline beside an optional icon in a
+/// The dialog's panel: paper, radius 24, the modal shadow, an editorial headline beside an optional icon in a
 /// tinted square, the body in the body role, the actions at the end. Max 520 wide; long bodies scroll inside.
 class _AppDialog extends StatelessWidget {
   const _AppDialog({required this.title, required this.body, required this.actions, this.icon, this.danger = false});
@@ -137,8 +137,8 @@ class _AppDialog extends StatelessWidget {
 
 /// The drawer's entrance: 280 ms on [AppEase.out]; the exit rests after its first 200 ms (a dialog route has one
 /// duration both ways, so the reverse curve ends early).
-const Duration _drawerIn = Duration(milliseconds: 280);
-const Curve _drawerOut = Interval(1 - 200 / 280, 1, curve: AppEase.outReversed);
+const Duration _drawerIn = AppMotionSpec.drawer;
+const Curve _drawerOut = Interval(1 - 200 / 450, 1, curve: AppEase.outReversed);
 
 Future<T?> showAppDrawer<T>(
   BuildContext context, {
@@ -170,17 +170,20 @@ Future<T?> showAppDrawer<T>(
     transitionDuration: motion.off ? Duration.zero : _drawerIn,
     pageBuilder: (ctx, _, _) => _DrawerPanel(title: title, width: width, actions: actions, builder: builder),
     transitionBuilder: (ctx, anim, _, child) {
-      final curved = CurvedAnimation(parent: anim, curve: AppEase.out, reverseCurve: _drawerOut);
+      final curved = CurvedAnimation(parent: anim, curve: AppMotionSpec.drawerCurve, reverseCurve: _drawerOut);
       return SlideTransition(
-        position: Tween<Offset>(begin: Offset(rtl ? -0.6 : 0.6, 0), end: Offset.zero).animate(curved),
-        child: FadeTransition(opacity: curved, child: child),
+        position: Tween<Offset>(begin: Offset(rtl ? -1 : 1, 0), end: Offset.zero).animate(curved),
+        child: child,
       );
     },
   );
 }
 
-/// The floating panel: paper, radius 28, a hairline and the modal shadow; an editorial headline with the close
-/// button, the scrolling body, and the actions under a hairline when there are any.
+/// The design's drawer (KIT_SPEC §5.8): flush to the end edge, full height, the sheet radius on its inner side, the
+/// modal shadow; an editorial headline with the close button, the scrolling body, and the actions under a hairline
+/// when there are any.
+const BorderRadiusDirectional _drawerRadius = BorderRadiusDirectional.horizontal(start: Radius.circular(AppRadius.sheet));
+
 class _DrawerPanel extends StatelessWidget {
   const _DrawerPanel({required this.title, required this.width, required this.builder, this.actions});
 
@@ -203,24 +206,22 @@ class _DrawerPanel extends StatelessWidget {
           child: Align(
             alignment: AlignmentDirectional.centerEnd,
             child: Padding(
-              padding: const EdgeInsets.all(AppSpace.sm),
+              padding: EdgeInsets.zero,
               child: SizedBox(
                 width: w,
+                height: double.infinity,
                 child: DecoratedBox(
                   key: const ValueKey('app.drawer.panel'),
                   decoration: BoxDecoration(
                     color: c.cardBg,
-                    borderRadius: BorderRadius.circular(AppRadius.sheet),
+                    borderRadius: _drawerRadius,
                     boxShadow: AppElevation.of(context, 4),
                   ),
                   child: Material(
                     color: c.cardBg,
                     surfaceTintColor: Colors.transparent,
                     clipBehavior: Clip.antiAlias,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.sheet),
-                      side: BorderSide(color: c.divider, width: AppBorder.hairline),
-                    ),
+                    shape: const RoundedRectangleBorder(borderRadius: _drawerRadius),
                     child: SafeArea(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
                         Padding(

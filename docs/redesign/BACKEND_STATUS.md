@@ -1,8 +1,8 @@
 # BACKEND_STATUS: BACKEND.md checked against `../back` (read-only audit)
 
-Backend: `D:\platform\elfaheem\_wt\redesign\back` (FastAPI, feature folders, last core migration `0129_games_v4_help`). All paths below are relative to that folder. Status: **Exists** / **Partial** / **Missing**. Nothing was run; this is a code read.
+Backend: `D:\platform\nextbrain\_wt\rd-back` (FastAPI, feature folders, last core migration `0129_games_v4_help`). All paths below are relative to that folder. Status: **Exists** / **Partial** / **Missing**. Nothing was run; this is a code read.
 
-Conventions that apply to every new route (BACKEND.md header): regenerate the contract snapshots (`scripts/contract/export_api_paths.py --front ../elfaheem-front`), add the feature to `data/app_features_guide.json`, add a kill-switch key to `features/platform/feature_catalog.py` (check the exact path), new Alembic revision after `0129`.
+Conventions that apply to every new route (BACKEND.md header): regenerate the contract snapshots (`scripts/contract/export_api_paths.py --front ../nextbrain-front`), add the feature to `data/app_features_guide.json`, add a kill-switch key to `features/platform/feature_catalog.py` (check the exact path), new Alembic revision after `0129`.
 
 ## §1 Parent creates the child's account; the child signs in with a code
 

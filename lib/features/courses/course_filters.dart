@@ -288,7 +288,7 @@ class CourseFilterEdu {
 }
 
 String _deliveryName(String? d) => switch (d) {
-      'online' => _t('أونلاين', 'Online'),
+      'online' => _t('عن بعد', 'Remote'),
       'in_person' => _t('حضوري', 'In person'),
       _ => _t('الكل', 'Any'),
     };
@@ -362,6 +362,9 @@ class CourseFilterBar extends StatelessWidget {
     );
     if (r != null && r != value) onChanged(r);
   }
+
+  /// The filter sheet on its own (a page that draws its own "تصفية" button, the redesign's category page).
+  Future<void> openSheet(BuildContext context) => _openSheet(context);
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -703,6 +706,7 @@ class _CourseFilterSheetState extends State<_CourseFilterSheet> {
           ],
         ],
         const SizedBox(height: AppSpace.lg),
+        // redesign (Stu1Discover?sheet=filter): a small Clear, the forward Show button taking the rest
         Row(children: [
           Expanded(
             child: AppButton(
@@ -715,9 +719,10 @@ class _CourseFilterSheetState extends State<_CourseFilterSheet> {
           ),
           const SizedBox(width: AppSpace.sm),
           Expanded(
-            child: AppButton(
+            flex: 2,
+            child: AppButton.hot(
               key: const ValueKey('course_filters.sheet.apply'),
-              label: widget.applyLabel ?? _t('عرض الدورات', 'Show courses'),
+              label: widget.applyLabel ?? _t('اعرض الدورات', 'Show courses'),
               expand: true,
               onPressed: () => Navigator.of(context).pop(_f),
             ),

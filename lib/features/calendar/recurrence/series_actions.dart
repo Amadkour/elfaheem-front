@@ -109,7 +109,7 @@ Future<bool> seriesMove(BuildContext context, CalendarApi api,
       return false;
     }
     final go = await appConfirm(context,
-        message: '${'cal_series_busy'.tr}: ${busy.map((b) => asMap(b['user'])['name']).join('، ')}',
+        message: '${'cal_series_busy'.tr}: ${busy.map((b) => asMap(b['user'])['name']).join((AppConfig.lang == 'ar' ? '، ' : ', '))}',
         confirmLabel: 'cal_series_move_anyway'.tr);
     if (!go) return false;
     try {

@@ -31,6 +31,10 @@ import 'package:flutter_education_app/features/messaging/chat/chat_models.dart';
 import 'package:flutter_education_app/features/messaging/chat/chat_sheets.dart';
 import 'package:flutter_education_app/features/messaging/chat/chat_store.dart';
 import 'package:flutter_education_app/features/messaging/chat/chat_widgets.dart';
+import 'package:flutter_education_app/features/auth/auth_provider.dart';
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart' show T2Scope;
+import 'package:flutter_education_app/features/profile/teacher/t2b_parts.dart';
+import 'package:provider/provider.dart';
 
 const kChatFeatureKey = 'chat';
 const double kChatSplitFrom = 760;
@@ -136,7 +140,10 @@ class _ChatHomePageState extends State<ChatHomePage> with WidgetsBindingObserver
 
   @override
   Widget build(BuildContext context) {
-    return BasePage(
+    // a teacher's messages wear the teacher hero (redesign T2b, Tea2Chat): what is waiting, New message, and the
+    // list's filters as its pills; the list's own chips step aside
+    final teacher = _isTeacher(context);
+    final page = BasePage(
       child: SafeArea(
         child: LayoutBuilder(builder: (context, box) {
           final split = box.maxWidth >= kChatSplitFrom;
@@ -151,13 +158,20 @@ class _ChatHomePageState extends State<ChatHomePage> with WidgetsBindingObserver
                 onNewChat: _newChat,
                 onRequests: _openRequests,
                 onBack: Navigator.of(context).canPop() ? () => Navigator.of(context).maybePop() : null,
+                heroFilters: teacher,
               );
+              Widget withHero(Widget body) => !teacher
+                  ? body
+                  : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                      T2bChatHero(hub: _hub, onNewChat: _newChat),
+                      Expanded(child: body),
+                    ]);
               if (!split) {
                 // the window was narrowed with a chat open: it stays open, full-screen
-                if (selected == null) return list;
+                if (selected == null) return withHero(list);
                 return ChatThreadView(key: ValueKey(selected), conversationId: selected, onBack: () => setState(() => _hub.selectedId = null), onLeave: () => setState(() => _hub.selectedId = null));
               }
-              return Row(children: [
+              return withHero(Row(children: [
                 SizedBox(width: (box.maxWidth * 0.3).clamp(340.0, 420.0), child: list),
                 VerticalDivider(width: 1, color: context.colors.divider.withValues(alpha: 0.6)),
                 Expanded(
@@ -170,10 +184,65 @@ class _ChatHomePageState extends State<ChatHomePage> with WidgetsBindingObserver
                           onLeave: () => setState(() => _hub.selectedId = null),
                         ),
                 ),
-              ]);
+              ]));
             },
           );
         }),
+      ),
+    );
+    return teacher ? T2Scope(child: page) : page;
+  }
+
+  bool _isTeacher(BuildContext context) {
+    try {
+      return context.read<MyAuthProvider>().currentUser?.role == 'teacher';
+    } on ProviderNotFoundException {
+      return false;
+    }
+  }
+}
+
+/// The teacher's messages hero (Tea2Chat): how many chats wait (unread and requests), one line, New message, and the
+/// list's filters as glass pills (All, Unread, then the roles the server offers, Groups, Pinned).
+class T2bChatHero extends StatelessWidget {
+  const T2bChatHero({super.key, required this.hub, required this.onNewChat});
+
+  final ChatHub hub;
+  final VoidCallback onNewChat;
+
+  @override
+  Widget build(BuildContext context) {
+    final unread = hub.conversations.where((c) => c.unread > 0).length;
+    final requests = hub.requestCount;
+    final title = unread == 0 && requests == 0
+        ? 't2_chat_calm'.tr
+        : [
+            if (unread > 0) countText(unread, ar1: 'رسالة جديدة', ar2: 'رسالتين جديدة', arFew: '{n} رسائل جديدة', arMany: '{n} رسالة جديدة', en1: '1 new message', en: '{n} new messages'),
+            if (requests > 0) countText(requests, ar1: 'طلب', ar2: 'طلبين', arFew: '{n} طلبات', arMany: '{n} طلبًا', en1: '1 request', en: '{n} requests'),
+          ].join(AppConfig.lang == 'ar' ? ' و' : ' and ');
+    final pills = <(String, String?, int?, VoidCallback)>[
+      ('chat_filter_all'.tr, 'all', null, () => hub.applyFilters(filter: 'all', clearCourse: true, clearRole: true)),
+      ('chat_filter_unread'.tr, 'unread', unread, () => hub.applyFilters(filter: 'unread', clearRole: true)),
+      for (final r in hub.filterRoles) ('chat_role_$r'.tr, 'role:$r', null, () => hub.applyFilters(filter: 'all', role: r)),
+      ('chat_filter_groups'.tr, 'groups', null, () => hub.applyFilters(filter: 'groups', clearRole: true)),
+      ('chat_filter_pinned'.tr, 'pinned', null, () => hub.applyFilters(filter: 'pinned', clearRole: true)),
+    ];
+    final current = hub.role != null ? 'role:${hub.role}' : hub.filter;
+    final index = pills.indexWhere((p) => p.$2 == current);
+    final wide = MediaQuery.sizeOf(context).width >= kChatSplitFrom;
+    final newButton = AppButton.primary(
+        key: const ValueKey('chat.hero.new'), label: 'chat_new_chat'.tr, icon: Icons.edit_outlined, onPressed: onNewChat);
+    return AppHero(
+      overlap: false,
+      wipe: false,
+      title: unread == 0 && requests == 0 ? title : 't2_chat_waiting'.tr.replaceAll('{what}', title),
+      subtitle: 't2_chat_sub'.tr,
+      trailing: wide ? Align(alignment: AlignmentDirectional.topEnd, child: newButton) : null,
+      actions: [if (!wide) Align(alignment: AlignmentDirectional.centerStart, child: newButton)],
+      bottom: T2bHeroPills(
+        index: index < 0 ? 0 : index,
+        onChanged: (i) => pills[i].$4(),
+        items: [for (final p in pills) T2bPill(p.$1, count: p.$3, key: 'chat.pill.${p.$2}')],
       ),
     );
   }
@@ -219,7 +288,11 @@ class _NoChatSelected extends StatelessWidget {
 
 /// The inbox: message requests on top, then the chats by their last message, pinned first (D-542).
 class ChatListView extends StatelessWidget {
-  const ChatListView({super.key, required this.hub, required this.onOpen, required this.onNewChat, this.onRequests, this.onBack});
+  const ChatListView(
+      {super.key, required this.hub, required this.onOpen, required this.onNewChat, this.onRequests, this.onBack, this.heroFilters = false});
+
+  /// The filters sit on a hero above the list (a teacher's page, T2b): no chips row of its own.
+  final bool heroFilters;
   final ChatHub hub;
   final void Function(int id) onOpen;
   final VoidCallback onNewChat;
@@ -275,6 +348,7 @@ class ChatListView extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(AppSpace.sm, 0, AppSpace.sm, AppSpace.xs),
           child: AppSearchField(hint: 'chat_search_hint'.tr, dense: true, onChanged: (q) => hub.applyFilters(search: q)),
         ),
+        if (!heroFilters)
         Padding(
           padding: const EdgeInsets.only(bottom: AppSpace.xs),
           child: AppHScroll(
@@ -568,7 +642,16 @@ class _ChatThreadViewState extends State<ChatThreadView> with WidgetsBindingObse
     super.dispose();
   }
 
+  int? _privateShown;
+
   void _onUpdate() {
+    final to = _t.privateChatId;
+    if (to != null && to != _privateShown) {
+      _privateShown = to;
+      showAppNotice('sc_chat_reply_private'.tr, actionLabel: 'sc_chat_open_private'.tr, onAction: () {
+        Navigator.of(context, rootNavigator: true).push(MaterialPageRoute(builder: (_) => ChatThreadPage(conversationId: to)));
+      });
+    }
     final newest = _t.messages.firstOrNull?.clientId;
     if (newest != _newestKey) {
       // scrolled up and something new arrived at the bottom: what was the bottom stays where it is
@@ -762,6 +845,7 @@ class _ChatThreadViewState extends State<ChatThreadView> with WidgetsBindingObse
           valueListenable: AppConnectivity.instance.online,
           builder: (_, online, _) => online ? const SizedBox.shrink() : const ChatOfflineStrip(),
         ),
+        if (conv?.announceOnly == true) const ScAnnouncementsBanner(),
         Expanded(child: _body(c)),
         _composer(conv),
       ]),
@@ -851,6 +935,7 @@ class _ChatThreadViewState extends State<ChatThreadView> with WidgetsBindingObse
             if (showDate) ChatDateChip(label: chatDayLabel(m.createdAt)),
             if (_t.firstUnreadKey == m.clientId) const ChatUnreadDivider(),
             row,
+            if (mine && runEnd && (m.privateReply || conv?.announceOnly == true)) const ScPrivateReplyNote(),
           ]),
         );
       }
@@ -937,6 +1022,7 @@ class _ChatThreadViewState extends State<ChatThreadView> with WidgetsBindingObse
         replyTo: _replyTo,
         replyIsMine: _replyTo?.senderId == _hub.myId,
         onCancelReply: () => setState(() => _replyTo = null),
+        hint: conv.announceOnly ? 'sc_chat_reply_hint'.tr : null,
       ),
     );
   }
@@ -1020,6 +1106,8 @@ class _ChatHeader extends StatelessWidget {
     String sub = '';
     if (typingName != null) {
       sub = conv?.isGroup == true ? '$typingName ${'chat_is_typing'.tr}' : 'chat_typing'.tr;
+    } else if (conv != null && conv.announceOnly) {
+      sub = 'sc_chat_from_teacher'.tr;
     } else if (conv != null) {
       final parts = <String>[
         if (!conv.isGroup && conv.online) 'chat_online'.tr,
@@ -1051,7 +1139,8 @@ class _ChatHeader extends StatelessWidget {
                   const SizedBox(width: AppSpace.sm),
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                      Text(conv?.title ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(15, w: FontWeight.w600, c: c.textDark)),
+                      Text(conv?.announceOnly == true ? 'sc_chat_ann_title'.tr.replaceAll('{course}', conv!.title) : (conv?.title ?? ''),
+                          maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(15, w: FontWeight.w600, c: c.textDark)),
                       if (sub.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(top: 1),
@@ -1106,3 +1195,42 @@ Future<void> openChatWith(BuildContext context, {required int peerId, int? cours
 }
 
 ChatApi chatApi() => ChatHub.instance.api;
+
+/// The line on top of the teacher's announcements (a learner's view of a course group, privacy D-1950): what lands
+/// here and where a reply goes.
+class ScAnnouncementsBanner extends StatelessWidget {
+  const ScAnnouncementsBanner({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = context.colors.kit.warn;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.sm, AppSpace.sm, 0),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
+      decoration: BoxDecoration(color: tone.tint, borderRadius: BorderRadius.circular(AppRadius.tile)),
+      child: Row(children: [
+        Icon(Icons.lock_outline_rounded, size: AppIconSize.md, color: tone.ink),
+        const SizedBox(width: AppSpace.sm),
+        Expanded(child: Text('sc_chat_ann_banner'.tr, style: AppType.label(context).copyWith(color: tone.ink, fontWeight: FontWeight.w600))),
+      ]),
+    );
+  }
+}
+
+/// Under a learner's own message in the announcements: it reached the teacher alone.
+class ScPrivateReplyNote extends StatelessWidget {
+  const ScPrivateReplyNote({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(top: AppSpace.xxs, bottom: AppSpace.xs),
+      child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+        Icon(Icons.lock_outline_rounded, size: AppIconSize.xs, color: c.textMedium),
+        const SizedBox(width: AppSpace.xxs),
+        Flexible(child: Text('sc_chat_reached_teacher_only'.tr, style: AppType.meta(context))),
+      ]),
+    );
+  }
+}

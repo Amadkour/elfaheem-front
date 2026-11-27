@@ -13,6 +13,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
+import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/web_entry_route.dart' show SignInReturn;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
@@ -279,7 +280,7 @@ class OnbApplicantStatus extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(top: AppSpace.xxs),
           child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Icon(Icons.subdirectory_arrow_right_rounded, size: AppIconSize.sm, color: c.warning),
+            Icon(DirIcons.subArrowRight, size: AppIconSize.sm, color: c.warning),
             AppSpace.gapXs,
             Expanded(child: Text.rich(TextSpan(children: [TextSpan(text: '${n.$1}: ', style: const TextStyle(fontWeight: FontWeight.w700)), TextSpan(text: n.$2)]), style: AppType.meta(context))),
           ]),

@@ -16,12 +16,13 @@ import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/features/data_lab/data_lab_models.dart';
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/core/display/display_settings.dart';
-import 'package:flutter_education_app/design/app_blocks.dart';
+import 'package:flutter_education_app/design/app_area.dart';
 import 'package:flutter_education_app/design/app_buttons.dart';
+import 'package:flutter_education_app/design/app_chips.dart';
 import 'package:flutter_education_app/design/app_charts.dart' show appInk;
 import 'package:flutter_education_app/design/app_badges.dart' show appWashOn;
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
-import 'package:flutter_education_app/design/app_gradients.dart' show AppBrandLayer;
+import 'package:flutter_education_app/design/app_hero.dart';
 import 'package:flutter_education_app/design/app_inputs.dart' show AppFieldLabel, appFieldDecoration, appFieldTextStyle;
 import 'package:flutter_education_app/design/app_motion_kit.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
@@ -97,81 +98,9 @@ class DlCard extends StatelessWidget {
   }
 }
 
-/// The page's hero: a sky block (an information surface, D-613) with the title in the editorial headline, a paper
-/// plate for the icon and up to three key figures. The one memorable thing of the page.
-class DlHero extends StatelessWidget {
-  const DlHero({super.key, required this.title, required this.subtitle, required this.icon, this.stats = const []});
-
-  final String title, subtitle;
-  final IconData icon;
-  final List<DlHeroStat> stats;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final ink = AppBlockColors.of(context, AppBlockTone.sky);
-    return Padding(
-      padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.sm),
-      child: AppBlock(
-        tone: AppBlockTone.sky,
-        hero: true,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(title, style: AppType.headline(context).copyWith(color: ink.ink)),
-                const SizedBox(height: AppSpace.xxs),
-                Text(subtitle, style: AppType.body(context).copyWith(color: ink.muted)),
-              ]),
-            ),
-            const SizedBox(width: AppSpace.sm),
-            Container(
-              width: AppTouch.min,
-              height: AppTouch.min,
-              decoration: BoxDecoration(color: c.cardBg, borderRadius: BorderRadius.circular(AppRadius.control)),
-              child: Icon(icon, color: ink.accentInk(c.primary), size: AppIconSize.lg),
-            ),
-          ]),
-          if (stats.isNotEmpty) ...[
-            const SizedBox(height: AppSpace.md),
-            Row(children: [
-              for (var i = 0; i < stats.length; i++) ...[
-                if (i > 0) const SizedBox(width: AppSpace.xs),
-                Expanded(child: stats[i]),
-              ],
-            ]),
-          ],
-        ]),
-      ),
-    );
-  }
-}
-
-/// One key figure on the hero block: a paper plate, the number rolls in once (AppOdometer), the label under it.
-class DlHeroStat extends StatelessWidget {
-  const DlHeroStat({super.key, required this.icon, required this.value, required this.label});
-
-  final IconData icon;
-  final String value, label;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: AppSpace.sm, horizontal: AppSpace.xs),
-      decoration: BoxDecoration(color: c.cardBg, borderRadius: AppRadius.cardAll),
-      child: Column(children: [
-        Icon(icon, color: appInk(context, c.primary), size: AppIconSize.sm),
-        const SizedBox(height: AppSpace.xxs),
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: AppOdometer(value, memoryKey: 'herostat:$label', style: AppType.figure(context).copyWith(color: c.textDark)),
-        ),
-        Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
-      ]),
-    );
-  }
-}
+/// The page's hero is the kit's (KIT_SPEC §5.2): the old names stay for the Data Lab's callers.
+typedef DlHero = AppHero;
+typedef DlHeroStat = AppHeroStat;
 
 /// Tonal pill button (Import / Export / New column …): the tone's tint with its readable ink, radius `control`,
 /// like `AppButton.tonal`; presses in.
@@ -314,18 +243,23 @@ class DlBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final pct = value == null ? 0.0 : (value! / (max == 0 ? 100 : max)).clamp(0.0, 1.0);
-    final col = color ?? dlScoreColor(context, value == null ? null : value! / (max == 0 ? 100 : max) * 100);
+    // the redesign kit (KIT_SPEC §5.1): the area set's gradient a -> b on the kit track; an explicit colour stays
+    final set = AppAreaScope.of(context);
+    final fill = color == null ? LinearGradient(colors: [set.a, set.b]) : null;
     final r = BorderRadius.circular(AppRadius.pill);
     return LayoutBuilder(builder: (_, box) {
       final w = box.maxWidth;
       return SizedBox(
         height: height + AppSpace.xs,
         child: Stack(alignment: AlignmentDirectional.centerStart, children: [
-          Container(height: height, decoration: BoxDecoration(color: c.inputBg, borderRadius: r)),
+          Container(height: height, decoration: BoxDecoration(color: c.kit.track, borderRadius: r)),
           // fills from 0 the first time, glides on a change (D-582)
           AppFill(
             value: pct,
-            builder: (_, v) => Container(height: height, width: w * v, decoration: BoxDecoration(color: col, borderRadius: r)),
+            builder: (_, v) => Container(
+                height: height,
+                width: w * v,
+                decoration: BoxDecoration(color: color, gradient: fill, borderRadius: r)),
           ),
           if (marker != null)
             PositionedDirectional(
@@ -352,25 +286,22 @@ class DlRing extends StatelessWidget {
     final c = context.colors;
     final col = color ?? dlScoreColor(context, value);
     return Column(mainAxisSize: MainAxisSize.min, children: [
-      SizedBox(
-        width: size,
-        height: size,
-        // fills and counts together; nothing moves under Reduce motion (D-582)
-        child: AppFill(
-          value: ((value ?? 0) / 100).clamp(0.0, 1.0),
-          builder: (_, t) => CustomPaint(
-            painter: _RingPainter(t, col, c.inputBg),
-            // the screen reader hears the final value only
-            child: Center(
-              child: Semantics(
-                label: value == null ? '–' : '${value!.round()}%',
-                child: ExcludeSemantics(
-                  child: Text(value == null ? '–' : '${(t >= (value! / 100).clamp(0.0, 1.0) ? value! : t * 100).round()}%',
-                      // the figure scales with the ring it sits in
-                      style: AppType.figure(context).copyWith(color: c.textDark, fontSize: size * 0.22)),
-                ),
-              ),
-            ),
+      // the arc inks itself in (M2, AppInkRing); the figure counts up; nothing moves under Reduce motion
+      AppInkRing(
+        value: ((value ?? 0) / 100).clamp(0.0, 1.0),
+        color: col,
+        track: c.kit.track,
+        size: size,
+        stroke: size * 0.115,
+        center: Semantics(
+          label: value == null ? '–' : '${value!.round()}%',
+          child: ExcludeSemantics(
+            child: value == null
+                ? Text('–', style: AppType.figure(context).copyWith(color: c.textDark, fontSize: size * 0.22))
+                : AppCountUp('${value!.round()}%',
+                    textDirection: TextDirection.ltr,
+                    // the figure scales with the ring it sits in
+                    style: AppType.figure(context).copyWith(color: c.textDark, fontSize: size * 0.22)),
           ),
         ),
       ),
@@ -378,28 +309,6 @@ class DlRing extends StatelessWidget {
       Text(label, textAlign: TextAlign.center, style: AppType.meta(context).copyWith(color: c.textMedium)),
     ]);
   }
-}
-
-class _RingPainter extends CustomPainter {
-  _RingPainter(this.t, this.color, this.track);
-
-  final double t;
-  final Color color, track;
-
-  @override
-  void paint(Canvas canvas, Size s) {
-    final stroke = s.width * 0.115;
-    final rect = Rect.fromLTWH(stroke / 2, stroke / 2, s.width - stroke, s.height - stroke);
-    final base = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke
-      ..strokeCap = StrokeCap.round;
-    canvas.drawArc(rect, 0, math.pi * 2, false, base..color = track.withValues(alpha: 0.7));
-    if (t > 0) canvas.drawArc(rect, -math.pi / 2, math.pi * 2 * t, false, base..color = color);
-  }
-
-  @override
-  bool shouldRepaint(_RingPainter o) => o.t != t || o.color != color || o.track != track;
 }
 
 /// Round avatar with the first letter when there is no photo.
@@ -547,64 +456,8 @@ class DlField extends StatelessWidget {
   }
 }
 
-/// Selectable chip (single or multi select): the chosen one is solid emerald with the on-hero ink, the others sit
-/// in the input well on a hairline. Radius `chip`, presses in.
-class DlChoiceChip extends StatelessWidget {
-  const DlChoiceChip({super.key, required this.label, required this.selected, required this.onTap, this.icon});
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  final IconData? icon;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final r = BorderRadius.circular(AppRadius.chip);
-    final ink = selected ? c.onHero : c.textDark;
-    return Semantics(
-      container: true,
-      button: true,
-      selected: selected,
-      child: DlTapTarget(
-        child: AppPressScale(
-          child: Material(
-            type: MaterialType.transparency,
-            child: InkWell(
-              borderRadius: r,
-              onTap: onTap,
-              child: AnimatedContainer(
-                duration: AppMotion.of(context).fast,
-                curve: AppMotion.curve,
-                padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
-                // the selected chip wears the brand gradient (D-649)
-                // the selected chip wears the brand fill, its cream end in the end padding (D-650 r2)
-                decoration: selected
-                    ? AppBrandLayer.buttonFill(context,
-                        pad: AppSpace.sm,
-                        borderRadius: r,
-                        border: Border.all(color: AppBrandLayer.of(context).button.first, width: AppBorder.hairline))
-                    : BoxDecoration(color: c.inputBg, borderRadius: r, border: Border.all(color: c.divider, width: AppBorder.hairline)),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  if (icon != null) ...[
-                    Icon(icon, size: AppIconSize.sm, color: selected ? c.onHero : c.textMedium),
-                    const SizedBox(width: AppSpace.xs),
-                  ],
-                  Flexible(
-                    child: Text(label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: ink)),
-                  ),
-                ]),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
+/// Selectable chip: the kit's [AppChip] (KIT_SPEC §5.1; the old call shape compiles unchanged).
+typedef DlChoiceChip = AppChip;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Premium building blocks (all colours from the theme)

@@ -25,8 +25,8 @@ import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/teachers/teachers_api.dart';
 import 'package:flutter_education_app/features/teachers/teachers_models.dart';
 import 'package:flutter_education_app/features/teachers/teachers_parts.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart';
 
 /// The package's repeat rule after the start date changes to [day] (D-1642): the series follows the rule's
 /// `start_date`, so the two must agree. No rule (or an unreadable one) → [schedule] unchanged.
@@ -136,9 +136,9 @@ class _PackageWizardPageState extends State<PackageWizardPage> {
 
   @override
   Widget build(BuildContext context) {
-    return BasePage(
-      width: AppWidth.content,
-      appBar: ScreenAppBar(title: widget.initial == null ? t('باقة جديدة', 'New package') : t('تعديل الباقة', 'Edit the package')),
+    return T2Scope(
+      child: BasePage(
+      appBar: AppHeader(title: widget.initial == null ? t('باقة جديدة', 'New package') : t('تعديل الباقة', 'Edit the package')),
       child: SafeArea(
         child: PackageWizardForm(
           draft: _d,
@@ -149,6 +149,7 @@ class _PackageWizardPageState extends State<PackageWizardPage> {
           published: widget.initial?.status == 'published',
           onSave: _save,
         ),
+      ),
       ),
     );
   }
@@ -512,15 +513,6 @@ class _PackageWizardFormState extends State<PackageWizardForm> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final form = Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
-      AppTabs(
-        key: const ValueKey('package.steps'),
-        items: [for (final s in PackageStep.values) AppTabItem(packageStepTitle(s))],
-        index: _step.index,
-        onChanged: _goTo,
-      ),
-      const SizedBox(height: AppSpace.xs),
-      Text(t('الخطوة ${_step.index + 1} من 3', 'Step ${_step.index + 1} of 3'), style: AppType.meta(context).copyWith(color: c.textMedium)),
-      const SizedBox(height: AppSpace.md),
       AppCard(
         child: switch (_step) {
           PackageStep.basics => _basics(context),
@@ -565,24 +557,34 @@ class _PackageWizardFormState extends State<PackageWizardForm> {
         ],
       ),
     ]);
+    final steps = T2Steps(
+      key: const ValueKey('package.steps'),
+      labels: [for (final s in PackageStep.values) packageStepTitle(s)],
+      index: _step.index,
+      onTap: _goTo,
+    );
+    final hero = AppHero(
+      title: switch (_step) {
+        PackageStep.basics => t('وش الباقة؟', 'What is the package?'),
+        PackageStep.schedule => t('متى الحصص؟', 'When are the classes?'),
+        PackageStep.price => t('السعر والمقاعد', 'Price and seats'),
+      },
+      subtitle: t('الباقة مجموعة حصص بعدد وسعر ثابت، يحجزها الطالب من ملفك.',
+          'A package is a set number of classes at a fixed price that students book from your profile.'),
+    );
     return LayoutBuilder(builder: (context, box) {
       final summary = PackageSummaryCard(draft: _d);
       if (box.maxWidth >= Breakpoints.desktop) {
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpace.md),
-          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        return T2HeroScroll(hero: hero, width: AppWidth.content, children: [
+          steps,
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Expanded(flex: 3, child: form),
             const SizedBox(width: AppSpace.lg),
             Expanded(flex: 2, child: summary),
           ]),
-        );
+        ]);
       }
-      return ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
-        form,
-        const SizedBox(height: AppSpace.lg),
-        summary,
-        const SizedBox(height: AppSpace.lg),
-      ]);
+      return T2HeroScroll(hero: hero, children: [steps, form, summary]);
     });
   }
 }

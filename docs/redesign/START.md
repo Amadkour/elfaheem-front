@@ -1,12 +1,12 @@
-# Alfaheem redesign: start here
+# the redesign: start here
 
-You are implementing a full redesign of the Alfaheem app: Flutter (this repository) and the backend (`../back`). The design was made and reviewed with the owner in a separate session. Everything you need is in this folder, so you can work without that conversation.
+You are implementing a full redesign of the app: Flutter (this repository) and the backend (`../back`). The design was made and reviewed with the owner in a separate session. Everything you need is in this folder, so you can work without that conversation.
 
 ## What is in `docs/redesign/`
 
 | File | What |
 |---|---|
-| `design/` | The approved design: 117 interactive HTML screens (`*.dc.html`), `kit.css` and a small runtime (`support.js`). Open `design/index.html` to browse every screen. |
+| `D:/platform/redesign-ref/design/` | The approved design: 117 interactive HTML screens (`*.dc.html`), `kit.css` and a small runtime (`support.js`). Open `D:/platform/redesign-ref/design/index.html` to browse every screen. |
 | `SCREENS.md` | Every screen by role (about 570), with the URL that opens it. |
 | `RULES.md` | Client decisions, Saudi market rules, and **international users** (any nationality, any country). These are binding. |
 | `DESIGN_SYSTEM.md` | The 5-second rules for student screens, the privacy contract, the motion language (16 patterns with CSS and Flutter equivalents) and the colour system. |
@@ -38,12 +38,16 @@ A screen is one component file plus query props, for example `Stu1Auth.dc.html?s
   - the contract snapshots.
 - The theme is server-driven (`GET /api/v1/theme/{platform}`). Put the new palette in the theme defaults **and** in the backend theme seed, so the server and the app agree. Never hard-code colours in widgets.
 - Motion goes through one small library in `lib/design/` (see phase 1). It respects Reduce motion (`syncMotionLoop`, display settings).
-- **This repository is a fork synced from NextBrain** (`sync/README.md`). A redesign of `lib/` will conflict with every future sync. Before phase 1, write this down as decision A-0xx in `docs/DECISIONS_ALFAHEEM.md` and ask the owner to confirm one of:
-  - (a) Alfaheem diverges from NextBrain's UI from now on, and the sync merges only non-UI work;
-  - (b) the redesign is done upstream in NextBrain, then synced here;
-  - (c) the new UI lives in Alfaheem-only files behind the `sync/hooks.py` mechanism.
-
-  Default if the owner does not answer: (a).
+- **Two products, one code base (D-1810, owner 2026-11-26).** The redesign is built HERE, in NextBrain, as shared
+  code, and reaches the downstream product through its normal sync (its own sync script, in its own repository). Every feature of both apps
+  stays. Each product keeps its own palette, which is theme data, never code: NextBrain's comes from its logo
+  (green and gold, BRANDS.md); the downstream product's is the palette drawn in the reference design. No downstream-product name, logo,
+  domain or colour value may be written in this repository (the reference HTML is kept outside it, in
+  `D:/platform/redesign-ref/`). Market rules (country, currency, payment methods, grades, weekend, dialect hints)
+  are per-country data from the server: NextBrain's platform defaults are Egypt (Africa/Cairo, EGP, Paymob),
+  the downstream product's are Saudi Arabia (Asia/Riyadh, SAR, Moyasar). RULES.md §2 describes the Saudi market and applies
+  whenever the country is Saudi Arabia, in either product. A page the design does not draw is designed by us in
+  the same language (kit, motion, area accents) — never left in the old style.
 
 ## Branches
 
@@ -67,7 +71,7 @@ Keep a tracker in `docs/redesign/PROGRESS.md`: one line per task, marked `todo`,
    - Write the sync decision above.
    - Commit; this phase changes no UI.
 1. **Kit.**
-   - Tokens: the colour system, area accents, subject colours, radii and type scale from DESIGN_SYSTEM.md and `design/kit.css`.
+   - Tokens: the colour system, area accents, subject colours, radii and type scale from DESIGN_SYSTEM.md and `D:/platform/redesign-ref/design/kit.css`.
    - The motion library: M1–M16 as reusable widgets or extensions.
    - The new hero, cards, buttons (jelly press), segmented pill, bottom sheet and the shells (sidebar on web, bottom nav on phone).
    - Each piece gets a layout-harness test.

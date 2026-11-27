@@ -38,7 +38,7 @@ Rules that apply to every row and are not repeated: "دورة" never "كورس",
 | Records (`records`) | everyone | lib/features/records/. push modules: records, records_shared | Stu1Learn?screen=records | restyle |  |
 | Sharing recordings (`records_share`) | everyone | lib/features/records/records_share.dart | not drawn | keep + restyle |  |
 | Confirm it's you before sensitive changes (`confirm_identity`) | everyone | lib/features/auth/reauth_sheet.dart | not drawn | keep + restyle |  |
-| My profile and its public link (alfheemacademy.com/@yourname) (`profile_link`) | teacher, student, everyone | lib/features/profile/public_profile/. routes: `/@username` | Stu2Profile?screen=public; Tea2Account?screen=public | restyle | Student public page: initials only, no classmates. Server payload not audited yet (BACKEND_STATUS leak 11). |
+| My profile and its public link (nextbrain.site/@yourname) (`profile_link`) | teacher, student, everyone | lib/features/profile/public_profile/. routes: `/@username` | Stu2Profile?screen=public; Tea2Account?screen=public | restyle | Student public page: initials only, no classmates. Server payload not audited yet (BACKEND_STATUS leak 11). |
 | Fold the sections of your home (`home_fold_sections`) | student, teacher, org member | lib/design/home_kit.dart | not drawn | keep + restyle | The 5-second home is shorter: keep folding only where sections remain. |
 | Get the app (`get_the_app`) | everyone | lib/features/get_app/ | not drawn | keep + restyle |  |
 | Download the app from the website (`app_download_banner`) | everyone | landing/, lib/features/get_app/ | not drawn | keep + restyle |  |
@@ -469,7 +469,7 @@ Rules that apply to every row and are not repeated: "دورة" never "كورس",
 | Parent More page (`x_parent_more`) | parent | lib/features/parent/parent_dashboard_screen.dart. items: parent: pl_tab_more | Pa2More?screen=more | restyle |  |
 | Admin services hub and More (`x_admin_services`) | admin, super admin | lib/features/admin/admin_services_hub.dart. items: admin web (10): the same 4, then admin_group_people, finance, admin_group_learning, support, admin_group_config, admin_my_account | AdmHome?screen=more; SupAccount?screen=more; AdmPeople?screen=hub; AdmContent?screen=hub; AdmSupport?screen=hub | restyle | Every AdminService stays, also the ones the design does not draw. |
 | Phone verification: code, WhatsApp link (`x_phone_verify`) | everyone | lib/features/auth/mfa_verify_screen.dart, verify_way.dart, verified_screen.dart. routes: `/otp` | Stu1Auth?screen=verify (mode=link) | restyle | Must work for non-Saudi numbers (RULES 3). |
-| About Alfaheem, contact, features (`x_about`) | everyone | lib/features/profile/about/ | Stu2Profile?screen=about | restyle |  |
+| About the app, contact, features (`x_about`) | everyone | lib/features/profile/about/ | Stu2Profile?screen=about | restyle |  |
 | Entity pages and panels (student, course, teacher, category; D-290) (`x_entity_view`) | teacher, admin, super admin | lib/design/master_detail/. routes: `/view/<kind>/<id> (entity.view)` | AdmStudents?screen=detail; AdmTeachers?screen=detail; AdmCourses?screen=detail; Tea1Courses?screen=panel | restyle |  |
 | Not found page (`x_not_found`) | everyone | lib/main.dart. routes: `default`. push modules: default | not drawn | keep + restyle |  |
 | Ads: home slider, teacher-ad approval and settings (`x_admin_ads`) | super admin | lib/features/ads/ads_pages.dart. items: admin service svc_ads | SupAds?screen=ads, editor | restyle |  |

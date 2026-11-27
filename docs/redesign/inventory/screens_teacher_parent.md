@@ -1,6 +1,6 @@
 # Teacher and parent screens: design -> Flutter inventory
 
-Paths are under `lib/features/` unless stated. URLs are `docs/redesign/design/<file>?<query>`. Row `#` = the number in SCREENS.md. The Flutter side was mapped from file names, classes and routes (not every file was opened); "verify" in Notes means a look is needed before building.
+Paths are under `lib/features/` unless stated. URLs are `D:/platform/redesign-ref/design/<file>?<query>`. Row `#` = the number in SCREENS.md. The Flutter side was mapped from file names, classes and routes (not every file was opened); "verify" in Notes means a look is needed before building.
 
 Entry points today: teacher = `/teacher_dashboard` (`home/teacher/dashboard/teacher_dashboard_screen.dart`, tabs: home, my_courses, my_schedule, analysis, my_profile); parent = `/parent_dashboard` (`parent/parent_dashboard_screen.dart`, tabs: today, children, reports, alerts, link, more). Both are routed in `lib/main.dart` `_router` (deferred in `core/routing/deferred_screens.dart`). Pushed pages have no named route (`Navigator.push`).
 

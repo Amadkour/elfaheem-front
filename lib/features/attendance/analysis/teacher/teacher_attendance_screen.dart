@@ -1,18 +1,23 @@
+// The teacher's manual attendance (Tea1Class.dc.html?screen=attmanual): the lesson, the group's figures, a search and
+// the two bulk choices, one row per student with a presence switch, and the save bar. Behaviour unchanged: the
+// provider loads the course's lessons, a switch marks one student, "all present / all absent" saves at once and
+// Save sends the changes. Teacher pages use the restrained motion only (M9 presses, M10 figures).
+library;
+
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/features/exams/legacy/student/exam_ui.dart';
-import 'package:flutter_education_app/utils/helpers.dart';
+import 'package:flutter_education_app/core/plural.dart';
+import 'package:flutter_education_app/features/attendance/attendance_strings.dart';
+import 'package:flutter_education_app/features/attendance/attendance_ui.dart' show AttChoice;
+import 'package:flutter_education_app/features/exams/legacy/student/exam_ui.dart' show ExamError;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_education_app/config/app_config.dart';
-import 'package:flutter_education_app/design/app_switch.dart';
 import 'package:flutter_education_app/features/attendance/analysis/teacher/attendance_model.dart';
 import 'package:flutter_education_app/features/attendance/analysis/teacher/teacher_attendance_provider.dart';
 import 'package:flutter_education_app/features/analytics/student/student_analytics_profile_screen.dart';
-import 'package:flutter_education_app/design/app_notice.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppGradients, AppHeader, AppListSkeleton, AppWidth;
-import 'package:flutter_education_app/features/analytics/teacher/teacher_stat_band.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -21,17 +26,12 @@ class TeacherAttendanceScreen extends StatelessWidget {
   final String courseTitle;
   final int? sessionId;
 
-  const TeacherAttendanceScreen(
-      {super.key,
-        required this.courseId,
-        required this.courseTitle,
-        this.sessionId});
+  const TeacherAttendanceScreen({super.key, required this.courseId, required this.courseTitle, this.sessionId});
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) =>
-      TeacherAttendanceProvider(courseId: courseId)..loadSessions(sessionId),
+      create: (_) => TeacherAttendanceProvider(courseId: courseId)..loadSessions(sessionId),
       child: _TeacherAttendanceView(courseTitle: courseTitle),
     );
   }
@@ -60,62 +60,18 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
   @override
   Widget build(BuildContext context) {
     final prov = context.watch<TeacherAttendanceProvider>();
-    final isWide = MediaQuery.of(context).size.width > 720;
-
     return BasePage(
       key: const ValueKey('teacher_attendance'),
       useWebCard: true,
       width: AppWidth.wide,
-      appBar: AppHeader(
-        title: widget.courseTitle,
-        subtitle: prov.selectedSession?.name ?? 'attendance_record'.tr,
-      ),
-      child: Column(
-        children: [
-          _buildHero(prov),
-          Expanded(child: _buildBody(prov, isWide)),
-        ],
-      ),
-    );
-  }
-
-  // ── Hero ──────────────────────────────────────────────────────────────────
-  Widget _buildHero(TeacherAttendanceProvider prov) {
-    final showStats = prov.selectedSession != null &&
-        !prov.isLoadingStudents &&
-        !prov.hasError;
-
-    if (!showStats) return const SizedBox.shrink();
-    return ParentComponent(
-      featureKey: 'teacher_attendance.stats',
-      child: TeacherStatBand(stats: [
-        HeroStat(
-          icon: Icons.people_rounded,
-          color: context.colors.heroTint(context.colors.primaryLight, 0.5),
-          value: '${prov.allStudents.length}',
-          label: 'total_students'.tr,
-        ),
-        HeroStat(
-          icon: Icons.check_circle_rounded,
-          color: context.colors.success,
-          value: '${prov.presentCount}',
-          label: 'present'.tr,
-        ),
-        HeroStat(
-          icon: Icons.cancel_rounded,
-          color: context.colors.danger,
-          value: '${prov.absentCount}',
-          label: 'absent'.tr,
-        ),
-      ]),
+      appBar: AppHeader(title: widget.courseTitle, subtitle: prov.selectedSession?.name ?? 'attendance_record'.tr),
+      child: Column(children: [Expanded(child: _buildBody(prov))]),
     );
   }
 
   // ── Body ──────────────────────────────────────────────────────────────────
-  Widget _buildBody(TeacherAttendanceProvider prov, bool isWide) {
-    if (prov.isLoadingSessions) {
-      return _buildLoadingState();
-    }
+  Widget _buildBody(TeacherAttendanceProvider prov) {
+    if (prov.isLoadingSessions) return const AppListSkeleton();
     if (prov.hasError && prov.sessions.isEmpty) {
       return ExamError(
         message: prov.errorMessage ?? 'something-went-wrong'.tr,
@@ -123,11 +79,10 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
         onRetry: () => prov.loadSessions(null),
       );
     }
+    final ready = prov.selectedSession != null && !prov.isLoadingStudents && !prov.hasError;
     return Column(children: [
-      ParentComponent(
-        featureKey: 'teacher_attendance.session_flag',
-        child: _buildSessionFlagBar(prov),
-      ),
+      // The lesson chips scroll with the register once it is shown, so a small screen keeps its room for the rows.
+      if (!ready) ParentComponent(featureKey: 'teacher_attendance.session_flag', child: _buildSessionBar(prov)),
       if (prov.selectedSession != null) ...[
         if (prov.isLoadingStudents)
           const Expanded(child: AppListSkeleton())
@@ -140,218 +95,164 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
             ),
           )
         else ...[
-            ParentComponent(
-              featureKey: 'teacher_attendance.search',
-              child: _buildSearchBar(prov),
-            ),
-            Expanded(child: isWide ? _buildWideGrid(prov) : _buildList(prov)),
-            ParentComponent(
-              featureKey: 'teacher_attendance.save_bar',
-              child: _buildSaveBar(prov),
-            ),
-          ],
+          Expanded(child: _buildStudents(prov)),
+          ParentComponent(featureKey: 'teacher_attendance.save_bar', child: _buildSaveBar(prov)),
+        ],
       ] else
-        Expanded(child: _buildSelectSessionHint()),
+        Expanded(child: AppEmpty(icon: Icons.touch_app_rounded, title: 'select_lecture'.tr, message: 'select_session_hint_sub'.tr)),
     ]);
   }
 
-  Widget _buildLoadingState() => const AppListSkeleton();
-
-  Widget _buildSelectSessionHint() => ExamEmpty(
-    icon: Icons.touch_app_rounded,
-    text: '${'select_lecture'.tr}\n${'select_session_hint_sub'.tr}',
-  );
-
-  // ── Session flag bar ──────────────────────────────────────────────────────
-  Widget _buildSessionFlagBar(TeacherAttendanceProvider prov) {
-    final c = context.colors;
+  // ── The lessons ───────────────────────────────────────────────────────────
+  Widget _buildSessionBar(TeacherAttendanceProvider prov) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            Icon(Icons.video_library_rounded, size: 18, color: c.primary),
-            const SizedBox(width: 8),
-            Text('select_lecture'.tr,
-                style: examT(14, w: FontWeight.w800, c: c.textDark)),
-          ]),
-          const SizedBox(height: 12),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('select_lecture'.tr, style: AppType.label(context)),
+        AppSpace.gapXs,
+        if (prov.sessions.isEmpty)
+          Text('no_sessions_available'.tr, style: AppType.meta(context))
+        else
           SizedBox(
-            height: 84,
-            child: prov.sessions.isEmpty
-                ? Center(
-              child: Text('no_sessions_available'.tr,
-                  style: examT(13, c: c.textMedium)),
-            )
-                : ListView.separated(
+            height: AppTouch.min,
+            child: ListView.separated(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.only(bottom: 4),
               itemCount: prov.sessions.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 10),
+              separatorBuilder: (_, _) => AppSpace.gapXs,
               itemBuilder: (_, i) {
                 final s = prov.sessions[i];
-                return _SessionFlag(
-                  name: s.name,
-                  index: i,
-                  isSelected: prov.selectedSession?.id == s.id,
-                  onTap: () => prov.selectSession(s),
-                );
+                return AttChoice(label: s.name, selected: prov.selectedSession?.id == s.id, onTap: () => prov.selectSession(s));
               },
             ),
           ),
-        ],
-      ),
+      ]),
     );
   }
 
-  // ── Search bar ────────────────────────────────────────────────────────────
-  Widget _buildSearchBar(TeacherAttendanceProvider prov) {
+  // ── The group: figures, search, bulk choices, rows ────────────────────────
+  Widget _buildStudents(TeacherAttendanceProvider prov) {
+    final list = prov.filtered;
     final c = context.colors;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: ExamCard(
-        radius: 16,
-        child: TextField(
-          controller: _searchCtrl,
-          textDirection: Helpers.pageDirection,
-          style: examT(14, c: c.textDark),
-          decoration: InputDecoration(
-            hintText: 'search_student'.tr,
-            hintStyle: examT(13, c: c.textMedium),
-            prefixIcon:
-            Icon(Icons.search_rounded, color: c.textMedium, size: 21),
-            suffixIcon: prov.search.isNotEmpty
-                ? IconButton(
-                tooltip: 'clear'.tr,
-                icon: Icon(Icons.close_rounded,
-                    color: c.textMedium, size: 18),
-                onPressed: () {
-                  _searchCtrl.clear();
-                  prov.setSearch('');
-                })
-                : null,
-            border: InputBorder.none,
-            contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    return LayoutBuilder(builder: (context, box) {
+      final cols = box.maxWidth > 1100 ? 3 : (box.maxWidth > 720 ? 2 : 1);
+      return CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          SliverToBoxAdapter(child: ParentComponent(featureKey: 'teacher_attendance.session_flag', child: _buildSessionBar(prov))),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0),
+            sliver: SliverToBoxAdapter(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                Text(attT('t1_cl_manual_title', args: {'lesson': prov.selectedSession?.name ?? ''}), style: AppType.section(context)),
+                AppSpace.gapSm,
+                ParentComponent(
+                  featureKey: 'teacher_attendance.stats',
+                  child: Row(children: [
+                    Expanded(child: _ManualStat(label: attT('t1_cl_group_students'), value: prov.allStudents.length, tone: c.primary)),
+                    AppSpace.gapXs,
+                    Expanded(child: _ManualStat(label: attT('t1_cl_present'), value: prov.presentCount, tone: c.success)),
+                    AppSpace.gapXs,
+                    Expanded(child: _ManualStat(label: attT('t1_cl_absent'), value: prov.absentCount, tone: c.danger)),
+                  ]),
+                ),
+                AppSpace.gapSm,
+                ParentComponent(
+                  featureKey: 'teacher_attendance.search',
+                  child: AppSearchField(
+                    controller: _searchCtrl,
+                    hint: attT('t1_cl_search'),
+                    debounce: Duration.zero,
+                    onChanged: prov.setSearch,
+                  ),
+                ),
+                AppSpace.gapXs,
+                Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+                  AppButton.secondary(
+                    size: AppButtonSize.sm,
+                    icon: Icons.check_rounded,
+                    label: attT('t1_cl_all_present'),
+                    onPressed: () async {
+                      final ok = await prov.markAll(true);
+                      if (!mounted) return;
+                      showAppNotice(ok ? 'attendance_saved'.tr : 'save_failed'.tr, error: !ok);
+                    },
+                  ),
+                  AppButton.secondary(
+                    size: AppButtonSize.sm,
+                    icon: Icons.close_rounded,
+                    label: attT('t1_cl_all_absent'),
+                    onPressed: () => prov.markAll(false),
+                  ),
+                ]),
+                AppSpace.gapSm,
+              ]),
+            ),
           ),
-          onChanged: prov.setSearch,
-        ),
-      ),
-    );
-  }
-
-  // ── Lists ─────────────────────────────────────────────────────────────────
-  Widget _buildList(TeacherAttendanceProvider prov) {
-    final list = prov.filtered;
-    if (list.isEmpty) {
-      return ExamEmpty(
-          icon: Icons.search_off_rounded, text: 'no_search_results'.tr);
-    }
-    return ListView.separated(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-      physics: const BouncingScrollPhysics(),
-      itemCount: list.length,
-      separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (_, i) => _StudentTile(
-        student: list[i],
-        onToggle: (v) => prov.toggleStudent(list[i].id, v),
-      ),
-    );
-  }
-
-  Widget _buildWideGrid(TeacherAttendanceProvider prov) {
-    final list = prov.filtered;
-    if (list.isEmpty) {
-      return ExamEmpty(
-          icon: Icons.search_off_rounded, text: 'no_search_results'.tr);
-    }
-    return LayoutBuilder(
-      builder: (_, c) => GridView.builder(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: c.maxWidth > 1100 ? 3 : 2,
-          mainAxisExtent: 82,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-        ),
-        itemCount: list.length,
-        itemBuilder: (_, i) => _StudentTile(
-          student: list[i],
-          onToggle: (v) => prov.toggleStudent(list[i].id, v),
-        ),
-      ),
-    );
+          if (list.isEmpty)
+            SliverFillRemaining(hasScrollBody: false, child: AppEmpty(icon: Icons.search_off_rounded, title: 'no_search_results'.tr))
+          else
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.md),
+              sliver: SliverGrid(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: cols,
+                  mainAxisExtent: AppTouch.primary * 2,
+                  crossAxisSpacing: AppSpace.sm,
+                  mainAxisSpacing: AppSpace.sm,
+                ),
+                delegate: SliverChildBuilderDelegate(
+                  childCount: list.length,
+                  (_, i) => _StudentTile(student: list[i], onToggle: (v) => prov.toggleStudent(list[i].id, v)),
+                ),
+              ),
+            ),
+        ],
+      );
+    });
   }
 
   // ── Save bar ──────────────────────────────────────────────────────────────
   Widget _buildSaveBar(TeacherAttendanceProvider prov) {
     final c = context.colors;
+    final n = prov.changes.length;
     return Container(
-      decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        boxShadow: [
-          BoxShadow(
-            color: c.heroShade.withValues(alpha: .07),
-            blurRadius: 18,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      decoration: BoxDecoration(color: c.cardBg, border: Border(top: BorderSide(color: c.divider, width: AppBorder.hairline))),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
       child: SafeArea(
         top: false,
-        child: Row(children: [
-          Expanded(
-            flex: 3,
-            child: GradientButton(
-              loading: prov.saving,
-              label: prov.saving ? 'saving'.tr : 'save_attendance'.tr,
-              icon: Icons.save_rounded,
-              color: c.success,
-              height: 54,
-              onTap: prov.saving || prov.changes.isEmpty
-                  ? null
-                  : () async {
-                final ok = await prov.saveAttendance(prov.changes);
-                prov.clearChanges();
-                if (!context.mounted) return;
-                _showSnack(
-                  ok ? 'attendance_saved'.tr : 'save_failed'.tr,
-                  ok ? c.success : c.danger,
-                );
-              },
-            ),
-          ),
-          const SizedBox(width: 8),
-          _QuickActionBtn(
-            label: 'mark_all_present'.tr,
-            color: c.success,
-            icon: Icons.done_all_rounded,
-            onTap: () async {
-              final ok = await prov.markAll(true);
-              if (!context.mounted) return;
-              _showSnack(
-                ok ? 'attendance_saved'.tr : 'save_failed'.tr,
-                ok ? c.success : c.danger,
-              );
-            },
-          ),
-          const SizedBox(width: 8),
-          _QuickActionBtn(
-            label: 'mark_all_absent'.tr,
-            color: c.danger,
-            icon: Icons.remove_done_rounded,
-            onTap: () => prov.markAll(false),
-          ),
-        ]),
+        child: LayoutBuilder(builder: (context, box) {
+          final narrow = box.maxWidth < 480;
+          final note = Text(
+            n == 0
+                ? attT('t1_cl_no_changes')
+                : countText(n,
+                    ar1: 'عدّلت طالبًا واحدًا',
+                    ar2: 'عدّلت طالبين',
+                    arFew: 'عدّلت {n} طلاب',
+                    arMany: 'عدّلت {n} طالبًا',
+                    en1: 'You edited 1 student',
+                    en: 'You edited {n} students'),
+            style: AppType.meta(context),
+          );
+          final save = AppButton.primary(
+            icon: Icons.check_rounded,
+            busy: prov.saving,
+            expand: narrow,
+            label: attT('t1_cl_save'),
+            onPressed: prov.saving || prov.changes.isEmpty
+                ? null
+                : () async {
+                    final ok = await prov.saveAttendance(prov.changes);
+                    prov.clearChanges();
+                    if (!mounted) return;
+                    showAppNotice(ok ? 'attendance_saved'.tr : 'save_failed'.tr, error: !ok);
+                  },
+          );
+          if (narrow) return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [note, AppSpace.gapXs, save]);
+          return Row(children: [Expanded(child: note), AppSpace.gapSm, save]);
+        }),
       ),
     );
-  }
-
-  void _showSnack(String msg, Color color) {
-    showAppNotice(msg);
   }
 }
 
@@ -359,91 +260,35 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
 // Reusable widgets
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Flag-style session chip (vertical card with number + name)
-class _SessionFlag extends StatelessWidget {
-  final String name;
-  final int index;
-  final bool isSelected;
-  final VoidCallback onTap;
+/// One figure of the group: the value on the tone's tint, a short label under it.
+class _ManualStat extends StatelessWidget {
+  const _ManualStat({required this.label, required this.value, required this.tone});
 
-  const _SessionFlag({
-    required this.name,
-    required this.index,
-    required this.isSelected,
-    required this.onTap,
-  });
+  final String label;
+  final int value;
+  final Color tone;
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOutCubic,
-        width: 96,
+    final tint = appTintOn(context, tone);
+    final ink = appInkOn(context, tone, tint);
+    return Semantics(
+      label: '$label: $value',
+      excludeSemantics: true,
+      child: Container(
+        padding: const EdgeInsets.all(AppSpace.sm),
         decoration: BoxDecoration(
-          gradient: isSelected
-              ? AppGradients.blend(context)
-              : null,
-          color: isSelected ? null : c.cardBg,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: isSelected
-                ? Colors.transparent
-                : c.divider.withValues(alpha: .8),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: isSelected
-                  ? c.primary.withValues(alpha: .35)
-                  : c.heroShade.withValues(alpha: .04),
-              blurRadius: isSelected ? 14 : 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? c.onHero.withValues(alpha: .22)
-                    : c.primary.withValues(alpha: .10),
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text('${index + 1}',
-                    style: examT(12,
-                        w: FontWeight.w800,
-                        c: isSelected ? c.onHero : c.primary)),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6),
-              child: Text(
-                name,
-                maxLines: 2,
-                textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis,
-                style: examT(11,
-                    w: FontWeight.w700,
-                    c: isSelected ? c.onHero : c.textDark,
-                    h: 1.3),
-              ),
-            ),
-          ],
-        ),
+            color: tint, borderRadius: AppRadius.cardAll, border: Border.all(color: tone.withValues(alpha: 0.35), width: AppBorder.hairline)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+          Text('$value', style: AppType.figureLarge(context).copyWith(color: ink)),
+          Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: ink)),
+        ]),
       ),
     );
   }
 }
 
-/// Student tile with presence switch
+/// Student tile with presence switch: the name opens the student's analytics, the switch marks them.
 class _StudentTile extends StatelessWidget {
   final AttendanceStudent student;
   final ValueChanged<bool> onToggle;
@@ -454,57 +299,27 @@ class _StudentTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final present = student.isPresent;
-    final statusColor = present ? c.success : c.danger;
-    final initial = student.name.isEmpty ? '?' : student.name[0];
-
+    final tone = present ? c.success : c.danger;
+    final surface = present ? c.cardBg : appTintOn(context, c.danger);
+    final meta = student.durationMinutes != null
+        ? attT('t1_cl_duration_min', args: {'n': '${student.durationMinutes}'})
+        : (present ? '' : attT('t1_cl_no_show'));
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeOutCubic,
+      duration: AppMotion.of(context).fast,
+      curve: AppMotion.curve,
       decoration: BoxDecoration(
-        color: c.cardBg,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: statusColor.withValues(alpha: .25), width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: c.heroShade.withValues(alpha: .04),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        color: surface,
+        borderRadius: AppRadius.cardAll,
+        border: Border.all(color: present ? c.divider : c.danger.withValues(alpha: 0.4), width: AppBorder.hairline),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
       child: Row(children: [
-        Stack(clipBehavior: Clip.none, children: [
-          CircleAvatar(
-            radius: 24,
-            backgroundColor: statusColor.withValues(alpha: .12),
-            backgroundImage: student.imageUrl != null
-                ? NetworkImage(student.imageUrl!)
-                : null,
-            child: student.imageUrl == null
-                ? Text(initial,
-                style: examT(16, w: FontWeight.w800, c: statusColor))
-                : null,
-          ),
-          PositionedDirectional(
-            bottom: -2,
-            end: -2,
-            child: Container(
-              width: 15,
-              height: 15,
-              decoration: BoxDecoration(
-                color: statusColor,
-                shape: BoxShape.circle,
-                border: Border.all(color: c.cardBg, width: 2),
-              ),
-            ),
-          ),
-        ]),
-        const SizedBox(width: 12),
+        AppAvatar(name: student.name, url: student.imageUrl, size: AppTouch.min),
+        AppSpace.gapSm,
         Expanded(
           // tap the student → their analytics profile (progress, exams, marks, flags — the same one parents see)
           child: InkWell(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: AppRadius.controlAll,
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
@@ -515,86 +330,18 @@ class _StudentTile extends StatelessWidget {
                 ),
               ),
             ),
-            child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Row(children: [
-                Flexible(
-                  child: Text(student.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: examT(14, w: FontWeight.w800, c: c.textDark)),
-                ),
-                const SizedBox(width: 4),
-                Icon(Icons.insights_rounded, size: 14, color: c.primary.withValues(alpha: 0.7)),
-              ]),
-              const SizedBox(height: 5),
-              if (student.durationMinutes != null)
-                ExamChip(
-                  Icons.timer_outlined,
-                  '${'attendance_duration'.tr}: ${student.durationMinutes} ${'minutes'.tr}',
-                  c.textMedium,
-                )
-              else
-                ExamBadge(present ? 'present'.tr : 'absent'.tr, statusColor),
-            ],
-          ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, mainAxisSize: MainAxisSize.min, children: [
+              Text(student.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
+              if (meta.isNotEmpty) Text(meta, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+            ]),
           ),
         ),
-        AppSwitch(
-          value: present,
-          activeColor: c.success,
-          inactiveColor: c.danger,
-          onChanged: onToggle,
-          semanticLabel: student.name,
-        ),
+        AppSpace.gapXs,
+        Text(present ? attT('t1_cl_present') : attT('t1_cl_absent'),
+            style: AppType.label(context).copyWith(color: appInkOn(context, tone, surface))),
+        AppSpace.gapXs,
+        AppSwitch(value: present, activeColor: c.success, inactiveColor: c.danger, onChanged: onToggle, semanticLabel: student.name),
       ]),
     );
   }
-}
-
-/// Quick action button (All Present / All Absent)
-class _QuickActionBtn extends StatelessWidget {
-  final String label;
-  final Color color;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _QuickActionBtn({
-    required this.label,
-    required this.color,
-    required this.icon,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      width: 64,
-      height: 54,
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: .10),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: .3)),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(height: 2),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 3),
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: examT(9.5, w: FontWeight.w700, c: color),
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
 }

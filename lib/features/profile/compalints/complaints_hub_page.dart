@@ -14,7 +14,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:provider/provider.dart';
 
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
@@ -28,6 +27,7 @@ import 'package:flutter_education_app/features/profile/compalints/complaints_hub
 import 'package:flutter_education_app/features/profile/compalints/complaints_hub_widgets.dart';
 import 'package:flutter_education_app/features/profile/compalints/complaints_screen.dart' show ComplaintDetailScreen;
 import 'package:flutter_education_app/features/profile/compalints/new_complaint_screen.dart';
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart' show T2Scope;
 
 /// Opens the page (profile tile, parent "More", the `support` deep link without an id).
 Future<void> openComplaintsHub(NavigatorState nav) => nav.push(MaterialPageRoute(
@@ -171,11 +171,17 @@ class _ComplaintsHubPageState extends State<ComplaintsHubPage> {
     context.watch<LangProvider>(); // re-translate when the language changes
     final show = _showToResolve;
     final seg = show ? _segment : HubSegment.mine;
-    return BasePage(
+    // a student's help center wears the chat area and the kit's top bar (redesign S-C, Stu1Comm?screen=complaints)
+    final student = context.read<MyAuthProvider>().currentUser?.role == 'student';
+    // a teacher's page wears the teacher hero (redesign T2b, Tea2Account complaints)
+    final teacher = context.read<MyAuthProvider>().currentUser?.role == 'teacher';
+    final page = BasePage(
       key: const ValueKey('complaints'),
-      useWebCard: true,
+      useWebCard: !student && !teacher,
       width: AppWidth.content,
-      appBar: ScreenAppBar(title: 'chub_title'.tr, actions: [AppRefreshAction(onRefresh: _ctl.refresh)]),
+      appBar: student || teacher
+          ? AppHeader(title: 'chub_title'.tr, actions: [AppRefreshAction(onRefresh: _ctl.refresh)])
+          : ScreenAppBar(title: 'chub_title'.tr, actions: [AppRefreshAction(onRefresh: _ctl.refresh)]),
       child: SafeArea(
         child: Column(children: [
           Expanded(
@@ -197,6 +203,7 @@ class _ComplaintsHubPageState extends State<ComplaintsHubPage> {
               onOpen: _open,
               onAction: _action,
               onRefresh: _ctl.refresh,
+              teacher: teacher,
               onClearFilters: () => setState(() {
                 _search.clear();
                 _filter = defaultFilter(seg);
@@ -206,5 +213,7 @@ class _ComplaintsHubPageState extends State<ComplaintsHubPage> {
         ]),
       ),
     );
+    if (teacher) return T2Scope(child: page);
+    return student ? AppAreaScope(area: AppArea.chat, child: page) : page;
   }
 }

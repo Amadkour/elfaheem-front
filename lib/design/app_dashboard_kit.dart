@@ -33,10 +33,12 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'app_blocks.dart';
 import 'app_charts.dart' show AppSparkline;
 import 'app_gradients.dart' show AppBrandLayer, AppGradientIcon;
+import 'app_hero.dart' show AppHeroSurface;
 import 'app_kpi.dart' show appDeltaText;
 import 'app_motion_kit.dart';
 import 'app_tokens.dart';
 import 'chrome_button.dart' show ChromeBar;
+import '../core/app_digits.dart';
 import '../core/app_time.dart';
 
 /// The strong colour of a block tone: the figure, the icon and the ring of a dashboard card.
@@ -201,7 +203,6 @@ class AppGreetingHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final rtl = Directionality.of(context) == TextDirection.rtl;
     final time = timeLabel ?? AppTime.time(DateTime.now().toUtc());
     final titleStyle = AppType.display(context).copyWith(color: c.onHero);
     final summaryStyle = AppType.body(context).copyWith(color: c.onHeroMuted, height: 1.5);
@@ -273,24 +274,10 @@ class AppGreetingHero extends StatelessWidget {
       ]);
     }
 
-    return DecoratedBox(
-      // the home's ONE forest block (D-630): forest → emerald with a soft gold glow (D-649, static); dark mode keeps a
-      // cream hairline for an edge
-      decoration: BoxDecoration(
-        gradient: AppBrandLayer.forest(context),
-        borderRadius: BorderRadius.circular(AppRadius.block),
-        border: c.isDark ? Border.all(color: c.heroInk.withValues(alpha: 0.10), width: AppBorder.hairline) : null,
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadius.block),
-        child: DecoratedBox(
-          decoration: BoxDecoration(gradient: AppBrandLayer.forestGlow(context)),
-          child: CustomPaint(
-            painter: _HeroShapesPainter(ink: c.onHero, rtl: rtl),
-            child: Padding(padding: AppSpace.block, child: content),
-          ),
-        ),
-      ),
+    // the redesign hero surface (KIT_SPEC §5.2): the area / role gradient with the drifting shapes behind
+    return AppHeroSurface(
+      borderRadius: BorderRadius.circular(AppRadius.block),
+      child: Padding(padding: AppSpace.block, child: content),
     );
   }
 }
@@ -408,37 +395,6 @@ class AppGreetingHeroButton extends StatelessWidget {
       ),
     );
   }
-}
-
-/// The hero's drawn decoration: one large soft disc leaving the top end, a thin ring, a few small dots — the
-/// reference's ribbons and confetti as calm vector shapes in the on-hero ink at a low alpha.
-class _HeroShapesPainter extends CustomPainter {
-  _HeroShapesPainter({required this.ink, required this.rtl});
-
-  final Color ink;
-  final bool rtl;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    double x(double f) => rtl ? size.width * (1 - f) : size.width * f;
-    final soft = Paint()..color = ink.withValues(alpha: 0.07);
-    final softer = Paint()..color = ink.withValues(alpha: 0.05);
-    final line = Paint()
-      ..color = ink.withValues(alpha: 0.12)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = AppBorder.strong;
-    final r = math.max(size.shortestSide * 0.55, 80.0);
-    canvas.drawCircle(Offset(x(1.02), -r * 0.25), r, soft);
-    canvas.drawCircle(Offset(x(0.92), size.height * 1.05), r * 0.55, softer);
-    canvas.drawCircle(Offset(x(0.08), size.height * 0.92), r * 0.32, line);
-    final dot = Paint()..color = ink.withValues(alpha: 0.18);
-    for (final (fx, fy, d) in const [(0.62, 0.16, 3.0), (0.72, 0.30, 2.0), (0.18, 0.72, 2.5), (0.86, 0.62, 2.0)]) {
-      canvas.drawCircle(Offset(x(fx), size.height * fy), d, dot);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_HeroShapesPainter old) => old.ink != ink || old.rtl != rtl;
 }
 
 /// A ring: a closed [track] and an [arc] of [progress] from the top, clockwise in either direction.
@@ -764,16 +720,14 @@ class AppRingStat extends StatelessWidget {
           ]),
         ),
         const SizedBox(width: AppSpace.md),
-        SizedBox.square(
-          dimension: _ring,
-          child: AppDrawIn(
-            builder: (context, t) => CustomPaint(
-              painter: _RingPainter(progress: p * t, track: c.divider, arc: strong, stroke: AppSpace.xs - 2),
-              child: Center(
-                child: Text(pct, maxLines: 1, style: _tabular(AppType.label(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600))),
-              ),
-            ),
-          ),
+        // the arc inks itself in (M2, KIT_SPEC §5.1)
+        AppInkRing(
+          value: p,
+          color: strong,
+          track: c.kit.track,
+          size: _ring,
+          stroke: AppSpace.xs - 2,
+          center: Text(appDigits(pct), maxLines: 1, style: _tabular(AppType.label(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600))),
         ),
       ]),
     );

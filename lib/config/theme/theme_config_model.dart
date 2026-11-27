@@ -12,6 +12,8 @@
 import 'dart:ui';
 
 import '../../design/app_contrast.dart';
+import 'kit_palette.dart';
+import 'kit_palette_defaults.dart';
 
 class ThemeConfigModel {
   // ── Primary family ──────────────────────────────────────────────────────
@@ -107,6 +109,10 @@ class ThemeConfigModel {
   /// The deep outer stop of the brand gradient (`primary_gradient_end`).
   final Color? primaryGradientEnd;
 
+  /// The redesign kit (`colors.kit`, KIT_SPEC §2.1); null = a theme (or an old cache) without it, which reads
+  /// `kKitPaletteDefaults`.
+  final KitPalette? kit;
+
   // ── Meta ─────────────────────────────────────────────────────────────────
   final String platform;
   final bool isActive;
@@ -172,6 +178,7 @@ class ThemeConfigModel {
     this.accent3,
     this.primaryGradientStart,
     this.primaryGradientEnd,
+    this.kit,
     required this.platform,
     required this.isActive,
     this.updatedAt, required this.surfaceCard,
@@ -294,6 +301,9 @@ class ThemeConfigModel {
       accent3: _opt(j['accent3']),
       primaryGradientStart: _opt(j['primary_gradient_start']),
       primaryGradientEnd: _opt(j['primary_gradient_end']),
+      kit: j['kit'] is Map
+          ? KitPalette.fromJson((j['kit'] as Map).cast<String, dynamic>(), fallback: kKitPaletteDefaults)
+          : null,
 
       // Meta
       platform: j['platform'] as String,
@@ -365,6 +375,7 @@ class ThemeConfigModel {
     if (accent3 != null) 'accent3': _hex(accent3!),
     if (primaryGradientStart != null) 'primary_gradient_start': _hex(primaryGradientStart!),
     if (primaryGradientEnd != null) 'primary_gradient_end': _hex(primaryGradientEnd!),
+    if (kit != null) 'kit': kit!.toJson(),
     'platform': platform,
     'is_active': isActive,
     'updated_at': updatedAt,

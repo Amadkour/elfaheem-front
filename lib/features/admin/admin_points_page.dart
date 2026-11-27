@@ -15,6 +15,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart' show Trans;
 import 'dart:math' as math;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -25,7 +26,7 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/features/payments/points/points_api.dart';
 import 'package:flutter_education_app/features/payments/points/points_wallet_page.dart' show LedgerTile, TopupTile;
 import 'admin_common.dart' show t;
-import 'admin_page.dart';
+import 'sup/sup_kit.dart';
 import 'admin_money_p8.dart' show p8SaveBytes;
 
 class AdminPointsPage extends StatefulWidget {
@@ -56,38 +57,26 @@ class _AdminPointsPageState extends State<AdminPointsPage> {
   Widget build(BuildContext context) => BasePage(
         // the kill switch: a super admin can switch the points admin off (the page then shows "coming soon")
         key: const ValueKey(kAdminPointsFeatureKey),
-        child: AdminPage(
-          width: AppWidth.wide,
+        child: SupPage(
           title: t('النقاط والمحافظ', 'Points & wallets'),
-          icon: Icons.stars_rounded,
+          kicker: 'a2_rewards_kicker'.tr,
+          headline: 'a2_points_head'.tr,
+          line: 'a2_points_line'.tr,
           onRefresh: _refresh,
-          body: Column(children: [
-            Padding(
-              padding: EdgeInsetsDirectional.fromSTEB(
-                  AppSpace.gutter(MediaQuery.sizeOf(context).width), AppSpace.md, AppSpace.gutter(MediaQuery.sizeOf(context).width), AppSpace.xs),
-              child: Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: AppTabs(
-                  index: _tab,
-                  onChanged: (i) => setState(() {
-                    _tab = i;
-                    _visited.add(i);
-                  }),
-                  items: [
-                    AppTabItem(t('طلبات الشحن', 'Top-ups')),
-                    AppTabItem(t('المستخدمون', 'Users')),
-                    AppTabItem(t('الإعدادات', 'Settings')),
-                  ],
-                ),
-              ),
-            ),
-            Expanded(
-              child: IndexedStack(index: _tab, children: [
-                _TopupsTab(key: _topups, api: widget.api),
-                _visited.contains(1) ? _UsersTab(key: _users, api: widget.api) : const SizedBox.shrink(),
-                _visited.contains(2) ? _SettingsTab(key: _settings, api: widget.api) : const SizedBox.shrink(),
-              ]),
-            ),
+          tabs: [
+            supTab(t('طلبات الشحن', 'Top-ups')),
+            supTab(t('المستخدمون', 'Users')),
+            supTab(t('الإعدادات', 'Settings')),
+          ],
+          tab: _tab,
+          onTab: (i) => setState(() {
+            _tab = i;
+            _visited.add(i);
+          }),
+          body: SupTabStack(index: _tab, children: [
+            _TopupsTab(key: _topups, api: widget.api),
+            _visited.contains(1) ? _UsersTab(key: _users, api: widget.api) : const SizedBox.shrink(),
+            _visited.contains(2) ? _SettingsTab(key: _settings, api: widget.api) : const SizedBox.shrink(),
           ]),
         ),
       );

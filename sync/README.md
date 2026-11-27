@@ -9,6 +9,7 @@ This folder exists only in Alfaheem (never in NextBrain), so it never conflicts.
 | `brand_assets.txt` | NextBrain brand images Alfaheem never drew; each is generated from the Alfaheem logo. |
 | `hooks.py` | the mechanism for one-line Alfaheem hooks in shared files and landing colour rules (none in use: A-007 became NextBrain's D-949), plus the check that the landing has no fixed upstream colour; used by the two scripts below. |
 | `apply_identity.py` | Writes `identity.env` over a freshly merged tree. Idempotent (`--check` shows what it would change). |
+| `kit_palette_alfaheem.py` | Alfaheem's redesign kit palette (A-008): the reference values of `docs/redesign/KIT_PALETTE_DOWNSTREAM.md` through the upstream rules, contrast fixes listed there. `apply_identity.py` writes it into `tool/redesign/kit_palette.json`, `kit_palette_defaults.dart` and `app_theme.dart`; `--write-back ../back/sync/kit_palette_alfaheem.json` hands it to the backend. |
 | `gen_brand_assets.py` | Generates the brand images (splash art, `assets/icon/*`, `logo_mark.png`, web PWA splash, landing icons, og image, the offline page's inline logo). |
 | `post_merge.sh` | `apply_identity` → `gen_brand_assets` → `flutter pub get` → `flutter_launcher_icons` → `flutter_native_splash` → `apply_identity` → `check_identity`. |
 | `check_identity.py` | The gate: NextBrain's name, domain, ids, Firebase project, pins and images; allow-list in `check_allow.txt`. |
@@ -18,7 +19,7 @@ This folder exists only in Alfaheem (never in NextBrain), so it never conflicts.
 
 ```bash
 git checkout production && git checkout -b sync/nextbrain-<date>
-sync/sync.sh                      # or sync/sync.sh <nextbrain-commit>
+sync/sync.sh                      # or sync/sync.sh <nextbrain-commit or branch>; MSYS_NO_PATHCONV is set inside (Git Bash)
 # review: git diff --cached --stat ; the gate printed "0 problem(s)"
 flutter analyze --no-fatal-infos --fatal-warnings
 flutter test test/org/ test/export/ test/ui/ test/auth/ test/access/ test/admin/ test/perf/ test/contract/

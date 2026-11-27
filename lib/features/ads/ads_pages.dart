@@ -14,18 +14,18 @@ import 'package:flutter_education_app/core/offline/downloads_availability.dart' 
 import 'package:flutter_education_app/design/app_image_cropper.dart';
 import 'package:flutter_education_app/features/courses/student/details/course_detail_screen.dart';
 import 'package:flutter_education_app/features/home/student/models.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/core/share/external_link.dart';
 
 import '../admin/admin_common.dart';
 import '../admin/admin_labels.dart' show disposeAfterRoute;
-import '../admin/admin_page.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import '../org/org_providers.dart';
 import '../org/org_ui.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart';
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart';
+import 'package:flutter_education_app/features/admin/sup/sup_kit.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  Home slider
@@ -554,49 +554,6 @@ Widget _adStat(BuildContext context, IconData icon, String text) => Row(mainAxis
       ),
     ]);
 
-/// A teacher's ad in their list: a paper card with the ad's own thumbnail (its picture or its tinted block), the
-/// title, the review status and the figures.
-Widget _adRow(BuildContext context, Map<String, dynamic> a, {required VoidCallback onTap, List<Widget> actions = const []}) {
-  final st = '${a['status']}';
-  final cost = a['cost'];
-  return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xxs + AppSpace.xxs / 2),
-    child: AppCard(
-      onTap: onTap,
-      padding: const EdgeInsets.all(AppSpace.sm),
-      child: Row(children: [
-        SizedBox(width: _thumbWidth, child: AspectRatio(aspectRatio: 16 / 9, child: AdCard(ad: a, compact: true))),
-        const SizedBox(width: AppSpace.sm),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('${a['title']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context)),
-            AppSpace.gapXs,
-            Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
-              AppStatusBadge(label: _adStatusLabel(st), tone: _adTone(st), dense: true),
-              if (a['is_active'] == false && st != 'rejected') AppStatusBadge(label: t('متوقف', 'Off'), tone: AppTone.neutral, dense: true),
-              _adStat(context, Icons.visibility_rounded, '${a['impressions'] ?? 0}'),
-              _adStat(context, Icons.ads_click_rounded, '${a['clicks'] ?? 0} · ${a['ctr'] ?? 0}%'),
-              _adStat(context, Icons.thumb_up_alt_outlined, '${a['likes'] ?? 0}'),
-              _adStat(context, Icons.thumb_down_alt_outlined, '${a['dislikes'] ?? 0}'),
-              if (cost is num && cost > 0)
-                AppStatusBadge(
-                    label: '$cost',
-                    icon: a['paid'] == true ? Icons.check_circle_rounded : Icons.payments_rounded,
-                    tone: a['paid'] == true ? AppTone.success : AppTone.warning,
-                    dense: true),
-              if (a['owner'] != null && a['owner_kind'] == 'teacher') _adStat(context, Icons.person_rounded, '${asMap(a['owner'])['name']}'),
-            ]),
-          ]),
-        ),
-        ...actions,
-      ]),
-    ),
-  );
-}
-
-/// The thumbnail's width in a teacher's ad row (a 16:9 picture beside the title).
-const double _thumbWidth = AppTouch.min * 2;
-
 // ═════════════════════════════════════════════════════════════════════════════
 //  Super admin
 // ═════════════════════════════════════════════════════════════════════════════
@@ -650,7 +607,7 @@ class _AdminAdsViewState extends State<_AdminAdsView> {
     // Paid by default, as Approve always recorded before; the admin picks Not paid when it was not.
     bool paid = a['paid'] != false;
     final ok = await showAppSheet<bool>(context, (ctx) => StatefulBuilder(builder: (ctx, set) {
-          return AppSheetContent(title: t('الموافقة على الإعلان', 'Approve the ad'), children: [
+          return AppSheetContent(title: t('الموافقة على الإعلان', 'Approve the ad'), icon: Icons.verified_outlined, tone: AppTone.success, children: [
             Text('${a['title']}', style: AppType.section(ctx)),
             AppSpace.gapXs,
             Text(
@@ -708,16 +665,42 @@ class _AdminAdsViewState extends State<_AdminAdsView> {
   Widget build(BuildContext context) {
     final p = context.watch<OrgPaged>();
     final first = p.rows.isEmpty;
-    return AdminPage(
+    // the redesign (SupAds): the waiting ads lead the hero, the status is the hero's segmented pill
+    const statuses = <String?>[null, 'pending', 'approved', 'rejected'];
+    final status = (p.filters['status'] as String?)?.isEmpty ?? true ? null : '${p.filters['status']}';
+    final waiting = p.rows.where((a) => a['status'] == 'pending').length;
+    final live = p.rows.where((a) => a['status'] == 'approved' && a['is_active'] != false).length;
+    num sum(String k) => p.rows.fold<num>(0, (n, a) => n + (a[k] is num ? a[k] as num : 0));
+    return SupPage(
       helpPageId: 'admin.ads',
-      width: AppWidth.wide,
       title: t('الإعلانات', 'Ads'),
-      icon: Icons.ads_click_rounded,
+      kicker: 't2_sads_kicker'.tr,
+      headline: waiting > 0 ? 't2_sads_waiting'.tr.replaceAll('{n}', '$waiting') : 't2_sads_head'.tr,
+      line: 't2_sads_line'.tr,
       onRefresh: p.isLoading ? null : () => _refresh(p),
       updatedAt: _loadedAt,
-      primaryAction: AppButton.primary(label: t('إعلان جديد', 'New ad'), icon: Icons.add_rounded, onPressed: () => _edit(p)),
+      actions: [
+        AppButton.primary(label: t('إعلان جديد', 'New ad'), icon: Icons.add_rounded, onPressed: () => _edit(p)),
+        SupHeroButton(label: t('إعدادات إعلانات المعلمين', 'Teacher ads settings'), icon: Icons.tune_rounded, onTap: () => _settings(context)),
+      ],
+      stats: first
+          ? const []
+          : [
+              AppHeroStat(value: '$live', label: 't2_sads_live'.tr),
+              AppHeroStat(value: '$waiting', label: 't2_sads_wait'.tr),
+              AppHeroStat(value: '${sum('impressions')}', label: 't2_sads_views'.tr),
+              AppHeroStat(value: '${sum('clicks')}', label: 't2_sads_clicks'.tr),
+            ],
+      tabs: [
+        AppTabItem(t('الكل', 'All')),
+        AppTabItem(t('بانتظار المراجعة', 'Waiting')),
+        AppTabItem(t('نشطة', 'Live')),
+        AppTabItem(t('مرفوضة', 'Rejected')),
+      ],
+      tab: statuses.indexOf(status).clamp(0, statuses.length - 1),
+      onTab: (i) => p.setFilter('status', statuses[i]),
       body: Padding(
-        padding: AdminPage.bodyPadding(context),
+        padding: SupPage.bodyPadding(context),
         child: AppDataTable<Map<String, dynamic>>(
           state: p.isLoading && first
               ? AppTableState.loading
@@ -727,20 +710,6 @@ class _AdminAdsViewState extends State<_AdminAdsView> {
           errorText: p.error,
           onRetry: p.refresh,
           rows: p.rows,
-          toolbarTrailing: AppButton.tonal(
-              label: t('إعدادات إعلانات المعلمين', 'Teacher ads settings'), icon: Icons.tune_rounded, size: AppButtonSize.sm, onPressed: () => _settings(context)),
-          filters: [
-            AppTableFilter(
-              label: t('الحالة', 'Status'),
-              value: (p.filters['status'] as String?)?.isEmpty ?? true ? null : '${p.filters['status']}',
-              options: [
-                ('pending', t('بانتظار المراجعة', 'Waiting')),
-                ('approved', t('نشطة', 'Live')),
-                ('rejected', t('مرفوضة', 'Rejected')),
-              ],
-              onChanged: (v) => p.setFilter('status', v),
-            ),
-          ],
           empty: AppEmpty(icon: Icons.ads_click_rounded, title: t('لا إعلانات بعد', 'No ads yet')),
           hasMore: p.hasMore,
           loadingMore: p.loadingMore,
@@ -840,7 +809,7 @@ class _AdminAdsViewState extends State<_AdminAdsView> {
           Widget err(String? e) => e == null
               ? const SizedBox.shrink()
               : Padding(padding: const EdgeInsets.only(bottom: AppSpace.xs), child: Text(e, style: AppType.meta(ctx).copyWith(color: ctx.colors.danger)));
-          return AppSheetContent(title: t('إعلانات المعلمين', 'Teacher ads'), children: [
+          return AppSheetContent(title: t('إعلانات المعلمين', 'Teacher ads'), icon: Icons.tune_rounded, tone: AppTone.info, children: [
             AppSwitchTile(
                 title: t('السماح للمعلمين بالإعلان', 'Allow teachers to advertise'),
                 subtitle: t('لطلاب كورساتهم فقط', 'To their own students only'),
@@ -898,71 +867,170 @@ class _TeacherAdsPageState extends State<TeacherAdsPage> {
     if (await showAdEditor(context, base: '/api/v1/teacher/ads', teacher: true)) _load();
   }
 
+  Future<void> _edit(Map<String, dynamic> ad) async {
+    if (await showAdEditor(context, base: '/api/v1/teacher/ads', edit: ad, teacher: true)) _load();
+  }
+
+  Future<void> _delete(Map<String, dynamic> ad) async {
+    if (await confirm(context, message: t('حذف الإعلان؟', 'Delete this ad?'), danger: true) &&
+        await OrgApi.i.del('/api/v1/teacher/ads/${ad['id']}', t('تم الحذف', 'Deleted')) != null) {
+      _load();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final items = _items ?? const <Map<String, dynamic>>[];
+    num sum(String k) => items.fold<num>(0, (s, a) => s + (a[k] is num ? a[k] as num : 0));
+    final views = sum('impressions'), clicks = sum('clicks');
+    final active = items.where((a) => a['is_active'] != false && '${a['status']}' == 'approved').length;
+    final ready = _blocked == null && _items != null;
+
+    final List<Widget> body;
+    if (_blocked != null) {
+      body = [
+        AppCard(child: AppEmpty(icon: Icons.campaign_rounded, title: t('الإعلانات غير متاحة حالياً', 'Ads are not available right now'), message: _blocked)),
+      ];
+    } else if (_items == null) {
+      body = [const AppListSkeleton(items: 3, withAvatar: false)];
+    } else {
+      body = [
+        // the terms of advertising, one quiet line
+        if (_settings != null) _AdTerms(settings: _settings!),
+        if (items.isEmpty)
+          AppCard(
+            child: AppEmpty(
+                icon: Icons.campaign_rounded,
+                title: t('أعلن عن دوراتك لطلابك', 'Promote your courses to your students'),
+                actionLabel: t('إعلان جديد', 'New ad'),
+                onAction: _create),
+          )
+        else
+          AppCard(
+            title: t('كل الإعلانات', 'All ads'),
+            child: T2TileGrid(maxColumns: 3, minTile: 300, children: [
+              for (var i = 0; i < items.length; i++)
+                AppReveal(
+                  index: i,
+                  group: 'teacher-ads',
+                  child: _TeacherAdTile(ad: items[i], onEdit: () => _edit(items[i]), onDelete: () => _delete(items[i])),
+                ),
+            ]),
+          ),
+      ];
+    }
+
+    return T2HeroPage(
+      title: t('إعلاناتي', 'My ads'),
+      onRefresh: _load,
+      hero: AppHero(
+        title: t('أعلن عن دوراتك لطلابك', 'Promote your courses to your students'),
+        actions: [
+          if (ready && items.isNotEmpty) AppButton.hot(label: t('إعلان جديد', 'New ad'), icon: Icons.add_rounded, onPressed: _create),
+        ],
+        stats: ready && items.isNotEmpty
+            ? [
+                AppHeroStat(value: '$active', label: t('نشطة الحين', 'Running now')),
+                AppHeroStat(value: '$views', label: t('مشاهدة', 'Views')),
+                AppHeroStat(value: '$clicks', label: t('نقرة', 'Clicks')),
+                AppHeroStat(value: views > 0 ? '${(clicks / views * 100).toStringAsFixed(1)}%' : '—', label: t('نسبة النقر', 'Click rate')),
+              ]
+            : const [],
+      ),
+      children: body,
+    );
+  }
+}
+
+/// The price per day and whether the platform reviews each ad.
+class _AdTerms extends StatelessWidget {
+  const _AdTerms({required this.settings});
+
+  final Map<String, dynamic> settings;
+
+  @override
+  Widget build(BuildContext context) {
+    final tone = context.colors.kit.primaryTone;
+    return Container(
+      padding: const EdgeInsets.all(AppSpace.sm),
+      decoration: BoxDecoration(color: tone.tint, borderRadius: BorderRadius.circular(AppRadius.tile)),
+      child: Row(children: [
+        Icon(Icons.payments_outlined, size: AppIconSize.md, color: tone.ink),
+        const SizedBox(width: AppSpace.xs),
+        Expanded(
+          child: Text(
+              t('السعر ${settings['price_per_day']} لليوم${settings['requires_approval'] == true ? '، ويراجع فريق المنصة كل إعلان' : ''}',
+                  'Price ${settings['price_per_day']} per day${settings['requires_approval'] == true ? ', every ad is reviewed' : ''}'),
+              style: AppType.label(context).copyWith(color: tone.ink)),
+        ),
+      ]),
+    );
+  }
+}
+
+/// One of the teacher's ads: the banner, its status and kind, the title, the figures, edit and delete.
+class _TeacherAdTile extends StatelessWidget {
+  const _TeacherAdTile({required this.ad, required this.onEdit, required this.onDelete});
+
+  final Map<String, dynamic> ad;
+  final VoidCallback onEdit, onDelete;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final items = _items ?? const <Map<String, dynamic>>[];
-    return BasePage(
-      useWebCard: true,
-      width: AppWidth.content,
-      appBar: ScreenAppBar(title: t('إعلاناتي', 'My ads')),
-      child: _blocked != null
-          ? AppEmpty(icon: Icons.campaign_rounded, title: t('الإعلانات غير متاحة حالياً', 'Ads are not available right now'), message: _blocked)
-          : _items == null
-              ? const AppListSkeleton(items: 3, withAvatar: false)
-              : Scaffold(
-                  backgroundColor: Colors.transparent,
-                  floatingActionButton: items.isEmpty
-                      ? null
-                      : FloatingActionButton.extended(
-                          heroTag: 'tads',
-                          onPressed: _create,
-                          icon: const Icon(Icons.add_rounded),
-                          label: Text(t('إعلان جديد', 'New ad')),
-                        ),
-                  body: ListView(padding: const EdgeInsets.only(top: AppSpace.sm, bottom: AppSpace.xxxl + AppSpace.xl), children: [
-                    // The terms of advertising: the page's one tinted block.
-                    if (_settings != null)
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm),
-                        child: AppBlock(
-                          tone: AppBlockTone.sky,
-                          padding: AppSpace.card,
-                          child: Row(children: [
-                            Icon(Icons.payments_rounded, size: AppIconSize.lg, color: AppBlockColors.of(context, AppBlockTone.sky).accentInk(c.primary)),
-                            const SizedBox(width: AppSpace.sm),
-                            Expanded(
-                              child: Text(
-                                  t('السعر ${_settings!['price_per_day']} لليوم${_settings!['requires_approval'] == true ? ' · يراجع فريق المنصة كل إعلان' : ''}',
-                                      'Price ${_settings!['price_per_day']} per day${_settings!['requires_approval'] == true ? ' · every ad is reviewed' : ''}'),
-                                  style: AppType.bodyStrong(context)),
-                            ),
-                          ]),
-                        ),
-                      ),
-                    if (items.isEmpty)
-                      AppEmpty(
-                          icon: Icons.campaign_rounded,
-                          title: t('أعلن عن كورساتك لطلابك', 'Promote your courses to your students'),
-                          actionLabel: t('إعلان جديد', 'New ad'),
-                          onAction: _create),
-                    for (var i = 0; i < items.length; i++)
-                      AppReveal(
-                        index: i,
-                        group: 'teacher-ads',
-                        child: _adRow(context, items[i],
-                            onTap: () async {
-                              if (await showAdEditor(context, base: '/api/v1/teacher/ads', edit: items[i], teacher: true)) _load();
-                            },
-                            actions: [
-                              IconButton(tooltip: t('حذف', 'Delete'), icon: Icon(Icons.delete_outline_rounded, color: c.danger), onPressed: () async {
-                                if (await confirm(context, message: t('حذف الإعلان؟', 'Delete this ad?'), danger: true) &&
-                                    await OrgApi.i.del('/api/v1/teacher/ads/${items[i]['id']}', t('تم الحذف', 'Deleted')) != null) _load();
-                              }),
-                            ]),
-                      ),
-                  ]),
-                ),
+    final st = '${ad['status']}';
+    final cost = ad['cost'];
+    final kind = switch ('${ad['media_type']}') {
+      'video' => t('فيديو', 'Video'),
+      'link' => t('رابط', 'Link'),
+      _ => t('صورة', 'Image'),
+    };
+    Widget figure(String value, String label) => Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+          Text(value, style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark, fontFeatures: const [FontFeature.tabularFigures()])),
+          Text(label, style: AppType.meta(context)),
+        ]);
+    return Container(
+      padding: const EdgeInsets.all(AppSpace.sm),
+      decoration: BoxDecoration(
+        color: c.cardBg,
+        borderRadius: BorderRadius.circular(AppRadius.tile),
+        border: Border.all(color: c.kit.line, width: AppBorder.strong),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+        InkWell(
+          onTap: onEdit,
+          borderRadius: BorderRadius.circular(AppRadius.tile),
+          child: AspectRatio(aspectRatio: 16 / 5, child: AdCard(ad: ad, compact: true)),
+        ),
+        const SizedBox(height: AppSpace.sm),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
+          AppStatusBadge(label: _adStatusLabel(st), tone: _adTone(st), dense: true),
+          if (ad['is_active'] == false && st != 'rejected') AppStatusBadge(label: t('متوقف', 'Off'), tone: AppTone.neutral, dense: true),
+          AppStatusBadge(label: kind, tone: AppTone.neutral, dense: true),
+          if (cost is num && cost > 0)
+            AppStatusBadge(
+                label: '$cost',
+                icon: ad['paid'] == true ? Icons.check_circle_rounded : Icons.payments_rounded,
+                tone: ad['paid'] == true ? AppTone.success : AppTone.warning,
+                dense: true),
+        ]),
+        const SizedBox(height: AppSpace.xs),
+        Text('${ad['title']}', maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.tileTitle(context)),
+        if ('${ad['body'] ?? ''}'.isNotEmpty)
+          Text('${ad['body']}', maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+        const SizedBox(height: AppSpace.sm),
+        Row(children: [
+          Expanded(
+            child: Wrap(spacing: AppSpace.md, runSpacing: AppSpace.xs, children: [
+              figure('${ad['impressions'] ?? 0}', t('مشاهدة', 'Views')),
+              figure('${ad['clicks'] ?? 0}', t('نقرة', 'Clicks')),
+              figure('${ad['ctr'] ?? 0}%', t('نسبة النقر', 'Click rate')),
+            ]),
+          ),
+          AppIconButton(icon: Icons.edit_outlined, tooltip: t('تعديل', 'Edit'), onPressed: onEdit),
+          AppIconButton(icon: Icons.delete_outline_rounded, tooltip: t('حذف', 'Delete'), onPressed: onDelete),
+        ]),
+      ]),
     );
   }
 }

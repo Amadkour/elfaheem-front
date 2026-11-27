@@ -22,6 +22,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/courses/discount_info.dart';
 import 'package:flutter_education_app/features/home/student/models.dart' show AppCurrency, AppCurrencyX;
 import 'package:flutter_education_app/design/app_display.dart' show syncMotionLoop;
+import 'package:flutter_education_app/core/app_digits.dart';
 import 'package:flutter_education_app/design/app_kit.dart'
     show AppSpace, AppRadius, AppType, AppIconSize, appInk, appInkOn, appTintOn;
 
@@ -307,7 +308,7 @@ class _DiscountCountdownBadgeState extends State<DiscountCountdownBadge>
 String coursePriceLabel(AppCurrency currency, double price) {
   if (price == 0) return 'free'.tr;
   final n = price.toStringAsFixed(price.truncateToDouble() == price ? 0 : 2);
-  if (AppConfig.lang == 'ar') return '$n ${currency.symbol}';
+  if (AppConfig.lang == 'ar') return appDigits('$n ${currency.symbol}'); // platform_settings.digits
   return switch (currency) {
     AppCurrency.usd => '\$$n',
     _ => '${currency.code} $n',

@@ -11,11 +11,12 @@
 /// Needs the `image_picker` package (add to pubspec.yaml if not present).
 library;
 
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
+import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, AppSpace;
 import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
 import 'package:flutter_education_app/utils/widget/clickable_text.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -168,10 +169,15 @@ class _TransferViewState extends State<_TransferView> {
                   : 'transfer_instapay_title'.tr,
             ),
             Expanded(
-              child: d == null
+              // redesign S-D (Stu2Money `screen=transfer`): the hero says what to do, the details card under it
+              child: SdHeroColumn(
+                title: p.isBankTransfer ? 'sd_transfer_title'.tr : 'transfer_instapay_title'.tr,
+                subtitle: 'sd_transfer_sub'.tr,
+                icon: Icons.account_balance_outlined,
+                child: d == null
                   ? const AppListSkeleton(items: 4, withAvatar: false)
                   : SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.lg),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -254,6 +260,7 @@ class _TransferViewState extends State<_TransferView> {
                     ],
                   ),
                 ),
+              ),
               ),
             ),
             EnrollConfirmBar(

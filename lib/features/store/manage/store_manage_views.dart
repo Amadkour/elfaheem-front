@@ -681,14 +681,15 @@ class _StoreRejectSheetState extends State<StoreRejectSheet> {
   @override
   Widget build(BuildContext context) {
     final ready = _ctl.text.trim().isNotEmpty;
+    // the redesign (SupFinance reject item): the kit's danger-toned sheet head
     return Padding(
-      padding: EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.md + MediaQuery.of(context).viewInsets.bottom),
-      child: SingleChildScrollView(
-        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text(t('رفض «${widget.title}»', 'Reject "${widget.title}"'), style: AppType.section(context), maxLines: 2, overflow: TextOverflow.ellipsis),
-          AppSpace.gapXs,
-          Text(t('يعود العنصر مسودةً ويصل السبب لصاحبه.', 'The item goes back to draft and its owner gets the reason.'), style: AppType.meta(context)),
-          AppSpace.gapMd,
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: AppSheetContent(
+        title: t('رفض «${widget.title}»', 'Reject "${widget.title}"'),
+        subtitle: t('يعود العنصر مسودةً ويصل السبب لصاحبه.', 'The item goes back to draft and its owner gets the reason.'),
+        icon: Icons.block_rounded,
+        tone: AppTone.danger,
+        children: [
           AppField(controller: _ctl, label: t('السبب', 'Reason'), maxLines: 3, maxLength: 500, onChanged: (_) => setState(() {})),
           AppSpace.gapMd,
           Row(children: [
@@ -696,7 +697,7 @@ class _StoreRejectSheetState extends State<StoreRejectSheet> {
             AppSpace.gapSm,
             Expanded(child: AppButton.danger(label: t('رفض', 'Reject'), onPressed: ready ? () => Navigator.of(context).pop(_ctl.text.trim()) : null)),
           ]),
-        ]),
+        ],
       ),
     );
   }
@@ -754,7 +755,7 @@ class StoreOrdersBody extends StatelessWidget {
       columns: [
         AppTableColumn.text(key: 'id', label: '#', width: 72, text: (o) => '#${o.id}'),
         AppTableColumn.text(key: 'user', label: t('المشتري', 'Buyer'), primary: true, flex: 2, text: (o) => o.username == null ? o.userName : '${o.userName} · @${o.username}'),
-        AppTableColumn.text(key: 'items', label: t('العناصر', 'Items'), flex: 3, text: (o) => o.items.join('، ')),
+        AppTableColumn.text(key: 'items', label: t('العناصر', 'Items'), flex: 3, text: (o) => o.items.join((AppConfig.lang == 'ar' ? '، ' : ', '))),
         AppTableColumn.text(key: 'total', label: t('الإجمالي', 'Total'), numeric: true, text: (o) => o.method == 'points' && o.pointsSpent != null ? t('${o.pointsSpent} نقطة', '${o.pointsSpent} pts') : money(o.total, o.currency)),
         AppTableColumn.text(key: 'vat', label: t('الضريبة', 'VAT'), numeric: true, hideBelow: 900, text: (o) => money(o.vatAmount, o.currency)),
         AppTableColumn.text(key: 'method', label: t('الطريقة', 'Method'), text: (o) => storeMethodLabel(o.method)),

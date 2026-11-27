@@ -2,9 +2,9 @@
 //
 // The admin shell.
 //
-//  • Web / wide (sidebar or rail) → 9 tabs:
+//  • Web / wide (sidebar or rail) → 10 tabs:
 //      Overview · Students · Courses · Teachers ·
-//      People · Finance · Support & security · Configuration · My account
+//      People · Requests & approvals · Finance · Learning · Support & security · Configuration · My account
 //    The last five are "service hubs" (see admin_services_hub.dart); the
 //    Finance tab carries the pending payouts + enrollment requests badge, the
 //    Support tab carries the complaints badge.
@@ -33,7 +33,7 @@ import 'package:flutter_education_app/features/auth/auth_provider.dart';
 import 'package:flutter_education_app/design/app_settings.dart';
 import 'package:flutter_education_app/features/profile/profile_provider.dart';
 import 'package:flutter_education_app/features/courses/student/details/components/app_responsive.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppPageHeader;
+import 'package:flutter_education_app/design/app_kit.dart' show AppPageHeader, AppHeroSurface, AppAreaScope, AppRadius, AppSpace, AppTouch, AppType;
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
 import 'package:flutter_education_app/design/master_detail/entity_navigator.dart';
 import 'package:flutter_education_app/design/app_keyboard.dart' show AppCommandPaletteScope;
@@ -50,6 +50,7 @@ import 'package:flutter_education_app/features/get_app/get_app_banner.dart' show
 import 'package:flutter_education_app/features/rag/app_assistant.dart' show AppAssistantOpenTile, AppAssistantBubbleTile;
 import 'package:flutter_education_app/features/profile/compalints/complaint_provider.dart';
 import 'admin_common.dart';
+import 'adm_kit.dart' show admRole;
 import 'admin_courses_page.dart';
 import 'admin_finance_page.dart' show AdminFinancePage;
 import 'admin_global_search.dart';
@@ -251,6 +252,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           attentionKeys: switch (groupId) {
             'finance' => const [AttentionTabs.adminFinance],
             'people' => const [AttentionTabs.adminUsers],
+            'approvals' => const [AttentionTabs.adminUsers, AttentionTabs.adminFinance],
             'support' => const [AttentionTabs.adminSupport],
             _ => const [],
           },
@@ -263,6 +265,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         Icons.groups_rounded,
         'admin_group_people',
         'people',
+      ),
+      hub(
+        Icons.fact_check_outlined,
+        Icons.fact_check_rounded,
+        'a1_group_approvals',
+        'approvals',
       ),
       hub(
         Icons.account_balance_wallet_outlined,
@@ -516,20 +524,24 @@ class _MorePageState extends State<_MorePage> {
 
     // AppSettingsPage: grouped cards, and a search field once the services push the page past 8 tiles.
     return AppSettingsPage(
-      header: AppSettingsHeader(
-        name: p.name,
-        role: p.role,
-        email: p.email,
-        username: p.username,
-        imageUrl: p.imageUrl,
-        heroTag: 'profile-user-${p.id}',
-      ),
+      // the phone's More (redesign A1, AdmHome more): "All services" on the role's hero; the web's My account keeps
+      // the profile header
+      header: widget.showServices
+          ? _MoreHero(name: p.name, imageUrl: p.imageUrl)
+          : AppSettingsHeader(
+              name: p.name,
+              role: p.role,
+              email: p.email,
+              username: p.username,
+              imageUrl: p.imageUrl,
+              heroTag: 'profile-user-${p.id}',
+            ),
       groups: [
         // ── Service groups (phone only) ──────────────────────────────────
         for (final g in groups)
           AppSettingsGroup(
             title: g.titleKey.tr,
-            subtitle: g.subtitleKey.tr,
+            subtitle: g.badgeTotal > 0 ? 'a1_n_waiting'.tr.replaceAll('{n}', '${g.badgeTotal}') : g.subtitleKey.tr,
             icon: g.icon,
             children: [for (final s in g.visibleServices) adminServiceTile(s)],
           ),
@@ -614,3 +626,46 @@ class _MorePageState extends State<_MorePage> {
   }
 }
 
+/// The phone More page's hero: the admin's initial, "All services" and one line, on the role's gradient.
+class _MoreHero extends StatelessWidget {
+  const _MoreHero({required this.name, required this.imageUrl});
+
+  final String name, imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final who = name.trim();
+    final initial = who.isEmpty ? '' : who.characters.first.toUpperCase();
+    return AppAreaScope.role(
+      role: admRole(context),
+      budget: false,
+      child: AppHeroSurface(
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        shapes: false,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpace.md),
+          child: Row(children: [
+            CircleAvatar(
+              radius: AppTouch.min / 2 + AppSpace.xs,
+              backgroundColor: c.heroGlass,
+              backgroundImage: imageUrl.isEmpty ? null : NetworkImage(imageUrl),
+              child: imageUrl.isEmpty
+                  ? Text(initial, style: AppType.headline(context).copyWith(color: c.onHero))
+                  : null,
+            ),
+            AppSpace.gapMd,
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                Text('a1_all_services'.tr,
+                    style: AppType.headline(context).copyWith(color: c.onHero), maxLines: 1, overflow: TextOverflow.ellipsis),
+                AppSpace.gapXs,
+                Text('a1_all_services_d'.tr, style: AppType.body(context).copyWith(color: c.onHeroMuted), maxLines: 2, overflow: TextOverflow.ellipsis),
+              ]),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+}

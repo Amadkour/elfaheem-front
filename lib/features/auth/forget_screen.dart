@@ -63,8 +63,12 @@ class _ForgetScreenState extends State<ForgetScreen> {
   @override
   Widget build(BuildContext context) {
     return AuthScaffold(
-      title: 'auth_reset_title'.tr,
-      subtitle: 'auth_reset_sub'.tr,
+      kicker: 'sa_forgot_kicker'.tr,
+      heroTitle: 'sa_forgot_hero'.tr,
+      squiggle: 'sa_forgot_squiggle'.tr,
+      glyph: Icons.vpn_key_rounded,
+      title: 'sa_forgot_title'.tr,
+      subtitle: 'sa_forgot_sub'.tr,
       builder: (context, isWide) => _buildForm(),
     );
   }

@@ -22,6 +22,7 @@ import 'package:flutter_education_app/utils/widget/parent_component.dart';
 
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/design/app_badges.dart' show appTintOn;
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/features/upload/upload_queue_manager.dart';
 import 'package:flutter_education_app/features/upload/upload_task.dart';
@@ -232,7 +233,13 @@ class _Header extends StatelessWidget {
             padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.md, AppSpace.xs, AppSpace.sm, AppSpace.xs),
             child: Row(
               children: [
-                Icon(icon, size: AppIconSize.md, color: ink),
+                // the state's mark in a tinted well (the reference's background-upload bar)
+                Container(
+                  width: AppDashSize.glyph - AppSpace.xs,
+                  height: AppDashSize.glyph - AppSpace.xs,
+                  decoration: BoxDecoration(color: appTintOn(context, color, surface: c.cardBg), shape: BoxShape.circle),
+                  child: Icon(icon, size: AppIconSize.md, color: ink),
+                ),
                 const SizedBox(width: AppSpace.xs),
                 Flexible(
                   flex: 2,

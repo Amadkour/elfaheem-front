@@ -15,6 +15,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart' show Trans;
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 
@@ -23,8 +24,8 @@ import 'admin_ai_controls.dart' show AiControlsSection;
 import 'admin_common.dart' show asMap, asMapList, t;
 import 'admin_feature_guide.dart' show AdminFeatureGuidePage;
 import 'admin_labels.dart' show disposeAfterRoute;
-import 'admin_page.dart';
 import 'cfg_common.dart';
+import 'sup/sup_kit.dart';
 
 const _catalog = '/api/v1/admin/features/catalog';
 const _features = '/api/v1/admin/features';
@@ -182,28 +183,27 @@ class _AdminFeaturesPageState extends State<AdminFeaturesPage> {
 
   @override
   Widget build(BuildContext context) {
-    return AdminPage(
-      helpPageId: 'admin.features',
-      width: AppWidth.wide,
-      title: t('الميزات', 'Features'),
-      subtitle: t('ما تخفيه هنا يختفي من التطبيق لكل المستخدمين فوراً.', 'What you hide here disappears from the app for everyone, right away.'),
-      icon: Icons.dashboard_customize_rounded,
-      onRefresh: _refresh,
-      primaryAction: _super && _data != null
-          ? AppButton.primary(label: t('ميزة جديدة', 'New feature'), icon: Icons.add_rounded, onPressed: _openCreate)
-          : null,
-      actions: [
-        AppIconButton(
-            tooltip: t('دليل ميزات التطبيق (للمساعد)', 'App features guide (assistant)'),
-            icon: Icons.menu_book_rounded,
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminFeatureGuidePage()))),
-      ],
-      body: _error != null
+    return SupPage(
+        kicker: 'a2_modules_kicker'.tr, headline: 'a2_features_head'.tr,
+        helpPageId: 'admin.features',
+        width: AppWidth.wide,
+        title: t('الميزات', 'Features'),
+        onRefresh: _refresh,
+        body: _error != null
           ? cfgErrorState(_error, onRetry: _load)
           : _data == null
               ? const AppListSkeleton(items: 8)
               : _list(context),
-    );
+        actions: [?(_super && _data != null
+          ? AppButton.primary(label: t('ميزة جديدة', 'New feature'), icon: Icons.add_rounded, onPressed: _openCreate)
+          : null), ...[
+        AppIconButton(
+            onHero: true,
+            tooltip: t('دليل ميزات التطبيق (للمساعد)', 'App features guide (assistant)'),
+            icon: Icons.menu_book_rounded,
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminFeatureGuidePage()))),
+      ]],
+      );
   }
 
   Widget _list(BuildContext context) {

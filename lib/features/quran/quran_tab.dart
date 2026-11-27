@@ -15,6 +15,8 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/guest/guest_state.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/quran/quran_api.dart';
 import 'package:flutter_education_app/features/quran/quran_models.dart';
 import 'package:flutter_education_app/features/quran/quran_progress.dart';
@@ -116,42 +118,47 @@ class _QuranTabState extends State<QuranTab> {
 
   @override
   Widget build(BuildContext context) {
-    return BasePage(
-      width: AppWidth.wide,
-      appBar: ScreenAppBar(
-        title: t('القرآن الكريم', 'Quran'),
-        showBack: false,
-        actions: [
-          IconButton(
-            key: const ValueKey('quran.progress'),
-            tooltip: t('تقدّمي في الحفظ', 'My memorization'),
-            icon: const Icon(Icons.auto_graph_rounded),
-            onPressed: _openProgress,
+    return SdArea(
+      area: AppArea.quran,
+      child: BasePage(
+        width: AppWidth.wide,
+        appBar: ScreenAppBar(
+          title: 'sd_quran_title'.tr,
+          showBack: false,
+          actions: [
+            AppIconButton(
+              key: const ValueKey('quran.progress'),
+              tooltip: t('تقدّمي في الحفظ', 'My memorization'),
+              icon: Icons.auto_graph_rounded,
+              onPressed: _openProgress,
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: QuranBrowseView(
+            filters: _filters,
+            onFilters: _onFilters,
+            items: _items,
+            total: _loading ? null : _total,
+            genderMatching: _matching,
+            loading: _loading,
+            error: _error,
+            onOpen: _open,
+            onRetry: _load,
+            onRefresh: _load,
+            onProgress: _openProgress,
+            // today's Quran / tajweed / fiqh lesson and reviews (Learning Hub v2 §5, D-1603)
+            top: const SelfLearningSection(subjects: kSlQuranSubjects),
           ),
-        ],
-      ),
-      child: SafeArea(
-        child: QuranBrowseView(
-          filters: _filters,
-          onFilters: _onFilters,
-          items: _items,
-          total: _loading ? null : _total,
-          genderMatching: _matching,
-          loading: _loading,
-          error: _error,
-          onOpen: _open,
-          onRetry: _load,
-          onRefresh: _load,
-          onProgress: _openProgress,
-          // today's Quran / tajweed / fiqh lesson and reviews (Learning Hub v2 §5, D-1603)
-          top: const SelfLearningSection(subjects: kSlQuranSubjects),
         ),
       ),
     );
   }
 }
 
-/// The browse body with plain values.
+/// The browse body with plain values (Stu2Quran `screen=quran`): the calm hero ("القرآن"), the memorization card
+/// riding up over it, the daily lessons, then "معلمو القرآن" with the count, the filters and the teacher cards.
+/// Calm area: the hero wipes in (M6), nothing loops, no sound.
 class QuranBrowseView extends StatelessWidget {
   const QuranBrowseView({
     super.key,
@@ -169,7 +176,7 @@ class QuranBrowseView extends StatelessWidget {
     this.top,
   });
 
-  /// Drawn first (the tab's daily learning section).
+  /// Drawn under the memorization card (the tab's daily learning section).
   final Widget? top;
 
   final QuranFilters filters;
@@ -185,42 +192,29 @@ class QuranBrowseView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final head = <Widget>[
-      ?top,
-      AppBlock(
-        tone: AppBlockTone.emerald,
-        onTap: onProgress,
-        semanticLabel: t('تقدّمي في الحفظ', 'My memorization'),
-        child: Builder(builder: (context) {
-          final b = AppBlock.colorsOf(context);
-          return Row(children: [
-            Icon(Icons.menu_book_rounded, color: b.ink, size: AppIconSize.xl),
-            const SizedBox(width: AppSpace.sm),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                Text(t('رحلتك مع الحفظ', 'Your memorization journey'),
-                    maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: b.ink)),
-                const SizedBox(height: AppSpace.xxs),
-                Text(t('اختر معلماً أو معلمة، واحجز برنامجاً، وتابع حفظك سورةً سورة وجزءاً جزءاً.',
-                        'Choose a teacher, book a program, and follow your memorization surah by surah, juz by juz.'),
-                    maxLines: 3, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: b.muted)),
-              ]),
-            ),
-            if (onProgress != null) Icon(Icons.chevron_right_rounded, color: b.muted),
-          ]);
-        }),
+    final set = AppAreaScope.of(context);
+    final hero = AppHero(title: 'sd_quran_title'.tr, subtitle: 'sd_quran_sub'.tr, icon: Icons.menu_book_outlined);
+    final progress = AppCard(
+      key: const ValueKey('quran.progress.card'),
+      onTap: onProgress,
+      child: Semantics(
+        button: onProgress != null,
+        label: t('تقدّمي في الحفظ', 'My memorization'),
+        excludeSemantics: true,
+        child: Row(children: [
+          AppIconBox(icon: Icons.menu_book_outlined, tone: set.tone),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              Text(t('تقدّمي في الحفظ', 'My memorization'),
+                  maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.tileTitle(context)),
+              Text('sd_quran_progress_sub'.tr, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+            ]),
+          ),
+          if (onProgress != null) Icon(Icons.chevron_right_rounded, color: context.colors.textLight),
+        ]),
       ),
-      const SizedBox(height: AppSpace.md),
-      QuranFilterBar(value: filters, resultCount: total, onChanged: onFilters),
-      if (genderMatching == 'same') ...[
-        const SizedBox(height: AppSpace.sm),
-        AppBanner(
-          icon: Icons.info_outline_rounded,
-          text: t('الحجز متاح مع معلم من نفس جنس الطالب فقط.', 'Booking is open only with a teacher of the student\'s gender.'),
-        ),
-      ],
-      const SizedBox(height: AppSpace.md),
-    ];
+    );
     final Widget body;
     if (loading && items.isEmpty) {
       body = const AppListSkeleton(items: 4, padding: EdgeInsets.zero);
@@ -229,11 +223,9 @@ class QuranBrowseView extends StatelessWidget {
     } else if (items.isEmpty) {
       body = AppEmpty(
         key: const ValueKey('quran.empty'),
-        icon: Icons.menu_book_rounded,
-        title: filters.isEmpty
-            ? t('لا يوجد معلمو قرآن بعد', 'No Quran teachers yet')
-            : t('لا يوجد معلمون لهذه الاختيارات', 'No teachers for these choices'),
-        message: filters.isEmpty ? null : t('غيّر الاختيارات أو امسح التصفية.', 'Change the choices or clear the filters.'),
+        icon: Icons.menu_book_outlined,
+        title: filters.isEmpty ? 'sd_quran_empty_title'.tr : t('لا يوجد معلمون لهذه الاختيارات', 'No teachers for these choices'),
+        message: filters.isEmpty ? 'sd_quran_empty_msg'.tr : t('غيّر الاختيارات أو امسح التصفية.', 'Change the choices or clear the filters.'),
         actionLabel: filters.isEmpty ? null : t('امسح التصفية', 'Clear the filters'),
         onAction: filters.isEmpty ? null : () => onFilters(QuranFilters.empty),
       );
@@ -244,10 +236,30 @@ class QuranBrowseView extends StatelessWidget {
         children: [for (final it in items) QuranTeacherCard(teacher: it, onTap: () => onOpen?.call(it))],
       );
     }
-    final list = ListView(
-      padding: const EdgeInsets.all(AppSpace.md),
-      children: [...head, body, const SizedBox(height: AppSpace.lg)],
+    // a tighter card: the filter bar needs the room on a 320 px phone
+    final teachers = AppCard(
+      padding: const EdgeInsets.all(AppSpace.sm),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Semantics(header: true, child: Text('sd_quran_teachers'.tr, style: AppType.section(context))),
+        const SizedBox(height: AppSpace.sm),
+        QuranFilterBar(value: filters, resultCount: total, onChanged: onFilters),
+        if (genderMatching == 'same') ...[
+          const SizedBox(height: AppSpace.sm),
+          AppBanner(
+            icon: Icons.info_outline_rounded,
+            text: t('الحجز متاح مع معلم من نفس جنس الطالب فقط.', 'Booking is open only with a teacher of the student\'s gender.'),
+          ),
+        ],
+        const SizedBox(height: AppSpace.md),
+        body,
+      ]),
     );
+    final list = SdHeroList(hero: hero, width: AppWidth.wide, children: [
+      progress,
+      if (top != null) ...[const SizedBox(height: AppSpace.md), top!],
+      const SizedBox(height: AppSpace.md),
+      teachers,
+    ]);
     return onRefresh == null ? list : AppRefresh(onRefresh: onRefresh!, child: list);
   }
 }

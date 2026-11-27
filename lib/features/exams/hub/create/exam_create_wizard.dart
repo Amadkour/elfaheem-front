@@ -61,6 +61,7 @@ import 'package:flutter_education_app/features/exams/hub/create/exam_create_sync
 import 'package:flutter_education_app/features/exams/hub/create/offline_steps.dart';
 import 'package:flutter_education_app/features/exams/hub/create/paper_preview.dart';
 import 'package:flutter_education_app/features/exams/hub/create/question_sources.dart';
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart' show T2Scope;
 
 /// Opens the wizard. [courseId] / [orgId] fix or narrow where the exam goes.
 Future<void> openExamCreateWizard(BuildContext context, {int? orgId, int? courseId}) async {
@@ -704,7 +705,7 @@ class _ExamCreateWizardState extends State<ExamCreateWizard> {
           _back();   // the system / browser Back walks the steps, then asks before leaving
         }
       },
-      child: BasePage(key: const ValueKey('exam.create'), enableFooterWidget: false, child: ColoredBox(color: c.background, child: page)),
+      child: T2Scope(child: BasePage(key: const ValueKey('exam.create'), enableFooterWidget: false, child: ColoredBox(color: c.background, child: page))),
     );
   }
 

@@ -9,7 +9,9 @@ Idempotent: running it twice changes nothing. Ordered:
   4. user-visible names: "NextBrain" / "نكست برين" -> Alfaheem / الفهيم, Arabic inside Arabic text;
   5. one-off blocks: certificate pins, App Links fingerprints, Firebase web worker + firebase.json (Alfaheem's
      project, read from the kept lib/firebase_options.dart), the iOS Firebase URL schemes and the web-push VAPID key
-     (FIREBASE_* in sync/identity.env, A-006), splash and launcher settings, CLAUDE.md note.
+     (FIREBASE_* in sync/identity.env, A-006), splash and launcher settings, CLAUDE.md note;
+  6. the redesign kit palette (A-008): Alfaheem's values from sync/kit_palette_alfaheem.py into
+     tool/redesign/kit_palette.json, lib/config/theme/kit_palette_defaults.dart and lib/config/theme/app_theme.dart.
 
 What must NOT change (sync/README.md, plan section 4.2) is never matched: the rules only touch the exact tokens above,
 so signing labels (nextbrain/biometric-login/v1, ...), storage keys, the reserved username, nextbrain_offline_exam,
@@ -504,6 +506,94 @@ def claude_md(text: str) -> str:
     return text[:m.end()] + CLAUDE_NOTE.replace('\n', nl) + text[m.end():]
 
 
+# ── the redesign kit palette (A-008): Alfaheem's values, built by sync/kit_palette_alfaheem.py ──────────────────────
+from kit_palette_alfaheem import build as build_kit  # noqa: E402
+
+KIT = build_kit()
+
+
+def _snake(name: str) -> str:
+    return re.sub(r'([A-Z])', r'_\1', name).lower()
+
+
+def kit_json(_text: str) -> str:
+    return json.dumps(KIT, indent=2) + '\n'
+
+
+def kit_dart(text: str) -> str:
+    """lib/config/theme/kit_palette_defaults.dart: every `field: Color(0x..)` takes the value at its path in KIT
+    (section `brand:` / `status:`, or group `areas: {` + key `'home':`), so a new upstream field or key is followed."""
+    out, section, group, key = [], None, None, None
+    for line in text.split('\n'):
+        m = re.match(r'^  (\w+): Kit\w+\($', line)
+        if m:
+            section, group, key = m.group(1), None, None
+        m = re.match(r'^  (\w+): \{$', line)
+        if m:
+            section, group, key = None, m.group(1), None
+        m = re.match(r"^    '(\w+)': Kit\w+\($", line)
+        if m and group:
+            key = m.group(1)
+        m = re.match(r'^(\s+)(\w+): Color\(0x([0-9A-Fa-f]{8})\),$', line)
+        if m:
+            node = KIT.get(section) if section else (KIT.get(group) or {}).get(key or '')
+            value = (node or {}).get(_snake(m.group(2)))
+            if value:
+                line = f'{m.group(1)}{m.group(2)}: Color(0xFF{value.lstrip("#").upper()}),'
+            else:
+                print(f'  ! kit_palette_defaults.dart: no Alfaheem value for {section or group}.{key}.{m.group(2)}')
+        out.append(line)
+    return '\n'.join(out)
+
+
+def _rgb(role: str) -> str:
+    return KIT['brand'][role].lstrip('#').upper()
+
+
+def _second_text() -> str:
+    from kit_palette_alfaheem import second_text  # noqa: PLC0415
+    return second_text(KIT).lstrip('#')
+
+
+# app_theme.dart constants that name a kit role (KIT_SPEC 2.3); the alpha byte of each is kept
+APP_THEME_ROLES = {
+    'primary': 'primary', 'primaryDark': 'ink', 'primaryLight': 'partner', 'lightPrimary': 'primary',
+    'charcoal': 'text', 'charcoalLight': 'muted', 'charcoalDark': 'deep', 'accent': 'warm_tint', 'accent2': 'warm',
+    'accent3': 'primary_tint', 'primaryTint': 'primary', 'primaryTintDark': 'primary', 'primaryShadowColor': 'primary',
+    'primaryShadowColorDark': 'primary', 'cardShadowColor': 'deep', 'background': 'page', 'textFieldBackground': 'well',
+    'inputBg': 'well', 'divider': 'line', 'textDark': 'text', 'textMedium': 'muted', 'textAction': 'primary',
+}
+
+
+def kit_app_theme(text: str) -> str:
+    second = _second_text()
+
+    def repl(m: re.Match) -> str:
+        name, alpha = m.group(2), m.group(4)
+        if name in ('secondText', 'textLight'):
+            rgb = second
+        elif name in APP_THEME_ROLES:
+            rgb = _rgb(APP_THEME_ROLES[name])
+        else:
+            return m.group(0)
+        return f'{m.group(1)}Color(0x{alpha}{rgb})'
+
+    text = re.sub(r'(static const Color (\w+)(\s*)=\s*)Color\(0x([0-9A-Fa-f]{2})[0-9A-Fa-f]{6}\)', repl, text)
+    # the warm gradient ends on the forward button's first stop (hot_a)
+    return re.sub(r'(colors: \[accent2, )Color\(0xFF[0-9A-Fa-f]{6}\)\]', lambda m: f'{m.group(1)}Color(0xFF{_rgb("hot_a")})]', text)
+
+
+GITIGNORE_EXTRA = ['docs/redesign/ref/', 'tool/redesign/node_modules/']
+
+
+def gitignore(text: str) -> str:
+    """Alfaheem's local-only folders (the reference screenshots and their playwright install)."""
+    missing = [g for g in GITIGNORE_EXTRA if g not in text.split('\n')]
+    if not missing:
+        return text
+    return text.rstrip('\n') + '\n\n# Alfaheem (A-008): reference screenshots and the playwright install of tool/redesign/ref_shots.mjs\n' + '\n'.join(missing) + '\n'
+
+
 def main() -> int:
     generic_pass()
     move_kotlin()
@@ -517,6 +607,11 @@ def main() -> int:
     edit('pubspec.yaml', pubspec)
     edit('lib/design/boot_splash.dart', boot_splash)
     edit('CLAUDE.md', claude_md)
+    # A-008: the redesign kit wears Alfaheem's palette (sync/kit_palette_alfaheem.py)
+    edit('tool/redesign/kit_palette.json', kit_json)
+    edit('lib/config/theme/kit_palette_defaults.dart', kit_dart)
+    edit('lib/config/theme/app_theme.dart', kit_app_theme)
+    edit('.gitignore', gitignore)
     # Games v4: the sample payload the API test reads carries the server's challenge link; the test asserts the Alfaheem host.
     edit('docs/games-v4/fixtures/learner_extras.json', rename_domain)
     for rel in hook_files():

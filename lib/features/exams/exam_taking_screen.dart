@@ -11,8 +11,10 @@ import 'package:flutter_education_app/features/help/help_info_button.dart' show 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/design/app_motion_kit.dart' show AppEase, AppFill, AppPressScale;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppEase, AppFill;
 import 'package:flutter_education_app/core/plural.dart';
+import 'package:flutter_education_app/core/app_digits.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppJelly, AppPop;
 import 'package:flutter_education_app/core/display/app_fonts.dart' show AppFonts;
 import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -49,7 +51,7 @@ Future<void> openEngineExam(BuildContext context, Map<String, dynamic> exam, {St
     if (!ctx.mounted) return;
     if (!r.ok) {
       if (r.code == 'consent_required') {
-        await Navigator.push(ctx, MaterialPageRoute(builder: (_) => ExamConsentScreen(examId: examId, onAccepted: (c2) async {
+        await Navigator.push(ctx, MaterialPageRoute(builder: (_) => ExamConsentScreen(examId: examId, exam: exam, onAccepted: (c2) async {
               Navigator.pop(c2);
               await start(ctx);
             })));
@@ -127,6 +129,8 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> with WidgetsBinding
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) _resyncClock();
+    // back in the app during a timed sitting: a calm word that the time kept running (redesign S-C)
+    if (state == AppLifecycleState.resumed && !_finished && _clock.timed) showAppNotice(t('رجعت؟ كمّل، وقتك ماشي', 'Back? Carry on, your time is running'));
   }
 
   @override
@@ -362,14 +366,16 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> with WidgetsBinding
 
   Future<void> _submit() async {
     if (_submitting || _finished) return;           // a second tap while the first is on its way never sends twice
-    final unanswered = _paper.onlineCount - _paper.answeredCount;
-    final ok = await appConfirm(context,
-        message: unanswered > 0
-            ? t('لديك ${countText(unanswered, ar1: 'سؤال واحد', ar2: 'سؤالان', arFew: '{n} أسئلة', arMany: '{n} سؤالاً', en1: '1 question', en: '{n} questions')} بلا إجابة. تسليم الاختبار؟',
-                'You have ${countText(unanswered, ar1: 'سؤال واحد', ar2: 'سؤالان', arFew: '{n} أسئلة', arMany: '{n} سؤالاً', en1: '1 question', en: '{n} questions')} unanswered. Submit the exam?')
-            : t('تسليم الاختبار الآن؟', 'Submit the exam now?'),
-        confirmLabel: t('تسليم', 'Submit'));
-    if (!ok || !mounted || _submitting || _finished) return;
+    final all = _paper.all;
+    final ok = await showAppSheet<bool>(
+        context,
+        (_) => ExamSubmitSheet(
+              answered: _paper.answeredCount,
+              left: _paper.onlineCount - _paper.answeredCount,
+              firstLeft: [for (var i = 0; i < all.length; i++) if (!all[i].answered) i + 1].firstOrNull,
+              remainingSeconds: _clock.timed ? _clock.remaining() : null,
+            ));
+    if (ok != true || !mounted || _submitting || _finished) return;
     setState(() => _submitting = true);
     for (var i = 0; i < 3 && !_queue.isEmpty && !_finished; i++) {
       await _flush();
@@ -429,7 +435,7 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> with WidgetsBinding
           if (context.mounted) Navigator.of(context).pop();
         }
       },
-      child: BasePage(
+      child: AppAreaScope(area: AppArea.exam, child: BasePage(
         key: const ValueKey('exam.taking'),
         appBar: AppHeader(
           title: widget.examTitle,
@@ -478,7 +484,7 @@ class _ExamTakingScreenState extends State<ExamTakingScreen> with WidgetsBinding
                   onSubmit: _locked ? null : _submit,
                 ),
               ]),
-      ),
+      )),
     );
   }
 
@@ -634,8 +640,8 @@ class _SegmentStrip extends StatelessWidget {
       child: SizedBox(
         height: height,
         child: Stack(children: [
-          Positioned.fill(child: ColoredBox(color: c.divider)),
-          FractionallySizedBox(alignment: AlignmentDirectional.centerStart, widthFactor: fraction.clamp(0.0, 1.0), heightFactor: 1, child: ColoredBox(color: c.primary)),
+          Positioned.fill(child: ColoredBox(color: c.kit.track)),
+          FractionallySizedBox(alignment: AlignmentDirectional.centerStart, widthFactor: fraction.clamp(0.0, 1.0), heightFactor: 1, child: ColoredBox(color: AppAreaScope.of(context).a)),
         ]),
       ),
     );
@@ -644,6 +650,8 @@ class _SegmentStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final set = AppAreaScope.of(context);
+    final done = Color.lerp(set.tint, set.a, .35)!;
     return SizedBox(
       height: height,
       child: Row(children: [
@@ -654,7 +662,7 @@ class _SegmentStrip extends StatelessWidget {
               duration: AppMotion.of(context).fast,
               curve: AppEase.out,
               decoration: BoxDecoration(
-                color: i == current ? c.textDark : (flags[i] ? c.primary : c.divider),
+                color: i == current ? set.a : (flags[i] ? done : c.kit.track),
                 borderRadius: BorderRadius.circular(AppRadius.pill),
               ),
             ),
@@ -783,22 +791,32 @@ class _ExamQuestionCardState extends State<ExamQuestionCard> {
         // the question on its own sheet of paper: the number in the editorial face, the marks, then the prompt
         Material(
           color: c.cardBg,
+          elevation: 0,
+          shadowColor: c.shadowTone,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppRadius.block),
-            side: BorderSide(color: c.divider, width: AppBorder.hairline),
+            borderRadius: BorderRadius.circular(AppRadius.cardWide),
+            side: BorderSide(color: c.kit.line, width: AppBorder.strong),
           ),
           child: Padding(
             padding: AppSpace.block,
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
                 ExcludeSemantics(
-                  child: Text('${widget.number ?? q.index + 1}',
-                      style: AppType.display(context).copyWith(color: c.textDark, height: 1, fontFeatures: const [FontFeature.liningFigures()])),
+                  child: Container(
+                    constraints: const BoxConstraints(minWidth: AppDashSize.glyph, minHeight: AppDashSize.glyph),
+                    alignment: Alignment.center,
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
+                    decoration: BoxDecoration(color: AppAreaScope.of(context).tint, borderRadius: BorderRadius.circular(AppRadius.glyph)),
+                    child: Text(appDigits('${widget.number ?? q.index + 1}'),
+                        style: AppType.label(context).copyWith(color: AppAreaScope.of(context).ink, fontWeight: FontWeight.w600)),
+                  ),
                 ),
                 const SizedBox(width: AppSpace.sm),
-                Expanded(child: Container(height: AppBorder.hairline, color: c.divider)),
-                const SizedBox(width: AppSpace.sm),
-                Flexible(flex: 0, child: AppStatusBadge(label: t('$points د', '$points pt'), dense: true)),
+                Expanded(
+                  child: Text(examTypeHint(q.type, points),
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: AppType.label(context).copyWith(color: AppAreaScope.of(context).ink, fontWeight: FontWeight.w600)),
+                ),
               ]),
               const SizedBox(height: AppSpace.md),
               Text(q.prompt, style: AppType.section(context).copyWith(fontFamilyFallback: AppFonts.fallback)),
@@ -952,6 +970,10 @@ class _ExamQuestionCardState extends State<ExamQuestionCard> {
 /// One choice of a question: a well on the paper with its letter (or [markIcon]) in a ring; chosen, the well takes
 /// the primary tint and the ring fills with a check (a square box for a multi-choice question), so the choice reads
 /// by shape as well as colour.
+/// One choice of a question (redesign S-C, Stu2Exams?screen=take): its letter (or [markIcon]) in a box of the area
+/// tint at the start, a ring at the end; chosen, the well takes the area tint on an area edge, the letter box fills
+/// and the ring fills with a check that pops in (M3), so the choice reads by shape as well as colour (a square ring
+/// for a multi-choice question). A press squashes (M9).
 class ExamOptionTile extends StatelessWidget {
   const ExamOptionTile({super.key, required this.text, required this.selected, this.mark, this.markIcon, this.multi = false, this.onTap});
   final String text;
@@ -961,36 +983,53 @@ class ExamOptionTile extends StatelessWidget {
   final bool multi;
   final VoidCallback? onTap;
 
-  static const double _markSize = AppSpace.lg + AppSpace.xxs;
+  static const double _markSize = AppSpace.xl + AppSpace.xxs;
+  static const double _ringSize = AppSpace.lg + AppSpace.xxs;
+
+  /// From this row width the ring at the end is drawn (below it the letter box carries the check).
+  static const double _wideFrom = AppTouch.min * 7;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final set = AppAreaScope.of(context);
     final motion = AppMotion.of(context);
     final enabled = onTap != null;
-    final tint = appTintOn(context, c.primary);
-    final markRadius = multi ? BorderRadius.circular(AppSpace.xs) : BorderRadius.circular(AppRadius.pill);
+    final ringRadius = multi ? BorderRadius.circular(AppSpace.xs) : BorderRadius.circular(AppRadius.pill);
     final markBox = AnimatedContainer(
       duration: motion.fast,
       curve: AppEase.out,
       width: _markSize,
       height: _markSize,
       alignment: Alignment.center,
+      decoration: BoxDecoration(color: selected ? set.a : set.tint, borderRadius: BorderRadius.circular(AppRadius.glyph)),
+      child: markIcon != null
+          ? Icon(markIcon, size: AppIconSize.md, color: selected ? c.onHero : set.ink)
+          : Text(mark ?? '', style: AppType.bodyStrong(context).copyWith(color: selected ? c.onHero : set.ink)),
+    );
+    // a narrow row keeps the words: the end ring folds into the letter box (it fills and the check shows there)
+    Widget markFor(bool narrow) => !narrow || !selected
+        ? markBox
+        : AnimatedContainer(
+            duration: motion.fast,
+            width: _markSize,
+            height: _markSize,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: set.a, borderRadius: BorderRadius.circular(AppRadius.glyph)),
+            child: Icon(Icons.check_rounded, size: AppIconSize.md, color: c.onHero),
+          );
+    final ring = AnimatedContainer(
+      duration: motion.fast,
+      curve: AppEase.out,
+      width: _ringSize,
+      height: _ringSize,
+      alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: selected ? c.primary : c.cardBg,
-        borderRadius: markRadius,
-        border: Border.all(color: selected ? c.primary : c.textLight, width: AppBorder.hairline),
+        color: selected ? set.a : c.cardBg,
+        borderRadius: ringRadius,
+        border: Border.all(color: selected ? set.a : set.tint, width: AppBorder.focus),
       ),
-      child: AnimatedSwitcher(
-        duration: motion.fast,
-        switchInCurve: AppEase.out,
-        transitionBuilder: (child, a) => ScaleTransition(scale: Tween(begin: .6, end: 1.0).animate(a), child: FadeTransition(opacity: a, child: child)),
-        child: selected
-            ? Icon(Icons.check_rounded, key: const ValueKey('on'), size: AppIconSize.sm, color: c.onHero)
-            : (markIcon != null
-                ? Icon(markIcon, key: const ValueKey('icon'), size: AppIconSize.sm, color: c.textMedium)
-                : Text(mark ?? '', key: const ValueKey('mark'), style: AppType.label(context).copyWith(fontWeight: FontWeight.w600))),
-      ),
+      child: selected ? Icon(Icons.check_rounded, size: AppIconSize.sm, color: c.onHero) : null,
     );
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpace.sm),
@@ -1003,34 +1042,42 @@ class ExamOptionTile extends StatelessWidget {
         label: text,
         excludeSemantics: true,
         onTap: onTap,
-        child: AppPressScale(
+        child: AppJelly(
           enabled: enabled,
+          wide: true,
           child: AnimatedContainer(
             duration: motion.fast,
             curve: AppEase.out,
             decoration: BoxDecoration(
-              color: selected ? tint : c.inputBg,
-              borderRadius: AppRadius.controlAll,
-              border: Border.all(color: selected ? c.primary : c.divider, width: AppBorder.strong),
+              color: selected ? set.tint : c.cardBg,
+              borderRadius: BorderRadius.circular(AppRadius.tile),
+              border: Border.all(color: selected ? set.a : c.kit.line, width: AppBorder.strong),
             ),
             child: Material(
               type: MaterialType.transparency,
               child: InkWell(
                 onTap: onTap,
-                borderRadius: AppRadius.controlAll,
+                borderRadius: BorderRadius.circular(AppRadius.tile),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(minHeight: AppTouch.primary),
                   child: Padding(
-                    padding: const EdgeInsetsDirectional.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
-                    child: Row(children: [
-                      markBox,
-                      const SizedBox(width: AppSpace.sm),
-                      Expanded(
-                        child: Text(text,
-                            style: AppType.row(context).copyWith(
-                                color: enabled || selected ? c.textDark : c.textMedium, fontWeight: selected ? FontWeight.w600 : FontWeight.w500)),
-                      ),
-                    ]),
+                    padding: const EdgeInsetsDirectional.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.sm),
+                    child: LayoutBuilder(builder: (context, box) {
+                      final narrow = box.maxWidth < _wideFrom;
+                      return Row(children: [
+                        markFor(narrow),
+                        const SizedBox(width: AppSpace.sm),
+                        Expanded(
+                          child: Text(text,
+                              style: AppType.row(context).copyWith(
+                                  color: enabled || selected ? c.textDark : c.textMedium, fontWeight: selected ? FontWeight.w600 : FontWeight.w500)),
+                        ),
+                        if (!narrow) ...[
+                          const SizedBox(width: AppSpace.sm),
+                          AppPop(trigger: selected, child: ring),
+                        ],
+                      ]);
+                    }),
                   ),
                 ),
               ),
@@ -1105,12 +1152,12 @@ class ExamNavBar extends StatelessWidget {
                 ]));
             final primary = !last
                 ? AppButton.primary(onPressed: onNext, label: t('التالي', 'Next'), trailingIcon: Icons.chevron_right_rounded)
-                : AppButton.primary(
+                : AppButton.hot(
                     key: const ValueKey('exam.submit'),
                     busy: submitting,
                     onPressed: submitting ? null : onSubmit,
                     icon: Icons.send_rounded,
-                    label: t('تسليم', 'Submit'),
+                    label: t('سلّم الاختبار', 'Hand in the exam'),
                   );
             return Row(children: [
               AppIconButton(onPressed: canBack ? onBack : null, icon: Icons.chevron_left_rounded, tooltip: t('السابق', 'Back')),
@@ -1126,7 +1173,11 @@ class ExamNavBar extends StatelessWidget {
                 // the words never clip: on the narrowest rows the button scales down to the room it has
                 Expanded(child: Align(alignment: AlignmentDirectional.centerEnd, child: FittedBox(fit: BoxFit.scaleDown, child: primary)))
               else
-                primary,
+                // "Hand in the exam" is longer than Next: it never pushes the row past the edge
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: box.maxWidth / 2),
+                  child: FittedBox(fit: BoxFit.scaleDown, child: primary),
+                ),
             ]);
           }),
         )),
@@ -1223,5 +1274,96 @@ class _InlineQuestionImage extends StatelessWidget {
             semanticLabel: label, errorBuilder: (_, _, _) => missing()),
       ),
     );
+  }
+}
+
+/// The line beside a question's number: what to do and what it is worth ("Choose, 2 marks").
+String examTypeHint(String type, String points) {
+  final what = switch (type) {
+    'mcq_single' => t('اختر', 'Choose'),
+    'mcq_multi' => t('اختر كل الصح', 'Choose all that apply'),
+    'true_false' => t('صح أو خطأ', 'True or false'),
+    'fill_blank' => t('أكمل الفراغ', 'Fill the blank'),
+    'matching' => t('وصّل', 'Match'),
+    'ordering' => t('رتّب', 'Put in order'),
+    'numeric' => t('اكتب الرقم', 'Write the number'),
+    'short_answer' || 'essay' => t('اكتب إجابتك', 'Write your answer'),
+    'file_upload' => t('ارفع حلّك', 'Upload your answer'),
+    _ => t('على الورق', 'On paper'),
+  };
+  final whole = int.tryParse(points);
+  final marks = whole == null
+      ? t('$points درجة', '$points marks') // a fraction ("1.5"): Arabic takes the singular after it
+      : countText(whole, ar1: 'درجة', ar2: 'درجتان', arFew: '{n} درجات', arMany: '{n} درجة', en1: '1 mark', en: '{n} marks');
+  return appDigits(t('$what، $marks', '$what, $marks'));
+}
+
+/// "Hand in now?" (redesign S-C, Stu2Exams?sheet=submit): answered · left, the first question left unanswered (it
+/// counts as zero) and the time still left, then "Yes, hand in" (forward) and "Back to the questions". Pops true on
+/// hand in.
+class ExamSubmitSheet extends StatelessWidget {
+  const ExamSubmitSheet({super.key, required this.answered, required this.left, this.firstLeft, this.remainingSeconds});
+
+  final int answered;
+  final int left;
+
+  /// The number of the first question with no answer.
+  final int? firstLeft;
+
+  /// Null on an untimed exam.
+  final int? remainingSeconds;
+
+  @override
+  Widget build(BuildContext context) {
+    final k = context.colors.kit;
+    Widget figure(int n, String label, KitTone tone) => Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.md),
+            decoration: BoxDecoration(color: tone.tint, borderRadius: BorderRadius.circular(AppRadius.tile)),
+            child: Column(children: [
+              Text(appDigits('$n'), style: AppType.figureLarge(context).copyWith(color: tone.ink)),
+              const SizedBox(height: AppSpace.xxs),
+              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: tone.ink)),
+            ]),
+          ),
+        );
+    Widget note(IconData icon, String text, KitTone tone) => Container(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
+          decoration: BoxDecoration(color: tone.tint, borderRadius: BorderRadius.circular(AppRadius.tile)),
+          child: Row(children: [
+            Icon(icon, size: AppIconSize.md, color: tone.ink),
+            const SizedBox(width: AppSpace.sm),
+            Expanded(child: Text(appDigits(text), style: AppType.label(context).copyWith(color: tone.ink, fontWeight: FontWeight.w600))),
+          ]),
+        );
+    final mins = remainingSeconds == null ? null : (remainingSeconds! / 60).ceil();
+    return AppSheetContent(title: t('تسلّم الحين؟', 'Hand in now?'), children: [
+      Row(children: [
+        figure(answered, t('جاوبتها', 'Answered'), AppAreaScope.of(context).tone),
+        const SizedBox(width: AppSpace.sm),
+        figure(left, t('باقي', 'Left'), k.live),
+      ]),
+      if (firstLeft != null) ...[
+        AppSpace.gapSm,
+        note(Icons.warning_amber_rounded,
+            left == 1
+                ? t('سؤال $firstLeft ما جاوبته، ينحسب صفر', "Question $firstLeft has no answer, it counts as zero")
+                : t('${countText(left, ar1: 'سؤال', ar2: 'سؤالين', arFew: '{n} أسئلة', arMany: '{n} سؤال', en1: '1 question', en: '{n} questions')} ما جاوبتها، تنحسب صفر',
+                    '${countText(left, ar1: 'سؤال', ar2: 'سؤالين', arFew: '{n} أسئلة', arMany: '{n} سؤال', en1: '1 question', en: '{n} questions')} with no answer count as zero'),
+            k.live),
+      ],
+      if (mins != null && mins > 0) ...[
+        AppSpace.gapSm,
+        note(
+            Icons.schedule_rounded,
+            t('باقي لك ${countText(mins, ar1: 'دقيقة', ar2: 'دقيقتين', arFew: '{n} دقائق', arMany: '{n} دقيقة', en1: '1 minute', en: '{n} minutes')}',
+                '${countText(mins, ar1: '', arFew: '', en1: '1 minute', en: '{n} minutes')} left'),
+            AppAreaScope.of(context).tone),
+      ],
+      AppSpace.gapMd,
+      AppButton.hot(key: const ValueKey('exam.submit.confirm'), label: t('إيه، سلّم', 'Yes, hand in'), expand: true, onPressed: () => Navigator.pop(context, true)),
+      AppSpace.gapXs,
+      AppButton.secondary(label: t('ارجع للأسئلة', 'Back to the questions'), expand: true, onPressed: () => Navigator.pop(context, false)),
+    ]);
   }
 }

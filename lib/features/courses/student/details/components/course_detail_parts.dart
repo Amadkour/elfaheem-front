@@ -112,7 +112,7 @@ class CourseIncludedList extends StatelessWidget {
     // one quiet ink for every fact; only "live" keeps its red (it means something)
     final rows = <(IconData, String, Color)>[
       if (course.sessionsCount > 0)
-        (Icons.play_lesson_rounded, gt('${course.sessionsCount} جلسة', '${course.sessionsCount} sessions'), c.textMedium),
+        (Icons.play_lesson_rounded, gt('${course.sessionsCount} حصة', '${course.sessionsCount} sessions'), c.textMedium),
       if (course.totalHours > 0)
         (Icons.schedule_rounded, gt('$hours ساعة محتوى', '$hours hours of content'), c.textMedium),
       if (course.type == 'live')
@@ -131,7 +131,7 @@ class CourseIncludedList extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(gt('يتضمن الكورس', 'This course includes'), style: AppType.section(context)),
+        Text(gt('تتضمن الدورة', 'This course includes'), style: AppType.section(context)),
         const SizedBox(height: AppSpace.xs),
         for (final (icon, label, tone) in rows)
           Padding(
@@ -279,7 +279,7 @@ class CourseEnrolledCard extends StatelessWidget {
                     Text('you_are_enrolled'.tr, style: AppType.section(context)),
                     const SizedBox(height: AppSpace.xxs),
                     Text(
-                      gt('وصول كامل لكل الجلسات والاختبارات', 'Full access to every session and exam'),
+                      gt('وصول كامل لكل الحصص والاختبارات', 'Full access to every session and exam'),
                       style: AppType.meta(context),
                     ),
                   ],
@@ -460,10 +460,10 @@ Widget courseLearningCard({
       if (progress >= 1) {
         return CourseSpotlightCard(
           icon: Icons.emoji_events_rounded,
-          title: gt('أتممت الكورس', 'Course completed'),
+          title: gt('أتممت الدورة', 'Course completed'),
           subtitle: hasCertificates
-              ? gt('شهادتك جاهزة في تبويب "عن الكورس"', 'Your certificate is in the About tab')
-              : gt('أحسنت! يمكنك مراجعة الجلسات في أي وقت', 'Well done! Review any session at any time'),
+              ? gt('شهادتك جاهزة في تبويب "عن الدورة"', 'Your certificate is in the About tab')
+              : gt('أحسنت! يمكنك مراجعة الحصص في أي وقت', 'Well done! Review any session at any time'),
           color: c.success,
           progress: 1,
           actionLabel: hasCertificates ? gt('شهاداتي', 'My certificates') : null,
@@ -538,7 +538,7 @@ class CourseBlockedView extends StatelessWidget {
                       ),
                       const SizedBox(height: AppSpace.lg),
                       Text(
-                        locked ? gt('هذا الكورس خاص', 'This course is private') : gt('الكورس غير متاح', 'This course is not available'),
+                        locked ? gt('هذه الدورة خاصة', 'This course is private') : gt('الدورة غير متاحة', 'This course is not available'),
                         textAlign: TextAlign.center,
                         style: AppType.headline(context),
                       ),
@@ -555,9 +555,9 @@ class CourseBlockedView extends StatelessWidget {
                       const SizedBox(height: AppSpace.sm),
                       Text(
                         locked
-                            ? gt('أدخل كود الدخول الذي أرسله لك المدرس لتفتح الكورس.',
+                            ? gt('أدخل كود الدخول الذي أرسله لك المدرس لتفتح الدورة.',
                                 'Enter the access code your teacher gave you to open it.')
-                            : gt('ربما لم يُنشر بعد أو أُزيل. جرّب لاحقاً أو تصفح كورسات أخرى.',
+                            : gt('ربما لم يُنشر بعد أو أُزيل. جرّب لاحقاً أو تصفح دورات أخرى.',
                                 'It may not be published yet, or it was removed. Try again later or browse other courses.'),
                         textAlign: TextAlign.center,
                         style: AppType.body(context).copyWith(height: 1.55),

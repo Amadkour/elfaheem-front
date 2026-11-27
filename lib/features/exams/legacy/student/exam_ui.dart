@@ -9,7 +9,7 @@ import 'package:flutter_education_app/design/app_tokens.dart' show AppRadius, Ap
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_gradients.dart';
 import 'package:flutter_education_app/design/app_back_button.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppEmpty, AppBlockTone;
+import 'package:flutter_education_app/design/app_kit.dart' show AppEmpty, AppBlockTone, AppAreaScope, AppHeroSurface, AppButton, AppButtonSize;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
@@ -146,6 +146,19 @@ class ExamHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // under a student area (redesign S-C) the hero is the kit's: the area gradient with its drifting shapes
+    if (colors == null && AppAreaScope.playful(context)) {
+      return AppHeroSurface(
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(AppRadius.hero)),
+        child: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xs, AppSpace.md, AppSpace.lg),
+            child: child,
+          ),
+        ),
+      );
+    }
     final primary = context.colors.primary;
     final cs = colors ?? [context.colors.primaryDark, primary];
     return Container(
@@ -574,6 +587,10 @@ class GradientButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // under a student area (redesign S-C) the main exam action is the kit's forward button
+    if (color == null && subtitle == null && AppAreaScope.playful(context)) {
+      return AppButton.hot(label: label, icon: icon, busy: loading, expand: true, size: AppButtonSize.lg, onPressed: onTap);
+    }
     final base = color ?? context.colors.primary;
     final disabled = onTap == null && !loading;
     return GestureDetector(

@@ -19,7 +19,7 @@ void main() {
 
   Future<void> wide(WidgetTester t) async {
     t.view.devicePixelRatio = 1;
-    t.view.physicalSize = const Size(1400, 900);
+    t.view.physicalSize = const Size(1400, 1400); // the Super Admin hero sits above the body (A2)
     addTearDown(t.view.resetPhysicalSize);
   }
 
@@ -112,7 +112,10 @@ void main() {
 
   testWidgets('Payments & payouts: the policy icon opens the Fees page on the Policy tab', (tester) async {
     await pump(tester, const AdminFinancePage(initialTab: 1));
-    await tester.tap(find.byTooltip('Fees & fee policy'));
+    // the hero's "more" menu holds the page's secondary tools (A2)
+    await tester.tap(find.byTooltip('a2_more'.tr));
+    await finFrames(tester, 4);
+    await tester.tap(find.text('Fees & fee policy'));
     await finFrames(tester, 10);
     expect(find.byType(AdminFeesPage), findsOneWidget);
     expect(stackIndex(tester), 1);

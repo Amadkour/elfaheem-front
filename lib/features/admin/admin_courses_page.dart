@@ -42,26 +42,31 @@ import 'admin_filter_models.dart';
 import 'admin_filters.dart';
 import 'admin_labels.dart';
 import 'admin_page.dart';
+import 'adm_kit.dart' show admRole;
+import 'sup/sup_kit.dart';
 import 'admin_table_export.dart' show adminCoursesExport, exportPagedList;
 import 'admin_bulk.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_table_export.dart' show showAppExportSheet;
 import 'admin_models.dart';
 import 'admin_providers.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppCard, AppDropdown, AppEmpty, AppListSkeleton;
+import 'package:flutter_education_app/design/app_kit.dart' show AppCard, AppDropdown, AppEmpty, AppHeroStat, AppListSkeleton, AppWidth;
 import 'package:flutter_education_app/features/exams/exam_review_screen.dart' show EngineReviewSection;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_side_sheet.dart' show AppSheetMode;
 
 class AdminCoursesPage extends StatelessWidget {
-  const AdminCoursesPage({super.key, this.embedded = false});
+  const AdminCoursesPage({super.key, this.embedded = false, this.autoAdd = false});
 
   final bool embedded;
+
+  /// Opens the new-course form as the page opens (the home's "Add a course" shortcut).
+  final bool autoAdd;
 
   @override
   Widget build(BuildContext context) => ChangeNotifierProvider(
     create: (_) => AdminCoursesProvider()..refresh(),
-    child: _CoursesView(embedded: embedded),
+    child: _CoursesView(embedded: embedded, autoAdd: autoAdd),
   );
 }
 
@@ -152,9 +157,10 @@ String _factsOf(AdminCourse c) => [
     ].join(' · ');
 
 class _CoursesView extends StatefulWidget {
-  const _CoursesView({required this.embedded});
+  const _CoursesView({required this.embedded, this.autoAdd = false});
 
   final bool embedded;
+  final bool autoAdd;
 
   @override
   State<_CoursesView> createState() => _CoursesViewState();
@@ -204,6 +210,11 @@ class _CoursesViewState extends State<_CoursesView> {
   void initState() {
     super.initState();
     _panel.addListener(_panelChanged);
+    if (widget.autoAdd) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _openCourseForm(context, context.read<AdminCoursesProvider>());
+      });
+    }
   }
 
   void _panelChanged() {
@@ -557,25 +568,38 @@ class _CoursesViewState extends State<_CoursesView> {
           : null,
     );
 
-    final page = AdminPage(
+    // redesign A1 (AdmCourses list): the role's hero with the count and the income after discounts, Add a course
+    final page = SupPage(
+      role: admRole(context),
       helpPageId: 'admin.courses',
-      title: 'courses'.tr,
-      icon: Icons.auto_stories_rounded,
-      subtitle: wide && p.loaded ? _totalText(p.total) : null,
+      title: 'a1_courses'.tr,
+      // no kicker: it would repeat the page's name
+      headline: p.loaded ? _totalText(p.total) : 'a1_courses'.tr,
+      line: 'a1_courses_line'.tr,
       showBack: !widget.embedded,
-      maxWidth: double.infinity,
+      width: AppWidth.full,
       onRefresh: p.reloadPage,
-      primaryAction: AppButton.primary(
-        key: const ValueKey('courses_add'),
-        label: 'admin_add_course'.tr,
-        icon: Icons.add_rounded,
-        onPressed: () => _openCourseForm(context, p),
-      ),
+      stats: [
+        for (final e in p.incomeByCurrency.entries.take(2))
+          AppHeroStat(value: ltrIsolate(money(e.value, e.key)), label: 'admin_total_course_income_after_discounts'.tr),
+      ],
+      actions: [
+        SupHeroButton(
+          label: t('تصدير', 'Export'),
+          icon: Icons.download_rounded,
+          onTap: p.rows.isEmpty ? null : () => exportPagedList(context, p, adminCoursesExport),
+        ),
+        AppButton.hot(
+          key: const ValueKey('courses_add'),
+          label: 'admin_add_course'.tr,
+          icon: Icons.add_rounded,
+          onPressed: () => _openCourseForm(context, p),
+        ),
+      ],
       body: Padding(
-        padding: AdminPage.bodyPadding(context),
+        padding: SupPage.bodyPadding(context),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           AdminActiveFilterChips(host: p, specs: _courseSpecs, sort: _courseSort, quickKeys: const {'published'}),
-          if (p.incomeByCurrency.isNotEmpty) _IncomeStrip(income: p.incomeByCurrency),
           Expanded(child: table),
         ]),
       ),
@@ -605,35 +629,6 @@ EntityRef? _teacherRef(AdminCourse c) {
 }
 
 /// What every course earned after discounts, one figure per currency (the table's pages show one course at a time).
-class _IncomeStrip extends StatelessWidget {
-  const _IncomeStrip({required this.income});
-
-  final Map<String, double> income;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    // each amount stays whole inside Arabic; the figures drop to their own line when the width asks for it
-    final figures = [for (final e in income.entries) ltrIsolate(money(e.value, e.key))].join(' · ');
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpace.sm),
-      child: Semantics(
-        container: true,
-        child: Wrap(
-          spacing: AppSpace.xs,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            Icon(Icons.payments_outlined, size: AppIconSize.md, color: c.textMedium),
-            Text('admin_total_course_income_after_discounts'.tr, style: AppType.meta(context)),
-            Text(figures,
-                style: AppType.bodyStrong(context).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 /// The cover, the name and the line under it (the name alone in compact rows).
 class _TitleCell extends StatelessWidget {
   const _TitleCell(this.course);

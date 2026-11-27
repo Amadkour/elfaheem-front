@@ -11,13 +11,14 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart' show Trans;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_switch.dart';
 import 'package:flutter_education_app/features/profile/study_profile/study_profile_model.dart';
 
 import 'admin_common.dart' show ErrorRetry, KeyValue, Section, t;
-import 'admin_page.dart';
+import 'sup/sup_kit.dart';
 
 class AdminStudyProfileSettingsPage extends StatefulWidget {
   const AdminStudyProfileSettingsPage({super.key, this.api});
@@ -144,24 +145,24 @@ class _AdminStudyProfileSettingsPageState extends State<AdminStudyProfileSetting
         ),
       ]);
     }
-    return AdminPage(
-      width: AppWidth.reading,
-      title: t('بيانات الدراسة للطلاب', 'Student study details'),
-      subtitle: t('ما يُسأل عنه الطالب عند التسجيل وفي ملفه', 'What students are asked at sign-up and in their profile'),
-      icon: Icons.school_rounded,
-      onRefresh: _saving ? null : _load,
-      updatedAt: _loadedAt,
-      dirty: _dirty,
-      primaryAction: _saved == null
-          ? null
-          : AppButton.primary(
+    return SupPage(
+        kicker: 'a2_platform_kicker'.tr, headline: 'a2_study_head'.tr,
+        width: AppWidth.reading,
+        title: t('بيانات الدراسة للطلاب', 'Student study details'),
+        onRefresh: _saving ? null : _load,
+        updatedAt: _loadedAt,
+        dirty: _dirty,
+        body: body,
+        actions: [
+          if (_saved != null)
+            AppButton.primary(
               key: const ValueKey('study_settings.save'),
               label: t('حفظ', 'Save'),
               busy: _saving,
               onPressed: _dirty && !_saving ? _save : null,
             ),
-      body: body,
-    );
+        ],
+      );
   }
 }
 

@@ -132,4 +132,39 @@ Hero stops, tint, ink and button stops of the four roles are derived by the upst
 | area me: btn_fg on btn_b | `#FFFFFF` | `#7A4DF0` | 5.06 | ok |
 | area me: ink on tint | `#135F9A` | `#E2EFFA` | 5.74 | ok |
 
-12 of 65 pairs are under 4.5 as drawn. Before the identity step ships them: darken the button stops (or use the dark `btn_fg`) the way the upstream script does (`darken_until`), and keep `partner` out from under text.
+The table above is the reference as drawn: 12 of 65 pairs are under 4.5 there.
+
+## What ships (2026-11-27, `sync/kit_palette_alfaheem.py`)
+
+The identity step builds the palette from the values above with the upstream rules (`tool/redesign/kit_palette.py`: dark tints and inks, role sets, subjects, status) and fixes only the pairs that fail the upstream contrast checks (the front's and the backend's `theme_kit_unit.py` / `theme_contrast_unit.py`). The result passes all 175 upstream pairs (`py -3.12 sync/kit_palette_alfaheem.py --check`); `sync/check_identity.py` fails when it stops passing or when an upstream brand colour is left in the palette files. Changed for contrast ("reference" = the value above, or the upstream-derived one where the reference gives none):
+
+| What | Reference | Ships | Why |
+|---|---|---|---|
+| brand primary | `#1979C1` | `#135F9A` | white 4.62:1, the theme layer needs 6.0:1: the reference blue ink |
+| brand partner_tint | `#DDF6FE` | `#DFF5FC` | saturation 0.94 > 0.85 (the block surface clamp) |
+| brand warm_tint | `#FFE8D6` | `#FCE8D9` | saturation 1.00 > 0.85 (the block surface clamp) |
+| brand hot_tint | `#FFE3E0` | `#FDE5E2` | saturation 1.00 > 0.85 (the block surface clamp) |
+| brand hot | `#F2545B` | `#CB474C` | white on hot under 4.5: darkened to 4.6 |
+| brand hot_fg | `#FFFFFF` | `#001440` | white under 4.5 on hot_a / hot_b: the deep ink (P4) |
+| area home btn_b | `#07B8EE` | `#057EA3` | white under 4.5: darkened to 4.6 (P10) |
+| area learn btn_fg | `#FFFFFF` | `#00205E` | white under 4.5 on the warm stops: the dark ink, as upstream P4 |
+| area games btn_b | `#E8478C` | `#CC3E7B` | white under 4.5: darkened to 4.6 (P10) |
+| area quran btn_a | `#0F8F78` | `#0E846F` | white under 4.5: darkened to 4.6 (P10) |
+| area sched btn_a | `#2A8EF0` | `#2377CA` | white under 4.5: darkened to 4.6 (P10) |
+| area sched btn_b | `#07B8EE` | `#057EA3` | white under 4.5: darkened to 4.6 (P10) |
+| area chat btn_a | `#E8478C` | `#CC3E7B` | white under 4.5: darkened to 4.6 (P10) |
+| area chat btn_b | `#FF7A59` | `#B95841` | white under 4.5: darkened to 4.6 (P10) |
+| brand warm_on_dark | `#FF9F5A` | `#FFC79F` | under 3.0 (large text) on the bright blue: lightened toward white |
+| area home hero_a | `#1979C1` | `#135E97` | the apricot kicker under 4.5 on the start stop: started deeper |
+| area me hero_a | `#4F6BE8` | `#3D52B3` | the apricot kicker under 4.5 on the start stop: started deeper |
+| role admin hero_a | `#1979C1` | `#135E97` | the apricot kicker under 4.5 on the start stop: started deeper |
+
+Notes:
+- `primary` is the reference's blue ink `#135F9A` (6.71:1 under white; the reference also uses it as `primary_ink`): the shared theme layer derives the sidebar's radial fill, the count chips and the tab labels on a primary tint from `primary`, and with the bright `#1979C1` (4.62:1) those fell to 3.5 – 4.4:1 (test/ui a11y, brand_layer, app_shell). The bright blue stays the home area's colour, the `me` / `admin` accents and the hero tops.
+- Tints above saturation 0.85 (`warm_tint`, `hot_tint`, `partner_tint`) are drawn by the block surface clamped to 0.85, so they ship clamped (a visually identical value) and the blocks are the kit tints as given.
+- `test/ui/app_blocks_test.dart` names upstream's green hue for the forest hero and the sage block; `sync/hooks.py` points those two checks at the kit roles instead.
+- The gold kicker (`warm_on_dark`) is a lighter apricot `#FFC79F`: the reference's `#FF9F5A` is 2.3:1 on the blue `primary`, under the backend's large-text floor (3.0). It reads at 4.5 or more on every stop of the four heroes that draw it (home, me, admin, teacher: upstream's `GOLD_KICKER_HEROES`); home, me and admin start one step deeper for that (upstream does the same: its heroes start on the logo green, not the partner). Every other hero draws its kicker in the on-hero ink (`AppHero.kickerInk`), so on `primary` itself it is held to the large-text floor only (`LARGE_ONLY`).
+- The forward button and the learn button carry the deep navy text instead of white (upstream P4: white on apricot / coral is 2.0 / 3.4); `hot` itself (white text) is the coral darkened to 4.6.
+- The other buttons keep white text on stops darkened to 4.6 (upstream P10). `partner` stays a gradient partner and focus ring only, never under text.
+- `text_light` / `second_text` (`app_theme.dart` `secondText` / `textLight`, the `kit_default` preset) are `#5C6986`: the lightest shade of `muted` that still reads at 4.5 on every light surface and block, so it stays quieter than `text_medium` (= `muted`).
+- The backend gets the same map through `../back/sync/kit_palette_alfaheem.json` (`py -3.12 sync/kit_palette_alfaheem.py --write-back ../back/sync/kit_palette_alfaheem.json` after a change here), and its `sync/alfaheem_seed.py` stores the market defaults (SA, Asia/Riyadh, SAR, Moyasar, `platform.digits` = `arabic_indic`) where unset.

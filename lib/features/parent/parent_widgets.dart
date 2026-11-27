@@ -5,6 +5,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/core/course_access.dart' show parseUtc;
 
 // re-exported so every parent screen gets `.tr`, `context.colors` and Helpers with ONE import
 export 'package:flutter_education_app/config/theme/theme_config_provider.dart';
@@ -20,13 +21,12 @@ String plLabel(Map m, [String base = 'label']) =>
     ((plIsAr ? m['${base}_ar'] : m['${base}_en']) ?? m['${base}_en'] ?? m['${base}_ar'] ?? m['key'] ?? '')
         .toString();
 
-/// ISO string (UTC, ends with Z) -> local "yyyy-MM-dd HH:mm".
+/// A server instant (UTC; no offset means UTC) -> "23 Oct 2026 · 8:30 AM" in the viewer's zone and 12h / 24h
+/// (AppTime, RULES §3: a parent in London reads London time).
 String plDateTime(dynamic iso) {
-  if (iso == null) return '—';
-  final d = DateTime.tryParse(iso.toString())?.toLocal();
+  final d = parseUtc(iso?.toString());
   if (d == null) return '—';
-  String t(int n) => n.toString().padLeft(2, '0');
-  return '${d.year}-${t(d.month)}-${t(d.day)} ${t(d.hour)}:${t(d.minute)}';
+  return AppTime.dateTime(d);
 }
 
 String plDate(DateTime d) =>

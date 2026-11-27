@@ -72,6 +72,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     V4Level? opened;
+    final sem = tester.ensureSemantics();
     await tester.pumpWidget(layoutHost(view(onOpen: (l) => opened = l)));
     await tester.pump(const Duration(milliseconds: 200));
     await tester.tap(find.byKey(const ValueKey('games.v4.node.12')));
@@ -80,8 +81,10 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('games.v4.node.16')));
     expect(opened, isNull);
     expect(find.byKey(const ValueKey('games.v4.tanzil')), findsOneWidget);
-    expect(find.text('Review · 4'), findsOneWidget); // what the tap can open (review_levels), not every due item
-    expect(find.text('54'), findsOneWidget);
+    // what the tap can open (review_levels), not every due item
+    expect(find.bySemanticsLabel('Review, 4 due'), findsOneWidget);
+    expect(find.byKey(const ValueKey('games.v4.coins')), findsOneWidget);
+    sem.dispose();
     await tester.pumpWidget(const SizedBox());
   });
 

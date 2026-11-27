@@ -750,6 +750,9 @@ bool chatIsNetworkError(Object e) {
 }
 
 class ChatThreadController extends ChangeNotifier {
+  /// The teacher's direct chat a reply from the announcements went to (null until one did).
+  int? privateChatId;
+
   ChatThreadController(this.conversationId, {ChatHub? hub, this.pollEvery = const Duration(seconds: 15)}) : hub = hub ?? ChatHub.instance;
 
   final int conversationId;
@@ -1103,7 +1106,8 @@ class ChatThreadController extends ChangeNotifier {
         hub.outboxAdd(m);
       }
       if (_stale(m)) return;
-      final sent = await _api.send(conversationId, clientId: m.clientId, body: m.body, attachmentIds: ids, replyToId: m.replyTo?.id);
+      final sent = await _api.send(conversationId, clientId: m.clientId, body: m.body, attachmentIds: ids, replyToId: m.replyTo?.id,
+          onRedirect: (to) => privateChatId = to);
       if (_stale(m)) return;
       hub.outboxRemove(m.clientId);
       messages = chatMergeMessages(messages, [sent]);

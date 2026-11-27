@@ -185,7 +185,7 @@ void main() {
       expect(ltr, greaterThan(700)); // 1400 - 480
       await tester.pumpWidget(const SizedBox());
       final rtl = await panelLeft(tester, 'ar');
-      expect(rtl, 12); // D-360: a floating panel, one margin off the edge
+      expect(rtl, 0); // KIT_SPEC 5.8: the flush drawer (was D-360's floating panel, one margin off the edge)
     });
 
     testWidgets('Esc closes the drawer', (tester) async {

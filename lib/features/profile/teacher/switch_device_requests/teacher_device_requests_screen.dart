@@ -11,15 +11,11 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/utils/widget/swipe_request_card.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/features/profile/teacher/switch_device_requests/teacher_device_requests_provider.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
-import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/master_detail/entity_chip.dart';
-import 'package:flutter_education_app/design/app_refresh.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton, appInkOn, appTintOn;
-import 'package:flutter_education_app/design/app_notice.dart';
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart';
 
 class TeacherDeviceRequestsScreen extends StatefulWidget {
   const TeacherDeviceRequestsScreen({super.key});
@@ -52,43 +48,70 @@ class _View extends StatelessWidget {
     final p = context.watch<TeacherDeviceRequestsProvider>();
     final c = context.colors;
     // Not loaded yet: loader, or error + retry if the first load failed.
-    final failedFirstLoad =
-        !p.hasLoaded && !p.isLoading && p.errorMessage != null;
+    final failedFirstLoad = !p.hasLoaded && !p.isLoading && p.errorMessage != null;
+    final title = 'device_switch_requests'.tr;
 
-    return BasePage(
-      key: const ValueKey('device_requests'),
-      useWebCard: true,
-      width: AppWidth.content,
-      appBar: ScreenAppBar(title: 'device_switch_requests'.tr),
-      child: !p.hasLoaded && !failedFirstLoad
-          ? const AppListSkeleton()
-          : AppRefresh(
-        onRefresh: p.load,
-        child: failedFirstLoad
-            ? RequestStateView(
-          icon: Icons.error_outline_rounded,
-          color: c.danger,
-          message: p.errorMessage ?? 'failed_to_load'.tr,
-          actionLabel: 'retry'.tr,
-          onAction: p.load,
-        )
-            : p.items.isEmpty
-            ? RequestStateView(
-          icon: Icons.phonelink_rounded,
-          message: 'no_pending_requests'.tr,
-        )
-            : ListView.builder(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.lg),
-          // +1: the hint banner is the first row.
-          itemCount: p.items.length + 1,
-          itemBuilder: (_, i) {
-            if (i == 0) return SwipeHintBanner(key: const ValueKey('device_requests.hint'), count: p.items.length);
-            final item = p.items[i - 1];
-            return _Card(key: ValueKey(item.id), item: item);
-          },
+    final List<Widget> body;
+    if (!p.hasLoaded && !failedFirstLoad) {
+      body = [const AppListSkeleton()];
+    } else if (failedFirstLoad) {
+      body = [
+        AppCard(
+          child: RequestStateView(
+            icon: Icons.error_outline_rounded,
+            color: c.danger,
+            message: p.errorMessage ?? 'failed_to_load'.tr,
+            actionLabel: 'retry'.tr,
+            onAction: p.load,
+          ),
         ),
+      ];
+    } else {
+      body = [
+        // the one rule of the page, once, above the requests (it was repeated on every card)
+        _LimitNote(key: const ValueKey('device_requests.limit_note')),
+        if (p.items.isEmpty)
+          AppCard(child: AppEmpty(icon: Icons.phonelink_rounded, title: 'no_pending_requests'.tr))
+        else ...[
+          SwipeHintBanner(key: const ValueKey('device_requests.hint'), count: p.items.length),
+          for (final item in p.items) _Card(key: ValueKey(item.id), item: item),
+        ],
+      ];
+    }
+
+    return T2HeroPage(
+      pageKey: const ValueKey('device_requests'),
+      title: title,
+      width: AppWidth.reading,
+      onRefresh: p.load,
+      hero: AppHero(
+        title: title,
+        stats: p.hasLoaded ? [AppHeroStat(value: '${p.pendingCount}', label: 't2_dev_waiting'.tr)] : const [],
       ),
+      children: body,
+    );
+  }
+}
+
+/// "You can approve one request per student a month": the info tint (the reference's lilac note).
+class _LimitNote extends StatelessWidget {
+  const _LimitNote({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final set = AppAreaScope.of(context);
+    return Container(
+      padding: const EdgeInsets.all(AppSpace.md),
+      decoration: BoxDecoration(
+        color: set.tint,
+        borderRadius: BorderRadius.circular(AppRadius.tile),
+        border: Border.all(color: Color.lerp(set.tint, set.a, .3)!, width: AppBorder.strong),
+      ),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(Icons.info_outline_rounded, size: AppIconSize.md, color: set.ink),
+        const SizedBox(width: AppSpace.sm),
+        Expanded(child: Text('device_monthly_limit_note'.tr, style: AppType.body(context).copyWith(color: set.ink))),
+      ]),
     );
   }
 }
@@ -137,8 +160,6 @@ class _Card extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final warn = c.warning;
-    final warnTint = appTintOn(context, warn, surface: c.cardBg);
 
     return SwipeRequestCard(
       itemId: item.id,
@@ -196,8 +217,9 @@ class _Card extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(AppSpace.sm),
               decoration: BoxDecoration(
-                color: c.inputBg,
-                borderRadius: BorderRadius.circular(AppRadius.control),
+                color: c.kit.well,
+                borderRadius: BorderRadius.circular(AppRadius.tile),
+                border: Border.all(color: c.kit.line, width: AppBorder.strong),
               ),
               child: Column(
                 children: [
@@ -219,31 +241,6 @@ class _Card extends StatelessWidget {
               ),
             ),
             const SizedBox(height: AppSpace.xs),
-
-            // ── Monthly-limit note: the warning tint, its glyph in a legible warning ink ──
-            Container(
-              key: const ValueKey('device_requests.limit_note'),
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
-              decoration: BoxDecoration(
-                color: warnTint,
-                borderRadius: BorderRadius.circular(AppRadius.control),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.info_rounded, size: AppIconSize.sm, color: appInkOn(context, warn, warnTint)),
-                  const SizedBox(width: AppSpace.xs),
-                  Expanded(
-                    child: Text(
-                      'device_monthly_limit_note'.tr,
-                      style: AppType.meta(context).copyWith(color: c.textDark),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpace.md),
 
             RequestActionButtons(key: const ValueKey('device_requests.actions'), ctl: ctl, approveLabel: 'request_approve'.tr),
           ],

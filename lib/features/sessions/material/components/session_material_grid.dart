@@ -19,7 +19,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show showAppSheet, AppSheetHeader, AppBanner, AppListSkeleton;
+import 'package:flutter_education_app/design/app_kit.dart' show showAppSheet, AppListSkeleton;
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/utils/widget/rating_widget.dart';
@@ -33,12 +33,15 @@ import 'package:flutter_education_app/design/app_motion_kit.dart' show AppPressS
 import 'package:flutter_education_app/features/records/material_studio_page.dart'
     show MaterialStudioDraftsPanel, materialStudioLabel, materialStudioOn, openMaterialStudio;
 import 'package:flutter_education_app/features/sessions/material/material_guest_links_api.dart' show kMaterialGuestLinkKey;
-import 'package:flutter_education_app/features/sessions/material/material_guest_links_sheet.dart' show showMaterialGuestLinksSheet;
+import 'package:flutter_education_app/features/sessions/material/material_guest_links_sheet.dart'
+    show MaterialCaptionsState, showMaterialCaptionsSheet, showMaterialGuestLinksSheet;
 import 'package:flutter_education_app/features/sessions/material/session_material_model.dart';
 import 'package:flutter_education_app/features/sessions/material/components/material_file_style.dart';
 import 'package:flutter_education_app/features/sessions/material/components/material_tile_parts.dart';
 import 'package:flutter_education_app/features/sessions/material/components/material_title.dart';
 import 'package:flutter_education_app/features/sessions/material/components/session_exam_tile.dart';
+import 'package:flutter_education_app/features/sessions/material/components/lesson_material_view.dart';
+import 'package:flutter_education_app/features/sessions/video/vod_player_parts.dart' show VodResume;
 import 'package:flutter_education_app/features/sessions/material/components/session_shared_widgets.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_education_app/core/offline/offline_video_service.dart';
@@ -70,7 +73,11 @@ class SessionMaterialGrid extends StatelessWidget {
     required this.isLoading,
     this.examGate,
     this.onOpenExam,
+    this.studentLayout = true,
   });
+
+  /// Students: the redesigned lesson content ([LessonMaterialView]); false keeps the plain list.
+  final bool studentLayout;
 
   bool get _hasExam => examGate != null && !examGate!.isEmpty;
 
@@ -126,6 +133,8 @@ class SessionMaterialGrid extends StatelessWidget {
     if (isLoading) {
       return const AppListSkeleton(items: 4, padding: EdgeInsets.symmetric(vertical: 8));
     }
+    // the student's lesson content (Stu1Learn material): the video card, the files grid and the quiz card
+    if (!isTeacher && studentLayout) return _studentView(context);
     if (!_hasExam) return _buildMaterialsList(context);
 
     // The session exam is ALWAYS the last entry. It lives OUTSIDE the
@@ -144,6 +153,114 @@ class SessionMaterialGrid extends StatelessWidget {
           onOpen: onOpenExam,
         ),
       ],
+    );
+  }
+
+  // ── Student view (Stu1Learn material) ──────────────────────────────────────
+
+  static LessonFileKind _kindOf(SessionMaterialModel m) => switch (m.type) {
+        SessionMaterialType.image => LessonFileKind.image,
+        SessionMaterialType.video => LessonFileKind.video,
+        SessionMaterialType.pdf => LessonFileKind.pdf,
+        SessionMaterialType.document => LessonFileKind.doc,
+        SessionMaterialType.link => LessonFileKind.link,
+        SessionMaterialType.recorded => LessonFileKind.recorded,
+        SessionMaterialType.recording => LessonFileKind.recording,
+      };
+
+  /// The session's exam gate as the quiz card's state.
+  static LessonQuizData? quizOf(SessionExamGate? gate, {required bool enrolled, VoidCallback? onOpen}) {
+    if (gate == null || gate.isEmpty) return null;
+    final e = gate.firstPending ?? gate.exams.first;
+    final state = e.passed
+        ? LessonQuizState.passed
+        : e.awaitingResults
+            ? LessonQuizState.waiting
+            : e.attemptsExhausted
+                ? LessonQuizState.none
+                : e.isClosed
+                    ? LessonQuizState.closed
+                    : e.attempted
+                        ? LessonQuizState.retry
+                        : LessonQuizState.start;
+    final canOpen = enrolled && (e.passed || (e.canStart && !e.awaitingResults));
+    return LessonQuizData(
+      state: state,
+      questions: e.questionCount,
+      minutes: e.duration,
+      score: e.bestPercentage,
+      left: e.unlimitedAttempts || e.passed ? null : e.remainingSubmissions,
+      onOpen: canOpen ? onOpen : null,
+    );
+  }
+
+  Widget _studentView(BuildContext context) {
+    bool enrolled;
+    try {
+      enrolled = context.read<CourseDetailProvider>().course.isEnrolled;
+    } catch (_) {
+      enrolled = true;
+    }
+    final video = materials
+        .where((m) => m.type == SessionMaterialType.video || m.type == SessionMaterialType.recorded)
+        .firstOrNull;
+    final rest = [for (final m in materials) if (!identical(m, video)) m];
+    LessonFileData file(SessionMaterialModel m) {
+      final recording = m.type == SessionMaterialType.recording;
+      final isVideo = m.type == SessionMaterialType.video || m.type == SessionMaterialType.recorded;
+      final style = m.type == SessionMaterialType.document ? MaterialFileStyle.forExtension(m.fileExtension) : null;
+      final label = style?.label ?? (_typeLabelKeys[m.type] ?? 'material_type_link').tr;
+      final rating = recording ? RatingShow.none : ratingShow(total: m.rateSummary?.total ?? 0, canRate: m.completed);
+      return LessonFileData(
+        kind: _kindOf(m),
+        title: recording ? 'recording_in_progress'.tr : materialTitle(m.name, recorded: m.type == SessionMaterialType.recorded),
+        meta: [
+          label,
+          if (!recording && m.durationLabel.isNotEmpty) m.durationLabel else if (!recording && m.sizeLabel.isNotEmpty) m.sizeLabel,
+        ].join(AppConfig.lang == 'ar' ? '، ' : ', '),
+        done: m.completed,
+        trailing: isVideo && !m.completed ? _OfflineBadge(sessionId: m.sessionId, materialId: m.id) : null,
+        onTap: recording ? null : () => _onTapMaterial(context, m, m.completed),
+        footer: switch (rating) {
+          RatingShow.stars => RatingWidget(type: RateType.material, sourceId: m.id.toString(), canEdit: true, rateSummary: m.rateSummary),
+          RatingShow.invite => RateLater(type: RateType.material, sourceId: m.id.toString(), rateSummary: m.rateSummary),
+          RatingShow.none => null,
+        },
+      );
+    }
+
+    Widget view(Duration? stopped) {
+      final total = video?.durationSeconds;
+      return LessonMaterialView(
+        video: video == null
+            ? null
+            : LessonVideoData(
+                minutes: total == null ? null : (total / 60).round(),
+                stoppedAt: stopped,
+                progress: stopped == null || total == null || total <= 0
+                    ? null
+                    : (stopped.inSeconds / total).clamp(0.0, 1.0).toDouble(),
+                onPlay: () => _onTapMaterial(context, video, video.completed),
+              ),
+        files: [for (final m in rest) file(m)],
+        quiz: quizOf(examGate, enrolled: enrolled, onOpen: onOpenExam),
+        empty: Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpace.sm),
+          child: Row(
+            children: [
+              Icon(Icons.folder_open_rounded, size: AppIconSize.md, color: context.colors.textLight),
+              const SizedBox(width: AppSpace.xs),
+              Flexible(child: Text('no_attachments_yet'.tr, style: AppType.meta(context))),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (video == null) return view(null);
+    return FutureBuilder<Duration?>(
+      future: VodResume.load(video.sessionId == 0 ? session.id : video.sessionId, video.id),
+      builder: (context, snap) => view(snap.data),
     );
   }
 
@@ -382,9 +499,16 @@ class SessionMaterialGrid extends StatelessWidget {
                       _CaptionsAction(
                         key: ValueKey('captions_action.${m.id}'),
                         material: m,
+                        subtitle: _captionsSubtitle(m),
                         onUpload: () => _pickAndUploadCaptions(context, m),
-                        onManage: (generate) =>
-                            _showCaptionsDialog(context, m, onGenerate: generate),
+                        onRemove: () async {
+                          final prov = context.read<TeacherCourseScreenProvider>();
+                          final ok = await prov.removeCaptions(session.id, m.id);
+                          Helpers.showMessage(
+                            ok ? 'captions_removed'.tr : (prov.errorMessage ?? 'generic_error'.tr),
+                            isError: !ok,
+                          );
+                        },
                       ),
                     // Studio · Edit details · Share · Delete: ONE ⋯ (D-316)
                     MaterialMoreButton(
@@ -469,7 +593,7 @@ class SessionMaterialGrid extends StatelessWidget {
           session.id,
         )) {
       Helpers.showMessage(
-        'هذه الجلسة مقفلة — أكمل الجلسة الحالية أو اشترك في الكورس لفتحها',
+        'هذه الحصة مقفلة — أكمل الحصة الحالية أو اشترك في الدورة لفتحها',
         isError: true,
       );
       return;
@@ -727,55 +851,9 @@ class SessionMaterialGrid extends StatelessWidget {
     );
   }
 
-  /// Captions already attached: replace them (file or automatic) or remove them.
-  void _showCaptionsDialog(BuildContext context, SessionMaterialModel m, {VoidCallback? onGenerate}) {
-    showDialog(
-      context: context,
-      builder: (_) => RtlDialog(
-        title: 'captions_title'.tr,
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text('captions_attached'.tr, style: context.colors.body),
-            const SizedBox(height: AppSpace.sm),
-            TextButton.icon(
-              onPressed: () {
-                Navigator.pop(context);
-                _pickAndUploadCaptions(context, m);
-              },
-              icon: const Icon(Icons.upload_file_rounded, size: 18),
-              label: Text('upload_captions'.tr),
-            ),
-            if (onGenerate != null)
-              TextButton.icon(
-                key: const ValueKey('captions.generate'),
-                onPressed: () {
-                  Navigator.pop(context);
-                  onGenerate();
-                },
-                icon: const Icon(Icons.auto_awesome_rounded, size: 18),
-                label: Text('captions_generate'.tr),
-              ),
-          ],
-        ),
-        onCancel: () => Navigator.pop(context),
-        onConfirm: () async {
-          Navigator.pop(context);
-          final prov = context.read<TeacherCourseScreenProvider>();
-          final ok = await prov.removeCaptions(session.id, m.id);
-          Helpers.showMessage(
-            ok
-                ? 'captions_removed'.tr
-                : (prov.errorMessage ?? 'generic_error'.tr),
-            isError: !ok,
-          );
-        },
-        confirmLabel: 'remove_captions'.tr,
-        confirmColor: context.colors.danger,
-      ),
-    );
-  }
+  /// "Video, 42:10" under the captions sheet's title.
+  String _captionsSubtitle(SessionMaterialModel m) =>
+      [if (AppConfig.lang == 'ar') 'فيديو' else 'Video', if (m.durationLabel.isNotEmpty) m.durationLabel].join('، ');
 
   void _showDeleteDialog(BuildContext context, SessionMaterialModel m) {
     showDialog(
@@ -1212,13 +1290,12 @@ class _OfflineBadge extends StatelessWidget {
 // A 501 `auto_captions_unavailable` means this server has no speech-to-text: a toast says so.
 
 class _CaptionsAction extends StatefulWidget {
-  const _CaptionsAction({super.key, required this.material, required this.onUpload, required this.onManage});
+  const _CaptionsAction({super.key, required this.material, required this.onUpload, required this.onRemove, this.subtitle});
 
   final SessionMaterialModel material;
+  final String? subtitle;
   final VoidCallback onUpload;
-
-  /// Opens the "captions attached" dialog; receives the generate callback to offer there.
-  final ValueChanged<VoidCallback> onManage;
+  final VoidCallback onRemove;
 
   @override
   State<_CaptionsAction> createState() => _CaptionsActionState();
@@ -1324,51 +1401,22 @@ class _CaptionsActionState extends State<_CaptionsAction> {
     }
   }
 
-  // ── Sheet (no captions yet / failed) ──────────────────────────────────────
+  // ── Sheet: the captions, then sharing the video with guests (one sheet for every state) ───────────────
   void _showOptions() {
-    final c = context.colors;
-    showAppSheet<void>(
+    showMaterialCaptionsSheet(
       context,
-      (sheetCtx) => Column(mainAxisSize: MainAxisSize.min, children: [
-        AppSheetHeader('captions_title'.tr),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpace.lg, 0, AppSpace.lg, AppSpace.lg),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            if (_failed)
-              AppBanner(
-                key: const ValueKey('captions.failed_note'),
-                icon: Icons.error_outline_rounded,
-                text: 'captions_status_failed'.tr,
-                color: c.danger,
-              )
-            else
-              Text('captions_none'.tr, style: AppType.body(context)),
-            const SizedBox(height: AppSpace.sm),
-            ListTile(
-              key: const ValueKey('captions.upload'),
-              leading: Icon(Icons.upload_file_rounded, color: c.primary),
-              shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll),
-              title: Text('upload_captions'.tr, style: AppType.bodyStrong(context)),
-              subtitle: Text('captions_pick_vtt'.tr, style: AppType.meta(context)),
-              onTap: () {
-                Navigator.of(sheetCtx).pop();
-                widget.onUpload();
-              },
-            ),
-            ListTile(
-              key: const ValueKey('captions.generate'),
-              leading: Icon(Icons.auto_awesome_rounded, color: c.primary),
-              shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll),
-              title: Text((_failed ? 'captions_retry' : 'captions_generate').tr, style: AppType.bodyStrong(context)),
-              subtitle: Text('captions_auto_queued'.tr, style: AppType.meta(context)),
-              onTap: () {
-                Navigator.of(sheetCtx).pop();
-                _generate();
-              },
-            ),
-          ]),
-        ),
-      ]),
+      sessionId: _m.sessionId,
+      materialId: _m.id,
+      title: _m.name,
+      subtitle: widget.subtitle,
+      state: _url != null
+          ? MaterialCaptionsState.ready
+          : _failed
+              ? MaterialCaptionsState.failed
+              : MaterialCaptionsState.none,
+      onUpload: widget.onUpload,
+      onGenerate: _generate,
+      onRemove: widget.onRemove,
     );
   }
 
@@ -1397,7 +1445,7 @@ class _CaptionsActionState extends State<_CaptionsAction> {
     if (_url != null) {
       icon = Icons.closed_caption_rounded;
       color = c.primary;
-      onTap = () => widget.onManage(_generate);
+      onTap = _showOptions;
     } else if (_failed) {
       icon = Icons.closed_caption_disabled_rounded;
       color = c.danger;

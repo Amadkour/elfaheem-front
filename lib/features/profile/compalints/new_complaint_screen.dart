@@ -17,12 +17,14 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_education_app/features/auth/auth_provider.dart' show MyAuthProvider;
 
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/text_field.dart';
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart' show T2Scope;
 import 'package:flutter_education_app/features/profile/compalints/complaint_attachement_widgets.dart';
 import 'package:flutter_education_app/features/profile/compalints/complaint_model.dart';
 import 'package:flutter_education_app/features/profile/compalints/complaint_provider.dart';
@@ -144,11 +146,16 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
   Widget build(BuildContext context) {
     context.watch<LangProvider>(); // re-translate when the language changes
     final p = context.watch<ComplaintProvider>();
-    return BasePage(
+    // a student's new complaint (redesign S-C, Stu1Comm?screen=newcomplaint): the chat area and the kit's top bar
+    final student = Provider.of<MyAuthProvider?>(context, listen: false)?.currentUser?.role == 'student';
+    // a teacher's wears the teacher accent and the kit's top bar (redesign T2b)
+    final teacher = Provider.of<MyAuthProvider?>(context, listen: false)?.currentUser?.role == 'teacher';
+    final title = widget.formOnly ? 'chub_new'.tr : 'complaints_and_support'.tr;
+    final page = BasePage(
       key: const ValueKey('new_complaint'),
-      useWebCard: true,
+      useWebCard: !student && !teacher,
       width: AppWidth.reading,
-      appBar: ScreenAppBar(title: widget.formOnly ? 'chub_new'.tr : 'complaints_and_support'.tr),
+      appBar: student || teacher ? AppHeader(title: title) : ScreenAppBar(title: title),
       child: SafeArea(
         child: Column(
           children: [
@@ -173,6 +180,8 @@ class _NewComplaintScreenState extends State<NewComplaintScreen>
         ),
       ),
     );
+    if (teacher) return T2Scope(child: page);
+    return student ? AppAreaScope(area: AppArea.chat, child: page) : page;
   }
 
   Widget _form(ComplaintProvider p) => _FormTab(

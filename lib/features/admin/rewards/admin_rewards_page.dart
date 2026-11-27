@@ -17,6 +17,7 @@ library;
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart' show Trans;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -25,7 +26,8 @@ import 'package:flutter_education_app/features/payments/points/points_api.dart' 
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import '../admin_common.dart' show t;
-import '../admin_page.dart';
+import '../admin_points_page.dart' show AdminPointsPage;
+import '../sup/sup_kit.dart';
 import 'admin_rewards_api.dart';
 import 'reward_course_picker.dart';
 
@@ -204,46 +206,38 @@ class _AdminRewardsPageState extends State<AdminRewardsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final gutter = AppSpace.gutter(MediaQuery.sizeOf(context).width);
     return BasePage(
       key: const ValueKey(kAdminRewardsFeatureKey),
-      child: AdminPage(
-        width: AppWidth.wide,
+      child: SupPage(
         title: t('المكافآت والقسائم', 'Rewards & coupons'),
-        icon: Icons.card_giftcard_rounded,
+        kicker: 'a2_rewards_kicker'.tr,
+        headline: 'a2_rewards_head'.tr,
+        line: 'a2_rewards_line'.tr,
         helpPageId: 'admin.rewards',
         onRefresh: _refresh,
-        body: Column(children: [
-          Padding(
-            padding: EdgeInsetsDirectional.fromSTEB(gutter, AppSpace.md, gutter, AppSpace.xs),
-            child: Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: AppTabs(
-                  index: _tab,
-                  onChanged: (i) => setState(() {
-                    _tab = i;
-                    _visited.add(i);
-                  }),
-                  items: [
-                    AppTabItem(t('القواعد', 'Rules')),
-                    AppTabItem(t('الأبطال', 'Champions')),
-                    AppTabItem(t('القسائم', 'Coupons')),
-                    AppTabItem(t('الدعوات', 'Referrals')),
-                  ],
-                ),
-              ),
-            ),
+        actions: [
+          SupHeroButton(
+            label: 'a2_points_wallets'.tr,
+            icon: Icons.stars_rounded,
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AdminPointsPage())),
           ),
-          Expanded(
-            child: IndexedStack(index: _tab, children: [
-              _RulesTab(key: _rules, api: _api),
-              _visited.contains(1) ? _ChampionsTab(key: _champions, api: _api) : const SizedBox.shrink(),
-              _visited.contains(2) ? _CouponsTab(key: _coupons, api: _api) : const SizedBox.shrink(),
-              _visited.contains(3) ? _ReferralsTab(key: _referrals, api: _api) : const SizedBox.shrink(),
-            ]),
-          ),
+        ],
+        tabs: [
+          supTab(t('القواعد', 'Rules')),
+          supTab(t('الأبطال', 'Champions')),
+          supTab(t('القسائم', 'Coupons')),
+          supTab(t('الدعوات', 'Referrals')),
+        ],
+        tab: _tab,
+        onTab: (i) => setState(() {
+          _tab = i;
+          _visited.add(i);
+        }),
+        body: SupTabStack(index: _tab, children: [
+          _RulesTab(key: _rules, api: _api),
+          _visited.contains(1) ? _ChampionsTab(key: _champions, api: _api) : const SizedBox.shrink(),
+          _visited.contains(2) ? _CouponsTab(key: _coupons, api: _api) : const SizedBox.shrink(),
+          _visited.contains(3) ? _ReferralsTab(key: _referrals, api: _api) : const SizedBox.shrink(),
         ]),
       ),
     );

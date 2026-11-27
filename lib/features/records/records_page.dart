@@ -40,6 +40,9 @@ import 'package:flutter_education_app/features/records/records_share.dart';
 import 'package:flutter_education_app/features/records/records_share_api.dart';
 import 'package:flutter_education_app/features/records/records_share_parts.dart';
 import 'package:flutter_education_app/features/records/records_studio.dart';
+import 'package:flutter_education_app/features/records/records_student_parts.dart';
+import 'package:flutter_education_app/features/auth/auth_provider.dart';
+import 'package:provider/provider.dart';
 
 /// How often the library re-reads while a job runs and the live stream is down / up (an event re-reads at once).
 const recordsJobPoll = Duration(seconds: 6);
@@ -76,7 +79,7 @@ class RecordsSettingsTile extends StatelessWidget implements AppSettingsSearchab
 // ─────────────────────────────────────────────────────────────────────────────
 
 class RecordsPage extends StatefulWidget {
-  const RecordsPage({super.key, this.highlightId, this.api, this.shareApi, this.shared = false});
+  const RecordsPage({super.key, this.highlightId, this.api, this.shareApi, this.shared = false, this.student});
 
   /// The item a notification pointed at (outlined).
   final int? highlightId;
@@ -85,6 +88,9 @@ class RecordsPage extends StatefulWidget {
 
   /// Opens on "Shared with me".
   final bool shared;
+
+  /// Forces the student's look (true) or the library (false); null: from the signed-in role.
+  final bool? student;
 
   @override
   State<RecordsPage> createState() => _RecordsPageState();
@@ -105,6 +111,23 @@ class _RecordsPageState extends State<RecordsPage> {
   String? _sharedError;
 
   bool get _sharing => !AppConfig.disableList.contains(kRecordsShareFeatureKey);
+
+  /// The student's look (Stu1Learn records): the learn-area hero and the group cards. Staff keep the library.
+  bool _student(BuildContext context) {
+    if (widget.student != null) return widget.student!;
+    try {
+      final role = ViewAsState.active
+          ? ViewAsState.instance.role
+          : Provider.of<MyAuthProvider>(context, listen: false).currentUser?.role;
+      // a signed-in learner (student, or no staff accent); nobody known → the library
+      return role != null && role.isNotEmpty && appRoleAccentFor(role) == null;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// The student's filter strip: 0 = all mine, 1..n = one group, last = shared with me.
+  int _filter = 0;
 
   @override
   void initState() {
@@ -459,6 +482,89 @@ class _RecordsPageState extends State<RecordsPage> {
     showAppNotice(t('جارٍ الدمج — يظهر التسجيل الجديد أعلى القائمة', 'Merging — the new recording is at the top of the list'));
   }
 
+  /// Stu1Learn records: the learn-area hero with ONE filter strip (all · the first groups · shared with me), then
+  /// a card per group. Selecting, merging, the item sheet and sharing work as in the library.
+  Widget _studentBody(bool selecting) {
+    final groups = groupRecords(_items);
+    final tabs = recordsStudentTabs(groups, shared: _sharing);
+    final sharedIndex = _sharing ? tabs.length - 1 : -1;
+    final index = _tab == 1 && _sharing ? sharedIndex : _filter.clamp(0, tabs.length - 1);
+    final strip = selecting
+        ? null
+        : AppTabs(
+            key: const ValueKey('records.tabs'),
+            hug: true,
+            index: index,
+            items: tabs,
+            onChanged: (i) {
+              setState(() {
+                if (i == sharedIndex) {
+                  _tab = 1;
+                } else {
+                  _tab = 0;
+                  _filter = i;
+                }
+              });
+              if (i == sharedIndex && !_sharedLoaded) _loadShared();
+            },
+          );
+    final w = MediaQuery.sizeOf(context).width;
+    final g = AppSpace.gutter(w);
+    final body = AppAreaScope(
+      area: AppArea.learn,
+      child: _tab == 1 && _sharing
+          ? Column(children: [
+              RecordsStudentHero(bottom: strip, overlap: false),
+              Expanded(
+                child: AppRefresh(
+                  onRefresh: () => _loadShared(silent: true),
+                  child: SharedRecordsLayout(
+                    items: _shared,
+                    loading: _sharedLoading || !_sharedLoaded,
+                    error: _sharedError,
+                    onReload: _loadShared,
+                    onTap: (r) => openSharedRecord(context, r, api: _shareApi),
+                  ),
+                ),
+              ),
+            ])
+          : AppRefresh(
+              onRefresh: () => _load(silent: true),
+              child: ListView(
+                key: const ValueKey('records.list'),
+                padding: const EdgeInsets.only(bottom: AppSpace.xxl),
+                children: [
+                  AppHeroOverlap(
+                    hero: RecordsStudentHero(bottom: strip),
+                    body: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: g),
+                      child: _loading && _items.isEmpty || _error != null && _items.isEmpty || _items.isEmpty
+                          ? AppCard(
+                              child: SizedBox(
+                                height: AppDashSize.courseTile + AppSpace.xxl,
+                                child: RecordsLayout(items: _items, loading: _loading, error: _error, onReload: _load),
+                              ),
+                            )
+                          : RecordsStudentGroups(
+                              groups: _filter == 0 || _filter > groups.length ? groups : [groups[_filter - 1]],
+                              selected: _selected,
+                              highlightId: widget.highlightId,
+                              onTap: _tap,
+                              onLongPress: (r) {
+                                if (r.inProgress) return;
+                                _toggle(r);
+                              },
+                              onMore: _more,
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+    );
+    return body;
+  }
+
   @override
   Widget build(BuildContext context) {
     final selecting = _selected.isNotEmpty;
@@ -472,7 +578,7 @@ class _RecordsPageState extends State<RecordsPage> {
         key: const ValueKey('profile.records'),
         useWebCard: true,
         width: AppWidth.wide,
-        appBar: ScreenAppBar(title: t('التسجيلات', 'Records'), actions: [
+        appBar: ScreenAppBar(title: _student(context) ? 'sb_learn_rec_title'.tr : t('التسجيلات', 'Records'), actions: [
           AppRefreshAction(onRefresh: () => _tab == 1 ? _loadShared() : _load()),
         ]),
         bottomNavigationBar: selecting
@@ -484,7 +590,7 @@ class _RecordsPageState extends State<RecordsPage> {
                 onCancel: () => setState(_selected.clear),
               )
             : null,
-        child: Column(children: [
+        child: _student(context) ? _studentBody(selecting) : Column(children: [
           if (_sharing && !selecting)
             Padding(
               padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0),

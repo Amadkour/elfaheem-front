@@ -16,6 +16,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart' show Trans;
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
@@ -23,8 +24,8 @@ import 'package:flutter_education_app/features/exams/exam_policy.dart';
 
 import '../org/org_v3.dart';
 import 'admin_common.dart' show asMapList, t;
-import 'admin_page.dart';
 import 'cfg_common.dart';
+import 'sup/sup_kit.dart';
 
 /// One method switch as the server lists it.
 class ExamMethod {
@@ -408,15 +409,13 @@ class _AdminExamPolicyPageState extends State<AdminExamPolicyPage> {
   @override
   Widget build(BuildContext context) {
     final d = _draft;
-    return AdminPage(
-      width: AppWidth.reading,
-      title: t('إعدادات الاختبارات', 'Exam settings'),
-      subtitle: t('كيف تعمل الاختبارات على المنصة كلها، في مكان واحد.', 'How exams work across the platform, in one place.'),
-      icon: Icons.fact_check_rounded,
-      onRefresh: _load,
-      dirty: _dirty,
-      primaryAction: d == null ? null : cfgSaveButton(dirty: _dirty, busy: _saving, onSave: _save),
-      body: _error != null && d == null
+    return SupPage(
+        kicker: 'a2_exams_kicker'.tr, headline: 'a2_exams_head'.tr, line: 'a2_exams_line'.tr,
+        width: AppWidth.reading,
+        title: t('إعدادات الاختبارات', 'Exam settings'),
+        onRefresh: _load,
+        dirty: _dirty,
+        body: _error != null && d == null
           ? cfgErrorState(_error, onRetry: _load)
           : d == null
               ? const AppListSkeleton(items: 5)
@@ -433,6 +432,7 @@ class _AdminExamPolicyPageState extends State<AdminExamPolicyPage> {
                     ),
                   ]),
                 ),
-    );
+        actions: [?(d == null ? null : cfgSaveButton(dirty: _dirty, busy: _saving, onSave: _save))],
+      );
   }
 }

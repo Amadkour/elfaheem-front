@@ -183,7 +183,7 @@ class _RequestsSheetState extends State<_RequestsSheet> {
   Widget build(BuildContext context) {
     final c = context.colors;
     return Column(mainAxisSize: MainAxisSize.min, children: [
-      SheetHeader('dl_ask_students'.tr),
+      SheetHeader('dl_ask_students'.tr, icon: Icons.forum_outlined, subtitle: 't2_dl_ask_sub'.tr),
       Flexible(
         child: AppRefresh(
           onRefresh: _load,

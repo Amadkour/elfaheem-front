@@ -94,7 +94,7 @@ class SessionsTab extends StatelessWidget {
     ]);
     final fold = live ? 0 : courseSessionFoldCount(states);
     final groups = live ? List<String?>.filled(shown.length, null) : courseSessionGroups([for (final s in shown) sessionUtc(s.scheduledAt)]);
-    final header = CourseSectionHeader(title: title ?? gt('الجلسات', 'Sessions'), count: count);
+    final header = CourseSectionHeader(title: title ?? gt('الحصص', 'Sessions'), count: count);
     // the course's repeating meetings (D-1660), above the lessons and shown before the first lesson too
     final courseId = int.tryParse('${provider.course.id}');
     final series = live || courseId == null
@@ -111,10 +111,10 @@ class SessionsTab extends StatelessWidget {
           ?series,
           AppEmpty(
             icon: live ? Icons.sensors_off_rounded : Icons.video_library_outlined,
-            title: live ? gt('لا يوجد بث مباشر الآن', 'Nothing is live right now') : 'sessions_empty'.tr,
+            title: live ? gt('لا يوجد بث مباشر الآن', 'Nothing is live right now') : 'sv_sessions_empty'.tr,
             message: live
-                ? gt('ستظهر الجلسة هنا فور أن يبدأ المدرس البث', 'The session shows up here as soon as the teacher goes live')
-                : gt('سيضيف المدرس الجلسات قريباً', 'The teacher will add sessions soon'),
+                ? gt('ستظهر الحصة هنا فور أن يبدأ المدرس البث', 'The session shows up here as soon as the teacher goes live')
+                : gt('سيضيف المدرس الحصص قريباً', 'The teacher will add sessions soon'),
           ),
         ],
       );

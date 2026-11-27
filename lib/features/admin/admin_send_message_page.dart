@@ -10,6 +10,7 @@ import 'package:flutter_education_app/core/plural.dart';
 import '../../config/app_config.dart';
 import 'admin_common.dart';
 import 'admin_page.dart';
+import 'adm_kit.dart' show AdmPage;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_username.dart';
 
@@ -198,6 +199,23 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
     }
   }
 
+  void _setAudience(String v) {
+    setState(() {
+      _audience = v;
+      if (_toTeachers) {
+        // teachers cannot open a course / my-courses / subscription → fall back to a valid target
+        _course = null;
+        if (!_teacherModules.contains(_module)) _module = 'profile';
+      } else if (v == 'student') {
+        // the course picked for a "student" / "all" message must not silently become the audience
+        if (!(_display == 'dialog_action' && _module == 'course')) {
+          _course = null;
+        }
+      }
+    });
+    _refreshReach();
+  }
+
   void _snack(String m, {bool error = false}) {
     if (!mounted) return;
     showAppNotice(m, error: error);
@@ -229,10 +247,13 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
         );
 
     final reach = _reach;
-    return AdminPage(
+    return AdmPage(
+      kicker: 'admin_group_people'.tr,
       width: AppWidth.reading,
+      refreshable: false,
       title: 'send_message'.tr,
-      subtitle: 'svc_send_message_d'.tr,
+      headline: 'a1_msg_head'.tr,
+      subtitle: 'a1_msg_line'.tr,
       icon: Icons.mark_email_unread_rounded,
       dirty: _dirty && !_sending,
       primaryAction: AppButton.primary(
@@ -244,33 +265,42 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
       body: ListView(
         padding: AdminPage.bodyPadding(context),
         children: [
-          label('admin_send_to'.tr),
-          chips<String>(
-            [
-              ('all_students', 'admin_all_students'.tr),
-              ('course', 'admin_a_course'.tr),
-              ('student', 'admin_one_student'.tr),
-              ('all_teachers', 'admin_all_teachers'.tr),
-              ('teacher', 'admin_one_teacher'.tr),
-            ],
-            _audience,
-            (v) {
-              setState(() {
-                _audience = v;
-                if (_toTeachers) {
-                  // teachers cannot open a course / my-courses / subscription → fall back to a valid target
-                  _course = null;
-                  if (!_teacherModules.contains(_module)) _module = 'profile';
-                } else if (v == 'student') {
-                  // the course picked for a "student" / "all" message must not silently become the audience
-                  if (!(_display == 'dialog_action' && _module == 'course')) {
-                    _course = null;
-                  }
-                }
-              });
-              _refreshReach();
-            },
-          ),
+          label('a1_msg_who'.tr),
+          // redesign A1 (AdmPeople message): the audience as option tiles (glyph, name), two per row
+          Builder(builder: (context) {
+            final kit = context.colors.kit;
+            final opts = [
+              ('all_students', 'admin_all_students'.tr, Icons.groups_rounded, kit.accent(AppAccent.sky)),
+              ('course', 'a1_course_students'.tr, Icons.menu_book_rounded, kit.warmTone),
+              ('student', 'admin_one_student'.tr, Icons.person_rounded, kit.ok),
+              ('all_teachers', 'admin_all_teachers'.tr, Icons.school_rounded, kit.accent(AppAccent.grape)),
+              ('teacher', 'admin_one_teacher'.tr, Icons.co_present_rounded, kit.live),
+            ];
+            final rows = <Widget>[];
+            for (var i = 0; i < opts.length; i += 2) {
+              rows.add(Padding(
+                padding: const EdgeInsets.only(bottom: AppSpace.xs),
+                child: Row(children: [
+                  for (var j = i; j < i + 2; j++) ...[
+                    if (j > i) AppSpace.gapXs,
+                    Expanded(
+                      child: j < opts.length
+                          ? AppTile(
+                              key: ValueKey('admin.msg.audience.${opts[j].$1}'),
+                              icon: opts[j].$3,
+                              tone: opts[j].$4,
+                              title: opts[j].$2,
+                              selected: _audience == opts[j].$1,
+                              onTap: () => _setAudience(opts[j].$1),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                  ],
+                ]),
+              ));
+            }
+            return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: rows);
+          }),
           if (_audience == 'course') ...[
             AppSpace.gapXs,
             pickerBtn(_course?['name']?.toString() ?? 'admin_choose_a_course'.tr, Icons.menu_book_rounded, () => _pick(course: true)),

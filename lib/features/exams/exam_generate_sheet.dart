@@ -21,6 +21,7 @@ import 'package:flutter_education_app/features/exams/exam_gen_api.dart' show Gen
 import 'package:flutter_education_app/features/exams/exam_generate.dart';
 import 'package:flutter_education_app/features/exams/exam_generate_wizard.dart' show ExamGenEntry;
 import 'package:flutter_education_app/features/exams/exam_quick.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 
 /// Opens the generator; the draft's questions to add (with their indexes in the draft, for the Track F review), or
 /// null when the teacher left without generating. The five-step wizard (exam_generate_wizard.dart, generation v2);
@@ -277,7 +278,7 @@ class ExamGenForm extends StatelessWidget {
             Icon(Icons.description_outlined, size: 20, color: c.primary),
             const SizedBox(width: 8),
             Expanded(
-              child: Text('${t('من:', 'From:')} ${documents.join('، ')}', maxLines: 3, overflow: TextOverflow.ellipsis, style: appText(13, c: c.textDark)),
+              child: Text('${t('من:', 'From:')} ${documents.join((AppConfig.lang == 'ar' ? '، ' : ', '))}', maxLines: 3, overflow: TextOverflow.ellipsis, style: appText(13, c: c.textDark)),
             ),
           ]),
           Align(

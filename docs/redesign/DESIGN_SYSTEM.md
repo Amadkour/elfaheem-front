@@ -1,6 +1,6 @@
 # Design system: rules, motion and colour
 
-Taken from the design review plan. CSS lives in `design/kit.css`; the Flutter column says how to build each pattern. In the app these become tokens and widgets in `lib/design/` (see START.md, phase 1).
+Taken from the design review plan. CSS lives in `D:/platform/redesign-ref/design/kit.css`; the Flutter column says how to build each pattern. In the app these become tokens and widgets in `lib/design/` (see START.md, phase 1).
 
 ### 1.1 The five rules every student screen must pass ("the 5-second test")
 1. **One main action.** Exactly one filled button (`.k-btn` or `.k-btn.hot`) is visible above the fold on phone. Everything else is ghost, a link, or behind "المزيد".
@@ -70,7 +70,7 @@ CSS sketches (WP0 puts these in kit.css exactly; tune only timings):
 @keyframes mBurst{0%{opacity:1;transform:translate(0,0) rotate(0)}100%{opacity:0;transform:translate(var(--x),var(--y)) rotate(var(--rot,220deg))}}
 /* M12 */ @keyframes mWobble{0%{opacity:0;transform:translateX(40px) rotate(8deg)}40%{opacity:1;transform:translateX(0) rotate(-4deg)}65%{transform:rotate(3deg)}85%{transform:rotate(-1.5deg)}100%{transform:none}}
 .m-wobble{transform-origin:50% 100%;animation:mWobble .8s ease-out both;animation-delay:calc(var(--i,0)*60ms)}
-/* M13 */ .m-pill{position:relative} .m-pill>.m-pill-bg{position:absolute;top:4px;bottom:4px;right:var(--x,4px);width:var(--w,25%);border-radius:19px;background:#fff;box-shadow:0 4px 12px rgba(0,32,94,.12);transition:right .35s cubic-bezier(.3,1.3,.5,1),width .35s cubic-bezier(.3,1.3,.5,1)}
+/* M13 */ .m-pill{position:relative} .m-pill>.m-pill-bg{position:absolute;top:4px;bottom:4px;right:var(--x,4px);width:var(--w,25%);border-radius:19px;background:#fff;box-shadow:0 4px 12px rgba(ref-ink,.12);transition:right .35s cubic-bezier(.3,1.3,.5,1),width .35s cubic-bezier(.3,1.3,.5,1)}
 /* M14 */ @keyframes mSheet{0%{transform:translateY(100%)}70%{transform:translateY(-8px)}100%{transform:none}}
 @media (max-width:760px){.k-drawer.m-sheet,.m-sheet{animation:mSheet .5s cubic-bezier(.2,.8,.2,1) both}}
 /* M15 */ @keyframes mShake{20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}} .m-shake{animation:mShake .36s linear}
@@ -117,26 +117,26 @@ Brand base is unchanged (navy/blue/cyan + apricot/coral). Students get six playf
 
 | Token | Hex | Tint (bg) | Ink (text on tint) | Role |
 |---|---|---|---|---|
-| `--k-navy` | `#00205E` | — | — | text on light, dark heroes base |
-| `--k-deep` | `#001440` | — | — | hero end stop, player/exam chrome |
-| `--k-blue` | `#1979C1` | `#E2EFFA` | `#135F9A` | primary action, links |
-| `--k-cyan` | `#07B8EE` | `#DDF6FE` | `#06678A` | gradients, focus ring, info |
-| `--k-apricot` | `#FF9F5A` | `#FFE8D6` | `#A3480A` | warm highlight, "next step" |
-| `--k-coral` | `#F2545B` | `#FFE3E0` | `#B23A2E` | live, urgent, hot CTA end stop |
+| `--k-navy` | `ref` | — | — | text on light, dark heroes base |
+| `--k-deep` | `ref` | — | — | hero end stop, player/exam chrome |
+| `--k-blue` | `ref` | `ref` | `ref` | primary action, links |
+| `--k-cyan` | `ref` | `ref` | `ref` | gradients, focus ring, info |
+| `--k-apricot` | `ref` | `ref` | `ref` | warm highlight, "next step" |
+| `--k-coral` | `ref` | `ref` | `ref` | live, urgent, hot CTA end stop |
 | `--s-sun` (new) | `#FFC53D` | `#FFF4CC` | `#7A5200` | rewards, points, stars, squiggle |
 | `--s-mint` (new) | `#19C29B` | `#D9F7EE` | `#0C6B55` | success, done, attendance |
 | `--s-grape` (new) | `#7A4DF0` | `#ECE5FF` | `#4A28B8` | games, challenges, AI helper |
 | `--s-pink` (new) | `#FF5FA2` | `#FFE3EF` | `#A81E5E` | social/messages, stickers, favourites |
 | `--s-lime` (new) | `#9BD728` | `#EEF9D2` | `#4C6B05` | streaks, Nahw, "new" |
 | `--s-sky` (new) | `#3DA5FF` | `#E0F0FF` | `#0F5CA8` | schedule, calendar |
-| `--s-live` (alias) | `#F2545B` | | | live halo colour |
+| `--s-live` (alias) | `ref` | | | live halo colour |
 
 Usage rules:
 - **Each student area owns one accent** (set on the root via a modifier class that overrides `--k-acc`/`--k-acc2` and adds `--area`,`--area-tint`,`--area-ink`):
   `.k.a-home` blue→cyan · `.k.a-learn` (دوراتي/المادة/الدروس) apricot→coral · `.k.a-exam` grape→blue · `.k.a-games` grape→pink · `.k.a-store` sun→apricot · `.k.a-quran` mint→`#0F6E6D` · `.k.a-nahw` lime→mint · `.k.a-sched` sky→cyan · `.k.a-chat` pink→apricot · `.k.a-money` sun→mint · `.k.a-me` blue→grape.
-- **Hero** on student screens stops being the same navy radial everywhere: `background: radial-gradient(120% 160% at 85% -30%, var(--k-acc) 0%, color-mix(in srgb, var(--k-acc) 35%, #00205E) 45%, #001440 100%)` plus three M16 shapes tinted `--k-acc2`, `--s-sun`, `#fff` at 10–20 % opacity. (Flutter: precomputed gradient stops per area; do not rely on color-mix at runtime — WP0 writes the resolved hex per area in a comment table in kit.css.)
+- **Hero** on student screens stops being the same navy radial everywhere: `background: radial-gradient(120% 160% at 85% -30%, var(--k-acc) 0%, color-mix(in srgb, var(--k-acc) 35%, `ref`) 45%, `ref` 100%)` plus three M16 shapes tinted `--k-acc2`, `--s-sun`, `#fff` at 10–20 % opacity. (Flutter: precomputed gradient stops per area; do not rely on color-mix at runtime — WP0 writes the resolved hex per area in a comment table in kit.css.)
 - **Subject colours** (one per subject, used for book covers, course cards, calendar dots; same subject = same colour on every screen): الرياضيات `#FF7A59` · الفيزياء `#7A4DF0` · الكيمياء `#19C29B` · الأحياء `#2FB5A8` · الإنجليزي `#07B8EE` · العربي/لغتي `#0F6E6D` · القدرات/التحصيلي `#FFB020` · البرمجة `#1979C1` · القرآن `#1D9A63` · الدراسات الإسلامية `#B7791F`. WP0 exposes them as `--sub-math` … and a helper class `.sub-math` etc. that sets `--sub`.
-- 60/30/10: 60 % neutral (page `#F3F8FD`, white cards), 30 % area accent (hero, selected states, icons), 10 % contrast accent (the one main button uses `.hot` apricot→coral **only when the action moves the student forward**: ادخل الحصة، كمّل، ابدأ الاختبار، أكّد وادفع; everything else uses the area gradient).
+- 60/30/10: 60 % neutral (page `ref`, white cards), 30 % area accent (hero, selected states, icons), 10 % contrast accent (the one main button uses `.hot` apricot→coral **only when the action moves the student forward**: ادخل الحصة، كمّل، ابدأ الاختبار، أكّد وادفع; everything else uses the area gradient).
 - Status colours never change with the area: live = coral, success = mint, warning = sun, locked = `#C9D6E6`, error = `#C2410C`.
 - Other roles keep their current single accent (teacher purple, parent teal, admin blue/amber, super gold).
 

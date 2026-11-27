@@ -25,9 +25,9 @@ import 'package:flutter_education_app/design/app_switch.dart';
 import 'package:flutter_education_app/features/certificates/designer/certificate_design_models.dart';
 import 'package:flutter_education_app/features/certificates/studio/cert_engine_studio.dart' show openCertificateStudio;
 import 'package:flutter_education_app/design/app_notice.dart';
-import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/design/app_kit.dart'
-    show AppHeader, AppListSkeleton, AppEmpty, AppButton, AppElevation, AppType, AppSpace, AppRadius, AppIconSize, AppBorder, AppTouch, appInk;
+    show AppAreaScope, AppButton, AppCard, AppEmpty, AppElevation, AppHero, AppHeroStat, AppListSkeleton, AppType, AppSpace,
+        AppRadius, AppIconSize, AppBorder, AppTouch, appInk;
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal, AppTilt;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
 import 'package:flutter_education_app/features/certificates/issue/cert_issue_flow.dart' show openCertIssueFlow;
@@ -36,6 +36,7 @@ import 'package:flutter_education_app/features/certificates/issue/cert_issue_lis
 import 'package:flutter_education_app/features/certificates/issue/cert_verify_logic.dart' show kCertVerifyFeature;
 import 'package:flutter_education_app/features/certificates/issue/cert_verify_page.dart' show openCertVerify;
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart';
 
 class CertificateDesignsProvider extends BaseProvider {
   final ApiClient _api;
@@ -153,85 +154,109 @@ class _View extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.watch<CertificateDesignsProvider>();
+    final standalone = certificateId == null;
+    final def = p.items.where(certIsDefault).firstOrNull ?? p.items.firstOrNull;
 
-    Widget body;
+    final Widget designs;
     if (p.loading && p.items.isEmpty) {
-      body = const AppListSkeleton(withAvatar: false);
+      designs = const AppListSkeleton(withAvatar: false);
     } else if (p.hasError && p.items.isEmpty) {
       // A failed first load used to show "no designs yet" — say it failed and offer a retry instead.
-      body = ErrorRetry(message: p.errorMessage ?? 'pl_designs_load_failed'.tr, onRetry: () => p.load(orgId: orgId));
+      designs = ErrorRetry(message: p.errorMessage ?? 'pl_designs_load_failed'.tr, onRetry: () => p.load(orgId: orgId));
     } else if (p.items.isEmpty) {
-      body = AppRefresh(
-        onRefresh: () => p.load(orgId: orgId),
-        scrollable: false,
-        child: AppEmpty(icon: Icons.workspace_premium_outlined, title: 'cert_no_designs'.tr),
+      designs = AppEmpty(
+        icon: Icons.workspace_premium_outlined,
+        title: 'cert_no_designs'.tr,
+        actionLabel: 'cert_new_design'.tr,
+        onAction: () => _open(context),
       );
     } else {
-      body = AppRefresh(
-        onRefresh: () => p.load(orgId: orgId),
-        child: GridView.builder(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(AppSpace.md),
-          gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: 360, // one column on a phone, the sheet preview gets the room
-            mainAxisSpacing: AppSpace.md,
-            crossAxisSpacing: AppSpace.md,
-            // room for the "Issue certificates" button under each card
-            childAspectRatio: 0.8,
-          ),
-          itemCount: p.items.length,
-          // the page's one orchestrated entrance: the first cards rise in once
-          itemBuilder: (_, i) => AppReveal(
-            index: i,
-            group: 'cert.designs',
-            child: _DesignCard(
-              design: p.items[i],
-              certificateId: certificateId,
-              orgId: orgId,
-              onOpen: () => _open(context, designId: p.items[i].id),
+      designs = T2TileGrid(
+        maxColumns: 4,
+        minTile: 240,
+        children: [
+          for (var i = 0; i < p.items.length; i++)
+            // the page's one orchestrated entrance: the first cards rise in once
+            AppReveal(
+              index: i,
+              group: 'cert.designs',
+              child: _DesignCard(
+                design: p.items[i],
+                certificateId: certificateId,
+                orgId: orgId,
+                onOpen: () => _open(context, designId: p.items[i].id),
+              ),
             ),
-          ),
-        ),
+        ],
       );
     }
 
-    return Scaffold(
-      appBar: AppHeader(
-        title: 'cert_designs_title'.tr,
-        actions: [
-          ParentComponent(
-            featureKey: kCertVerifyFeature,
-            child: IconButton(
-              tooltip: 'cv_entry_title'.tr,
-              icon: const Icon(Icons.verified_user_outlined),
-              onPressed: () => openCertVerify(context),
-            ),
+    // the shortcuts of the reference: issue, the history, the saved lists, verify (standalone issuing only)
+    final shortcuts = <Widget>[
+      if (def != null)
+        ParentComponent(
+          featureKey: 'certificates.standalone',
+          child: T2InsightTile(
+            icon: Icons.send_outlined,
+            title: 'ci_issue_action'.tr,
+            subtitle: 't2_certd_issue_sub'.tr,
+            onTap: () => openCertIssueFlow(context, designId: def.id, designName: def.name, orgId: orgId),
           ),
-          // standalone issuing (features/certificates/issue): saved recipient lists + the issued history
-          if (certificateId == null)
+        ),
+      ParentComponent(
+        featureKey: 'certificates.standalone',
+        child: T2InsightTile(
+          icon: Icons.history_rounded,
+          tone: context.colors.kit.primaryTone,
+          title: 'ci_history'.tr,
+          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => CertIssueHistoryPage(orgId: orgId))),
+        ),
+      ),
+      ParentComponent(
+        featureKey: 'certificates.standalone',
+        child: T2InsightTile(
+          icon: Icons.groups_2_outlined,
+          tone: context.colors.kit.ok,
+          title: 'ci_saved_lists'.tr,
+          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => CertSavedListsPage(orgId: orgId))),
+        ),
+      ),
+      ParentComponent(
+        featureKey: kCertVerifyFeature,
+        child: T2InsightTile(
+          icon: Icons.shield_outlined,
+          tone: context.colors.kit.warn,
+          title: 'cv_entry_title'.tr,
+          subtitle: 't2_certd_verify_sub'.tr,
+          onTap: () => openCertVerify(context),
+        ),
+      ),
+    ];
+
+    return T2HeroPage(
+      title: 'cert_designs_title'.tr,
+      onRefresh: () => p.load(orgId: orgId),
+      hero: AppHero(
+        kicker: 't2_cert_kicker'.tr,
+        title: 't2_certd_title'.tr,
+        stats: p.items.isEmpty ? const [] : [AppHeroStat(value: '${p.items.length}', label: 't2_certd_stat'.tr)],
+        actions: [
+          if (standalone && def != null)
             ParentComponent(
               featureKey: 'certificates.standalone',
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                IconButton(
-                  tooltip: 'ci_saved_lists'.tr,
-                  icon: const Icon(Icons.groups_2_outlined),
-                  onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => CertSavedListsPage(orgId: orgId))),
-                ),
-                IconButton(
-                  tooltip: 'ci_history'.tr,
-                  icon: const Icon(Icons.history_rounded),
-                  onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => CertIssueHistoryPage(orgId: orgId))),
-                ),
-              ]),
+              child: AppButton.hot(
+                label: 't2_certd_issue'.tr,
+                icon: Icons.workspace_premium_outlined,
+                onPressed: () => openCertIssueFlow(context, designId: def.id, designName: def.name, orgId: orgId),
+              ),
             ),
+          AppButton.secondary(label: 'cert_new_design'.tr, icon: Icons.add_rounded, onPressed: () => _open(context)),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _open(context),
-        icon: const Icon(Icons.add_rounded),
-        label: Text('cert_new_design'.tr),
-      ),
-      body: SafeArea(child: body),
+      children: [
+        if (standalone) T2TileGrid(maxColumns: 4, minTile: 200, children: shortcuts),
+        AppCard(title: 't2_certd_mine'.tr, child: designs),
+      ],
     );
   }
 }
@@ -244,6 +269,9 @@ class _DesignCard extends StatelessWidget {
 
   const _DesignCard({required this.design, required this.certificateId, required this.onOpen, this.orgId});
 
+  /// The preview mat's height (the sheet is fitted inside it).
+  static const double _previewH = 168;
+
   @override
   Widget build(BuildContext context) {
     final p = context.watch<CertificateDesignsProvider>();
@@ -252,19 +280,25 @@ class _DesignCard extends StatelessWidget {
 
     // a paper card on a warm hairline; the design sits on an input-well mat like a printed sheet on a desk, the one
     // thing that floats (and tilts a little under the pointer)
+    final set = AppAreaScope.of(context);
+    final isDefault = certIsDefault(design);
     return Container(
       decoration: BoxDecoration(
         color: c.cardBg,
-        borderRadius: AppRadius.cardAll,
-        border: Border.all(color: c.divider, width: AppBorder.hairline),
+        borderRadius: BorderRadius.circular(AppRadius.tile),
+        border: Border.all(
+          color: isDefault ? Color.lerp(set.tint, set.a, .35)! : c.kit.line,
+          width: isDefault ? AppBorder.focus : AppBorder.strong,
+        ),
       ),
       clipBehavior: Clip.antiAlias,
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Expanded(
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        SizedBox(
+          height: _previewH,
           child: InkWell(
             onTap: onOpen,
             child: Container(
-              color: c.inputBg,
+              color: c.kit.well,
               alignment: Alignment.center,
               padding: const EdgeInsets.all(AppSpace.md),
               child: AppTilt.subtle(
@@ -287,7 +321,7 @@ class _DesignCard extends StatelessWidget {
           child: Row(children: [
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(design.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+                Text(design.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.tileTitle(context)),
                 Text(
                   '${design.orgId != null ? 'cert_scope_org'.tr : 'cert_scope_personal'.tr} · ${'cert_orientation_${design.orientation}'.tr}',
                   style: AppType.meta(context),
@@ -296,7 +330,7 @@ class _DesignCard extends StatelessWidget {
                 ),
                 const SizedBox(height: AppSpace.xs),
                 Wrap(spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, children: [
-                  if (certIsDefault(design)) _Chip(label: 'cert_default_badge'.tr, icon: Icons.star_rounded, strong: true),
+                  if (isDefault) _Chip(label: 'cert_default_badge'.tr, icon: Icons.star_rounded, strong: true),
                   for (final l in design.langs) _Chip(label: l == 'ar' ? 'certd_lang_ar'.tr : 'certd_lang_en'.tr),
                 ]),
               ]),

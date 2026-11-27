@@ -688,7 +688,8 @@ void main() {
         final vc = _lastFresh!;
         await vc.seekTo(const Duration(minutes: 7));
         await tester.tap(find.byIcon(Icons.hd_rounded));
-        for (var i = 0; i < 10; i++) {
+        // the sheet rises 500 ms (M14, KIT_SPEC 5.8; was 280) and takes no tap before it settles (VodSheetSettle)
+        for (var i = 0; i < 14; i++) {
           await tester.pump(const Duration(milliseconds: 50));
         }
         expect(find.byType(VodAudioOnlyTile), findsOneWidget);

@@ -27,6 +27,8 @@ import 'package:flutter_education_app/design/context_switcher.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:flutter_education_app/features/auth/auth_provider.dart' show MyAuthProvider;
+import 'package:provider/provider.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/rag/chat/rag_action_open.dart';
@@ -97,9 +99,19 @@ class _RagChatScreenState extends State<RagChatScreen> {
   }
 
   Widget _page(BuildContext context) {
-    return BasePage(
+    // a student's assistant (redesign S-C, Stu1Comm?screen=assistant): the chat area, the kit's top bar with
+    // New chat and Your chats first
+    final student = Provider.of<MyAuthProvider?>(context, listen: false)?.currentUser?.role == 'student';
+    final title = widget.title ?? (widget.app ? (student ? 'sc_ai_title'.tr : t('مساعد التطبيق', 'App assistant')) : t('مساعد المستندات', 'Documents assistant'));
+    final page = BasePage(
       key: const ValueKey('rag.assistant'),
-      appBar: ScreenAppBar(helpPageId: 'rag.chat', title: widget.title ?? (widget.app ? t('مساعد التطبيق', 'App assistant') : t('مساعد المستندات', 'Documents assistant')),
+      appBar: student
+          ? AppHeader(title: title, actions: [
+              if (_sessions) AppIconButton(tooltip: 'rag_chats'.tr, icon: Icons.history_rounded, onPressed: () => _chat.currentState?.showSessions()),
+              if (_sessions) AppIconButton(tooltip: 'rag_new_chat'.tr, icon: Icons.add_rounded, onPressed: () => _chat.currentState?.newChat()),
+              AppIconButton(tooltip: t('تحديث', 'Refresh'), icon: Icons.refresh_rounded, onPressed: () => _chat.currentState?.refresh()),
+            ])
+          : ScreenAppBar(helpPageId: 'rag.chat', title: title,
           actions: [
             if (_sessions) IconButton(tooltip: 'rag_new_chat'.tr, icon: const Icon(Icons.add_comment_outlined), onPressed: () => _chat.currentState?.newChat()),
             if (_sessions) IconButton(tooltip: 'rag_chats'.tr, icon: const Icon(Icons.history_rounded), onPressed: () => _chat.currentState?.showSessions()),
@@ -127,6 +139,7 @@ class _RagChatScreenState extends State<RagChatScreen> {
             if (m != _manager) setState(() => _manager = m);
           }),
     );
+    return student ? AppAreaScope(area: AppArea.chat, child: page) : page;
   }
 }
 

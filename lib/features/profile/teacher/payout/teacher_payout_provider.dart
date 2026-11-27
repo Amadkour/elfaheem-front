@@ -1,7 +1,9 @@
 // lib/features/teacher/payout/teacher_payout_provider.dart
 //
 //   GET    /api/v1/teacher/payout/status        allowed? methods · min amount · accounts · earnings summary
+//   GET    /api/v1/teacher/payout/methods       the fields each method asks for in the teacher's country (WP8)
 //   POST   /api/v1/teacher/payout/accounts      PUT/DELETE /accounts/{id} · POST /accounts/{id}/default
+//   POST   /api/v1/payments/iban/check          {iban} → {valid, code, iban}: checked before an account is saved
 //   GET    /api/v1/teacher/withdrawals          history
 //   POST   /api/v1/teacher/withdrawals          {amount, payout_account_id, note}
 //   DELETE /api/v1/teacher/withdrawals/{id}     cancel while pending
@@ -18,6 +20,12 @@ class PayoutMethodInfo {
   String get label => t(asStr(j['label_ar']), asStr(j['label_en']));
   bool get automatic => asBool(j['automatic']);
   String? get currency => asStrOrNull(j['currency']);
+
+  /// The fields this method asks for in the teacher's residence country (GET /payout/methods, WP8): an IBAN country
+  /// asks for the IBAN, a country without one for the account number and SWIFT. Empty = the app's own field list.
+  List<({String key, bool required})> get fields => [
+        for (final f in asMapList(j['fields'])) (key: asStr(f['key']), required: asBool(f['required'])),
+      ];
 }
 
 class PayoutAccount {
@@ -64,6 +72,12 @@ class TeacherPayoutProvider extends AdminBase {
       error = errorMessage ?? t('تعذر تحميل البيانات', 'Could not load data');
     }
     if (hist is Map) withdrawals = asMapList(hist['items']).map(Withdrawal.new).toList();
+    // the per-country fields (WP8); an older server without the route keeps the app's own field lists
+    final per = await run(() => api.get('/api/v1/teacher/payout/methods'), makLoading: false);
+    if (per is Map && per['methods'] is List) {
+      final byId = {for (final m in asMapList(per['methods'])) asStr(m['id']): m};
+      methods = [for (final m in methods) PayoutMethodInfo({...m.j, ...?byId[m.id]})];
+    }
     loaded = true;
     notifyListeners();
   }
@@ -83,6 +97,19 @@ class TeacherPayoutProvider extends AdminBase {
         ok: t('تم حفظ الحساب', 'Account saved'));
     if (r != null) await load();
     return r != null;
+  }
+
+  /// The server's IBAN check (any IBAN country, mod-97): `(iban: the cleaned IBAN, code: null)` when valid,
+  /// `(iban: null, code: iban_format | iban_country | iban_length | iban_checksum)` when not, null when the check
+  /// could not run (offline, an older server): the save goes on and the server checks again.
+  Future<({String? iban, String? code})?> checkIban(String iban) async {
+    try {
+      final r = await api.post('/api/v1/payments/iban/check', body: {'iban': iban});
+      if (r is! Map) return null;
+      return r['valid'] == true ? (iban: asStr(r['iban'], iban), code: null) : (iban: null, code: asStr(r['code'], 'iban_format'));
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<bool> deleteAccount(int id) async {

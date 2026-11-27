@@ -10,11 +10,12 @@
 // own tone) holding the overall score — its ring fills and the figure rolls (the page's one orchestrated entrance) —
 // and the three figures that open the tabs; the tabs are the kit's pill track; everything under it is paper.
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/app_digits.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp, AppDrawIn, AppFill, AppOdometer, AppPressScale, AppTilt;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppFlipIn, AppCountUp, AppDrawIn, AppFill;
 import 'package:flutter_education_app/design/chrome_button.dart' show ChromeIconButton;
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -106,9 +107,12 @@ class _CourseAnalyticsViewState extends State<_CourseAnalyticsView>
 
     return Directionality(
       textDirection: pageDirection, // follows the app language (it was forced to RTL)
-      child: BasePage(
+      child: AppAreaScope(area: AppArea.me, child: BasePage(
         width: AppWidth.wide,
-        useWebCard: true,
+        appBar: AppHeader(
+          title: widget.courseTitle,
+          actions: [ChromeIconButton(icon: Icons.refresh_rounded, label: 'refresh'.tr, onTap: prov.loadAll)],
+        ),
         child: NestedScrollView(
           headerSliverBuilder: (ctx, _) => [
             SliverToBoxAdapter(
@@ -134,7 +138,7 @@ class _CourseAnalyticsViewState extends State<_CourseAnalyticsView>
             ],
           ),
         ),
-      ),
+      )),
     );
   }
 }
@@ -150,221 +154,51 @@ class _Hero extends StatelessWidget {
   final ValueChanged<int> onOpenTab;
   const _Hero({required this.courseId, required this.title, required this.prov, required this.onOpenTab});
 
-  /// The score ring's diameter: smaller on a narrow phone.
-  static double _ringSize(double width) => width >= 420 ? 132 : 112;
 
   @override
   Widget build(BuildContext context) {
     final overall = prov.overall ?? 0;
     final loading = prov.loadingAtt && prov.loadingExams;
-
-    return SafeArea(
-      bottom: false,
-      child: LayoutBuilder(builder: (context, box) {
-        final gutter = AppSpace.gutter(box.maxWidth);
-        return Padding(
-          padding: EdgeInsetsDirectional.fromSTEB(gutter, AppSpace.xs, gutter, 0),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            // ── the masthead: back · the course's name in the editorial face · refresh
-            Row(children: [
-              const AppBackButton(),
-              AppSpace.gapSm,
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Semantics(
-                    header: true,
-                    child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.pageTitle(context)),
-                  ),
-                  Text('sa_report_title'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
-                ]),
-              ),
-              AppSpace.gapXs,
-              ChromeIconButton(icon: Icons.refresh_rounded, label: 'refresh'.tr, onTap: prov.loadAll),
-            ]),
-            AppSpace.gapMd,
-            // ── the block: the score and the three figures that open the tabs
-            AppTilt(
-              radius: AppRadius.block,
-              glare: true,
-              touchTilt: false,
-              child: AppBlock(
-                tone: AppBlockTone.forKey('course:$courseId'),
-                hero: true,
-                child: Builder(builder: (context) {
-                  final b = AppBlock.colorsOf(context);
-                  final ring = _ringSize(box.maxWidth);
-                  return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    Row(children: [
-                      _ScoreRing(value: loading ? 0 : overall, size: ring),
-                      SizedBox(width: box.maxWidth >= 420 ? AppSpace.lg : AppSpace.md),
-                      Expanded(
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(
-                            loading ? '…' : _level(overall),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppType.headline(context).copyWith(color: b.ink),
-                          ),
-                          const SizedBox(height: AppSpace.xs),
-                          Text(
-                            prov.progress != null
-                                ? anTr('sa_overall_hint_full', 'An average of your progress, attendance and exam results.')
-                                : 'sa_overall_hint'.tr,
-                            style: AppType.body(context).copyWith(color: b.muted),
-                          ),
-                          if (prov.progress != null) ...[
-                            const SizedBox(height: AppSpace.xs),
-                            Row(children: [
-                              Icon(Icons.route_rounded, size: AppIconSize.sm, color: b.accentInk(context.colors.primary)),
-                              const SizedBox(width: AppSpace.xs),
-                              Flexible(
-                                child: Text(
-                                  '${anTr('an_course_progress', 'Course progress')}: ${anPct(prov.progress)}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: AppType.label(context).copyWith(color: b.ink, fontWeight: FontWeight.w600),
-                                ),
-                              ),
-                            ]),
-                          ],
-                        ]),
-                      ),
-                    ]),
-                    AppSpace.gapLg,
-                    IntrinsicHeight(
-                      child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                        _HeroStat(
-                          onTap: () => onOpenTab(1),
-                          icon: Icons.event_available_rounded,
-                          value: '${prov.attendanceRate.toStringAsFixed(0)}%',
-                          label: 'attendance_rate'.tr,
-                        ),
-                        AppSpace.gapXs,
-                        _HeroStat(
-                          onTap: () => onOpenTab(2),
-                          icon: Icons.verified_rounded,
-                          value: '${prov.passedCount}/${prov.attemptedCount}',
-                          label: 'sa_passed_exams'.tr,
-                        ),
-                        AppSpace.gapXs,
-                        _HeroStat(
-                          onTap: () => onOpenTab(2),
-                          icon: Icons.bar_chart_rounded,
-                          value: '${prov.avgScore.toStringAsFixed(0)}%',
-                          label: 'sa_avg_score'.tr,
-                        ),
-                      ]),
-                    ),
-                  ]);
-                }),
-              ),
-            ),
-          ]),
-        );
-      }),
+    return AppHero(
+      overlap: false,
+      kicker: 'sa_report_title'.tr,
+      title: title,
+      subtitle: loading ? null : _level(overall),
+      stats: [
+        AppHeroStat(icon: Icons.event_available_outlined, value: appDigits('${prov.attendanceRate.toStringAsFixed(0)}%'), label: 'attendance_rate'.tr, onTap: () => onOpenTab(1)),
+        AppHeroStat(icon: Icons.verified_outlined, value: appDigits('${prov.passedCount}/${prov.attemptedCount}'), label: 'sa_passed_exams'.tr, onTap: () => onOpenTab(2)),
+        AppHeroStat(icon: Icons.bar_chart_rounded, value: appDigits('${prov.avgScore.toStringAsFixed(0)}%'), label: 'sa_avg_score'.tr, onTap: () => onOpenTab(2)),
+      ],
     );
   }
 }
 
-/// A figure on the hero block that opens its tab: a slightly deeper well of the block's own tone.
-class _HeroStat extends StatelessWidget {
-  final IconData icon;
-  final String value, label;
+/// One figure of a course's overview (plain values): a tinted tile with the figure's ring drawn in (M2) and its
+/// name under it.
+class ScRingTile extends StatelessWidget {
+  const ScRingTile({super.key, required this.label, required this.value, required this.tone, this.onTap});
+  final String label;
+  final double? value;
+  final KitTone tone;
   final VoidCallback? onTap;
-  const _HeroStat({required this.icon, required this.value, required this.label, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final b = AppBlock.colorsOf(context);
-    return Expanded(
-      child: AppPressScale(
-        enabled: onTap != null,
-        child: Material(
-          color: Color.lerp(b.surface, b.ink, 0.06),
-          borderRadius: AppRadius.cardAll,
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: onTap,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: AppTouch.min),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: AppSpace.sm, horizontal: AppSpace.xs),
-                child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Icon(icon, color: b.muted, size: AppIconSize.sm),
-                  const SizedBox(height: AppSpace.xxs),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(value, style: AppType.figure(context).copyWith(color: b.ink, fontFeatures: _tabular)),
-                  ),
-                  Text(
-                    label,
-                    maxLines: 2,
-                    textAlign: TextAlign.center,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppType.meta(context).copyWith(color: b.muted),
-                  ),
-                ]),
-              ),
-            ),
-          ),
+    return Material(
+      color: tone.tint,
+      borderRadius: BorderRadius.circular(AppRadius.cardWide),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpace.md, horizontal: AppSpace.xs),
+          child: Column(children: [
+            AppProgressRing(value: ((value ?? 0) / 100).clamp(0.0, 1.0), size: AppDashSize.ring, stroke: AppSpace.xs, tone: tone,
+                label: value == null ? '–' : appDigits('${value!.round()}%')),
+            const SizedBox(height: AppSpace.xs),
+            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: tone.ink, fontWeight: FontWeight.w600)),
+          ]),
         ),
-      ),
-    );
-  }
-}
-
-/// The overall score: a ring in the primary (lifted to read on the block) that fills once, the figure rolling.
-class _ScoreRing extends StatelessWidget {
-  final double value; // 0..100
-  final double size;
-  const _ScoreRing({required this.value, required this.size});
-
-  /// The ring's stroke against its diameter.
-  static const double _strokeShare = 0.085;
-
-  @override
-  Widget build(BuildContext context) {
-    final b = AppBlock.colorsOf(context);
-    final arc = b.accentInk(context.colors.primary);
-    final track = Color.lerp(b.surface, b.ink, 0.10)!;
-    final stroke = size * _strokeShare;
-    return Semantics(
-      label: '${'stat_total'.tr} ${value.round()}%',
-      child: SizedBox(
-        width: size,
-        height: size,
-        child: Stack(alignment: Alignment.center, children: [
-          AppFill(
-            value: (value / 100).clamp(0.0, 1.0),
-            duration: const Duration(milliseconds: 900),
-            builder: (context, v) => SizedBox.expand(
-              child: CircularProgressIndicator(
-                value: v,
-                strokeWidth: stroke,
-                strokeCap: StrokeCap.round,
-                backgroundColor: track,
-                color: arc,
-              ),
-            ),
-          ),
-          ExcludeSemantics(
-            child: SizedBox(
-              width: size - stroke * 4,
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: AppOdometer(
-                    '${value.round()}%',
-                    memoryKey: 'course_report.overall',
-                    style: AppType.figureLarge(context).copyWith(color: b.ink),
-                  ),
-                ),
-                Text('stat_total'.tr,
-                    maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: b.muted)),
-              ]),
-            ),
-          ),
-        ]),
       ),
     );
   }
@@ -407,10 +241,10 @@ class _TabsDelegate extends SliverPersistentHeaderDelegate {
         index: controller.index,
         onChanged: controller.animateTo,
         items: [
-          AppTabItem('sa_tab_overview'.tr, icon: wide ? Icons.dashboard_rounded : null),
-          AppTabItem('attendance'.tr, icon: wide ? Icons.fact_check_rounded : null),
-          AppTabItem('exams'.tr, icon: wide ? Icons.quiz_rounded : null),
-          AppTabItem(anTr('sa_tab_marks', 'My marks'), icon: wide ? Icons.workspace_premium_rounded : null),
+          AppTabItem('sc_an_tab_overview'.tr, icon: wide ? Icons.dashboard_rounded : null),
+          AppTabItem('sc_an_tab_attendance'.tr, icon: wide ? Icons.fact_check_rounded : null),
+          AppTabItem('sc_an_tab_exams'.tr, icon: wide ? Icons.quiz_rounded : null),
+          AppTabItem('sc_an_tab_marks'.tr, icon: wide ? Icons.workspace_premium_rounded : null),
         ],
       ),
     ),
@@ -524,6 +358,20 @@ class _OverviewTab extends StatelessWidget {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: _tabPadding(context),
         children: [
+          Builder(builder: (context) {
+            final k = context.colors.kit;
+            final att = prov.totalSessions == 0 ? prov.block?.attendance : prov.attendanceRate.toDouble();
+            final ex = prov.attemptedCount == 0 ? prov.block?.examAvg : prov.avgScore;
+            final tiles = [
+              if (prov.progress != null) ScRingTile(label: 'sc_an_your_progress'.tr, value: prov.progress, tone: k.subject('math').tone),
+              ScRingTile(label: 'sc_an_your_attendance'.tr, value: att, tone: k.ok, onTap: () => onOpenTab(1)),
+              ScRingTile(label: 'sc_an_your_exams'.tr, value: ex, tone: k.accent(AppAccent.grape), onTap: () => onOpenTab(2)),
+            ];
+            return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              for (var i = 0; i < tiles.length; i++) ...[if (i > 0) const SizedBox(width: AppSpace.sm), Expanded(child: AppFlipIn(index: i, group: 'sc.an.rings', child: tiles[i]))],
+            ]);
+          }),
+          AppSpace.gapMd,
           // the counts (the score itself is the hero's)
           AppKpiGrid(maxColumns: prov.progress != null ? 5 : 4, children: [
             AppStatCard(
@@ -563,7 +411,7 @@ class _OverviewTab extends StatelessWidget {
             ParentComponent(
               featureKey: 'student_analytics.insights',
               child: _Section(
-                title: 'sa_parent_summary'.tr,
+                title: 'sc_an_what_now'.tr,
                 child: Column(children: [
                   for (var i = 0; i < insights.length; i++) ...[
                     if (i > 0) AppSpace.gapSm,
@@ -917,9 +765,10 @@ class _BarRow extends StatelessWidget {
   static const double _labelMin = 34, _labelMax = 110;
 
   @override
-  Widget build(BuildContext context) => Row(children: [
+  Widget build(BuildContext context) => LayoutBuilder(builder: (context, box) => Row(children: [
     ConstrainedBox(
-        constraints: const BoxConstraints(minWidth: _labelMin, maxWidth: _labelMax),
+        // a narrow card (a phone's half-width tile at large text) gives the label at most 40 % of the row
+        constraints: BoxConstraints(minWidth: _labelMin, maxWidth: (box.maxWidth * .4).clamp(_labelMin, _labelMax)),
         child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context))),
     AppSpace.gapXs,
     Expanded(
@@ -938,7 +787,7 @@ class _BarRow extends StatelessWidget {
     ),
     AppSpace.gapXs,
     Text('$value', style: AppType.row(context).copyWith(fontWeight: FontWeight.w600, fontFeatures: _tabular)),
-  ]);
+  ]));
 }
 
 class _AttendanceTile extends StatelessWidget {

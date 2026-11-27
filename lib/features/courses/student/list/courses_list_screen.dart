@@ -23,6 +23,13 @@ import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/utils/widget/paged_progress.dart';
 import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_education_app/design/app_tokens.dart' show AppSpace, AppWidth;
+import 'package:flutter_education_app/design/app_area.dart';
+import 'package:flutter_education_app/design/app_hero.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppEase;
+import 'package:flutter_education_app/design/app_tokens.dart' show AppMotion;
+import 'package:flutter_education_app/features/courses/category/categories_provider.dart';
+import 'package:flutter_education_app/features/courses/category/categories_screen.dart';
+import 'package:flutter_education_app/features/courses/category/subject_tiles.dart';
 
 class CoursesListScreen extends StatefulWidget {
   const CoursesListScreen({
@@ -44,6 +51,16 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
   final _searchCtrl = TextEditingController();
   Timer? _debounce;
   String _query = '';
+
+  /// The Explore head (hero, search, subjects) folds away once the list scrolls; the search stays.
+  bool _folded = false;
+
+  bool _onScroll(ScrollNotification n) {
+    if (n.metrics.axis != Axis.vertical || n.depth > 1) return false;
+    final fold = n.metrics.pixels > AppSpace.xl;
+    if (fold != _folded) setState(() => _folded = fold);
+    return false;
+  }
 
   @override
   void initState() {
@@ -129,11 +146,22 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
       width: AppWidth.wide,
       enableFooterWidget: false,
       appBar: ScreenAppBar(
-        title: mine ? 'my_courses'.tr : (widget.openSearch ? 'search'.tr : 'explorer_courses'.tr),
+        title: mine ? 'sv_my_courses'.tr : (widget.openSearch ? 'search'.tr : 'explorer_courses'.tr),
       ),
       child: SafeArea(
-        child: Column(
+        child: AppAreaScope(
+          area: AppArea.learn,
+          child: Column(
           children: [
+            // redesign (Stu1Discover?screen=explore): the hero with the search pill on it and the subjects card
+            // riding over it; once the list scrolls it folds to the plain search row
+            if (!mine && !_folded)
+              AnimatedSize(
+                duration: AppMotion.of(context).base,
+                curve: AppEase.out,
+                child: _exploreHead(context),
+              )
+            else
             ParentComponent(
               featureKey: 'courses_list.search',
               // the same well as My courses; a search box reads best at a form's width, even on a wide window
@@ -161,14 +189,16 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
                 margin: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.xs),
               ),
             Expanded(
-              child: loading
+              child: NotificationListener<ScrollNotification>(
+                onNotification: _onScroll,
+                child: loading
                   ? const CourseListSkeleton()
                   : error
                   ? AppErrorState(message: errorText, onRetry: refresh)
                   : (courses.isEmpty && !hasMore)
                   ? AppEmpty(
                 icon: Icons.menu_book_rounded,
-                title: 'no_courses_in_section'.tr,
+                title: 'sv_no_courses_in_section'.tr,
               )
                   : ParentComponent(
                 featureKey: 'courses_list.list',
@@ -191,8 +221,35 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
                       : 'other-courses-profile',
                 ),
               ),
+              ),
             ),
           ],
+        ),
+        ),
+      ),
+    );
+  }
+
+  Widget _exploreHead(BuildContext context) {
+    final categories = context.watch<CategoriesProvider>().categories;
+    final hero = AppHero(
+      kicker: 'sa_explore_kicker'.tr,
+      title: widget.openSearch ? 'search'.tr : 'sa_explore_title'.tr,
+      bottom: ParentComponent(
+        featureKey: 'courses_list.search',
+        child: CourseSearchField(controller: _searchCtrl, hint: 'sa_explore_search_hint', onChanged: _onQuery),
+      ),
+    );
+    if (categories.isEmpty || _query.isNotEmpty) return hero;
+    return AppHeroOverlap(
+      hero: hero,
+      body: Padding(
+        padding: const EdgeInsets.fromLTRB(AppSpace.md, 0, AppSpace.md, AppSpace.sm),
+        child: SubjectsCard(
+          categories: categories,
+          max: 4,
+          onOpen: (cat) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CategoriesScreen(selectedId: cat.id))),
+          onAll: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CategoriesScreen())),
         ),
       ),
     );

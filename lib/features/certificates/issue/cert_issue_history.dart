@@ -29,6 +29,7 @@ import 'package:flutter_education_app/features/certificates/issue/cert_issue_pho
 import 'package:flutter_education_app/features/certificates/issue/cert_expiry_card.dart' show certExpiryWire;
 import 'package:flutter_education_app/features/certificates/issue/cert_issue_parts.dart';
 import 'package:flutter_education_app/features/certificates/issue/cert_issue_word.dart';
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart' show T2Scope;
 
 int? _meId(BuildContext context) {
   try {
@@ -116,13 +117,22 @@ class _CertIssueHistoryPageState extends State<CertIssueHistoryPage> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Scaffold(
+    return T2Scope(
+      child: Scaffold(
       backgroundColor: c.background,
       appBar: AppHeader(title: 'ci_history'.tr, actions: [AppRefreshAction(onRefresh: _load)]),
       body: ParentComponent(
         featureKey: kCertIssueFeature,
         child: SafeArea(
-          child: LayoutBuilder(builder: (context, box) {
+          // the redesign (Tea2Certs history): the log's band on the teacher's hero, the batches under it
+          child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            AppHero(
+              wipe: false,
+              kicker: 't2_cert_kicker'.tr,
+              title: 'ci_history'.tr,
+              stats: _total > 0 ? [AppHeroStat(value: '$_total', label: 't2_certh_batches'.tr)] : const [],
+            ),
+            Expanded(child: LayoutBuilder(builder: (context, box) {
             final wide = box.maxWidth >= 960;
             final list = CertBatchList(
               items: _items,
@@ -156,8 +166,10 @@ class _CertIssueHistoryPageState extends State<CertIssueHistoryPage> {
                     : CertBatchView(key: ValueKey(open.id), batchId: open.id, initial: open, api: _api, onChanged: _updated),
               ),
             ]);
-          }),
+          })),
+          ]),
         ),
+      ),
       ),
     );
   }

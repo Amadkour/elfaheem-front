@@ -210,6 +210,7 @@ class LiveHandsPanel extends StatelessWidget {
     required this.isTeacher,
     this.onLower,
     this.onAllowSpeak,
+    this.onStage,
     this.onClose,
     this.busyIdentity,
   });
@@ -220,6 +221,8 @@ class LiveHandsPanel extends StatelessWidget {
   final ValueChanged<String>? onLower;
   /// Teacher, guests only: `POST …/guests/{identity}/allow-speak`.
   final ValueChanged<String>? onAllowSpeak;
+  /// Teacher, students only (WP1): bring this hidden student on stage; the hand goes down with it.
+  final ValueChanged<String>? onStage;
   final VoidCallback? onClose;
   /// Identity whose allow-speak call is in flight (shows a spinner on that row).
   final String? busyIdentity;
@@ -287,6 +290,7 @@ class LiveHandsPanel extends StatelessWidget {
                         busy: busyIdentity == hands[i].identity,
                         onLower: onLower,
                         onAllowSpeak: onAllowSpeak,
+                        onStage: onStage,
                       ),
                     ),
             ),
@@ -305,6 +309,7 @@ class _HandRow extends StatelessWidget {
     required this.busy,
     this.onLower,
     this.onAllowSpeak,
+    this.onStage,
   });
 
   final int index;
@@ -313,6 +318,7 @@ class _HandRow extends StatelessWidget {
   final bool busy;
   final ValueChanged<String>? onLower;
   final ValueChanged<String>? onAllowSpeak;
+  final ValueChanged<String>? onStage;
 
   String _since() {
     final secs = ((DateTime.now().millisecondsSinceEpoch - hand.ts) / 1000).round();
@@ -391,6 +397,15 @@ class _HandRow extends StatelessWidget {
                     onPressed: () => onAllowSpeak!(hand.identity),
                     icon: Icon(Icons.mic_rounded, size: 18, color: LivePalette.success),
                   ),
+          if (!hand.isGuest && onStage != null)
+            IconButton(
+              key: ValueKey('live_hands.stage.${hand.identity}'),
+              tooltip: 't1_lv_stage_on'.tr,
+              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+              padding: EdgeInsets.zero,
+              onPressed: () => onStage!(hand.identity),
+              icon: Icon(Icons.present_to_all_rounded, size: 18, color: LivePalette.success),
+            ),
           if (onLower != null)
             IconButton(
               key: ValueKey('live_hands.lower.${hand.identity}'),

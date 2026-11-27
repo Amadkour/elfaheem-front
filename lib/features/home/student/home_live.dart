@@ -1,6 +1,7 @@
 // lib/features/home/student/home_live.dart — the home's "Live now" banner, wired (student · instructor · org member).
 //
-//   HomeLiveNow(rooms:, now:)    HomeLiveBanner over MeHomeService.liveNow (or the given rooms): one card per room
+//   HomeLiveNow(rooms:, now:)    the live banner over MeHomeService.liveNow (or the given rooms), each Join in the
+//                                redesign's words (ادخل الحصة / ادخل الاجتماع, S-A2): one card per room
 //                                I'm invited to that is live — Join opens the pre-join page, where the person
 //                                presses Join (D-106: never by itself). It appears and leaves on its own: the service
 //                                reloads the home on `session_live` / `meeting_live` (no timer, no extra request on
@@ -72,11 +73,12 @@ List<HomeLiveItem> homeLiveItemsOf(
     if (r.isMeeting || !AppConfig.disableList.contains(kLiveSessionsFeatureKey))
       HomeLiveItem(
         title: r.title,
-        kindLabel: (r.isMeeting ? 'home_live_meeting' : 'home_live_session').tr,
+        kindLabel: (r.isMeeting ? 'home_live_meeting' : 'sa_live_class').tr, // redesign vocabulary: حصة, never جلسة
         subtitle: r.subtitle,
         hostName: r.hostName,
         hostImageUrl: r.hostImageUrl,
         startedAt: r.startedAt,
+        actionLabel: (r.isMeeting ? 'sa_live_join_meeting' : 'sa_live_join_class').tr, // ادخل الاجتماع / ادخل الحصة
         onJoin: () => onJoin == null ? joinHomeLiveRoom(context, r) : onJoin(r),
         onOpen: () => onOpen == null ? openHomeLiveRoom(context, r) : onOpen(r),
       ),
@@ -93,13 +95,13 @@ class HomeLiveNow extends StatelessWidget {
 
   List<MeLiveRoom> _scoped(List<MeLiveRoom> all) => orgId == null ? all : [for (final r in all) if (r.orgId == orgId) r];
 
+  Widget _banner(BuildContext context, List<MeLiveRoom> all) =>
+      HomeLiveBanner(items: homeLiveItemsOf(context, _scoped(all)), now: now, padding: padding);
+
   @override
   Widget build(BuildContext context) {
-    if (rooms != null) return HomeLiveBanner(items: homeLiveItemsOf(context, _scoped(rooms!)), now: now, padding: padding);
+    if (rooms != null) return _banner(context, rooms!);
     final svc = MeHomeService.instance;
-    return ListenableBuilder(
-      listenable: svc,
-      builder: (context, _) => HomeLiveBanner(items: homeLiveItemsOf(context, _scoped(svc.liveNow)), now: now, padding: padding),
-    );
+    return ListenableBuilder(listenable: svc, builder: (context, _) => _banner(context, svc.liveNow));
   }
 }

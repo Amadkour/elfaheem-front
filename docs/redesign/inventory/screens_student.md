@@ -35,7 +35,7 @@ Design: `SubjectProfile.dc.html` (one component; props `enrolled`, `live`, `pane
 | 11-12 | راسل المعلمة M+W | `SubjMChat` / `SubjWChat` (`panel=chat`) | `messaging/chat/chat_page.dart` (private DM, `/chat` with `{peer_id, course_id}`), `courses/course_profile/course_profile_announcements.dart` | `/chat` | exists | One-to-one teacher chat exists; embed it as a panel of the subject page. |
 | 13-16 | المساعد الذكي + مقفل M+W | `SubjMBot`, `SubjMBotOff`, `SubjWBot`, `SubjWBotOff` (`panel=bot`) | `rag/app_assistant.dart`, `rag/rag_chat_screen.dart`, `rag/chat/assistant_page_context.dart`, `rag/rag_learning_page.dart` | floating assistant; kill switch / quota | partial | Assistant exists (global, context-aware). Missing: per-subject panel scoped to the course, and the "locked" state (teacher/plan switched it off). |
 | 17-18 | دفتر المادة M+W | `SubjMNotes` / `SubjWNotes` (`panel=notes`) | none (only `org/advising/adv_notes.dart`, org-side; `records/` is meeting recordings) | none | missing | New per-subject notebook (server storage per student/course). |
-| 27-30 | الدفتر: بالقلم / بالكيبورد M+W | `SubjMNotesPen`, `SubjWNotesPen`, `SubjMNotesType`, `SubjWNotesType` | none. Reusable: `live/room/whiteboard/*`, `live/room/annotation/*` (ink canvas), `design/app_canvas.dart` | none | missing | Pen canvas with stylus/finger + text editor; reuse whiteboard stroke code. |
+| 27-30 | الدفتر: بالقلم / بالكيبورد M+W | `SubjMNotesPen`, `SubjWNotesPen`, `SubjMNotesType`, `SubjWNotesType` | none. Reusable: `live/room/whiteboard/*`, `live/room/annotation/*` (ink canvas), `D:/platform/redesign-ref/design/app_canvas.dart` | none | missing | Pen canvas with stylus/finger + text editor; reuse whiteboard stroke code. |
 | 19-20 | جدول حصصي: مع حصص المواد الثانية M+W | `SubjMCal` / `SubjWCal` (`panel=cal all=1`) | `calendar/schedule_page.dart`, `schedule_store.dart`, `schedule_parts.dart`, `calendar_screen.dart` (`CalendarStore`, `GET /me/calendar`) | `/calendar` | partial | Whole schedule exists; the subject-scoped view and "all subjects" toggle are new filters. |
 | 21-22 | جدول حصصي: حصص المادة بس M+W | `SubjMCal0` / `SubjWCal0` (`panel=cal`) | same as above | `/calendar` | partial | Same, filtered by course id. |
 | 23-24 | فيديو الدرس بملء الشاشة M+W | `SubjMFsVideo` / `SubjWFsVideo` (`fs=video`) | `sessions/video/video_player_screen.dart`, `vod_player_parts.dart`, `vod_media_controls.dart`, `fullscreen_web.dart` | push | exists | Restyle player chrome; next-lesson countdown and audio-only (`vod_listen*`) exist. |
@@ -47,7 +47,7 @@ Files: `Stu1Auth`, `Stu1Public`, `Stu1Discover`, `Stu1Learn`, `Stu1Comm`, `Stu2E
 
 | # | Design screen | URL | Flutter file(s) today | Route / entry | Status | Notes |
 |---|---|---|---|---|---|---|
-| 1 | الرئيسية | `StuHome?screen=home` | `home/student/home_screen.dart`, `dashboard/dashboard_screen.dart`, `home_continue.dart`, `home_journey.dart`, `home_live.dart`, `home_event_rows.dart`, `design/home_kit.dart`, `home_a2.dart` | `/home`, `/dashboard` | exists | One `/me/home` call; home budget test applies. Redo layout to 5-second rules. |
+| 1 | الرئيسية | `StuHome?screen=home` | `home/student/home_screen.dart`, `dashboard/dashboard_screen.dart`, `home_continue.dart`, `home_journey.dart`, `home_live.dart`, `home_event_rows.dart`, `D:/platform/redesign-ref/design/home_kit.dart`, `home_a2.dart` | `/home`, `/dashboard` | exists | One `/me/home` call; home budget test applies. Redo layout to 5-second rules. |
 | 2 | التعريف بالتطبيق | `Stu1Auth?screen=onboard` | `onboarding/onboarding_screen.dart`, `onboarding_store.dart`, `start_route.dart` | `/onboarding` | exists | Restyle. |
 | 3-4 | وش تبي تتعلّم؟ (ضيف) + اختيار المادة | `Stu1Auth?screen=guestsearch` (+`sheet=subject`) | `onboarding/guest_search_screen.dart`, `explore_entry_page.dart`, `explore_launcher.dart` | `/guest-search`, `/explore` | exists | Subject sheet = category picker. |
 | 5-7 | الانضمام 1: مين أنت؟ / 2: الصف / 3: الاسم والجوال | `Stu1Auth?screen=join` (`step=grade`, `step=contact`) | `onboarding/join/join_flow_screen.dart`, `join_steps.dart`, `join_draft.dart`, `join_route.dart` | `JoinFlowScreen` (role/lang args) | exists | Country-of-residence + phone for any country (RULES §3) and Saudi grades/tracks from server per country. |
@@ -125,7 +125,7 @@ Files: `Stu1Auth`, `Stu1Public`, `Stu1Discover`, `Stu1Learn`, `Stu1Comm`, `Stu2E
 | 176 | التحويل البنكي | `Stu2Money?screen=transfer` | `payments/enrollment/transfer/`, `payments/enrollment_request/teacher_transfers_*.dart`, `admin/receipt_viewer.dart` | enrol | exists | |
 | 177-178 | الاشتراك في المسار / صار لك | `Stu2Money?screen=path` (`state=ok`) | `payments/enrollment/roadmap_enrollment_screen.dart`, `roadmap_enrollment_provider.dart` | roadmap | exists | |
 | 179-182, 190 | محفظتي / اشحن نقاط / باقة الاجتماعات / ينقصك نقاط / وش الفرق؟ | `Stu2Money?screen=wallet` (`sheet=buy|plan|help`, `short=1`) | `payments/points/points_wallet_page.dart`, `points_card_checkout.dart`, `live_plan_sheet.dart`, `points_api.dart` | profile/wallet | exists | |
-| 183-187 | اشتراك الفهيم: اختر خطتك / نراجع / ما انقبل / فعّال / الحساب ما انفتح | `Stu2Money?screen=subscribe` (`state=choose|review|rejected|active|notopen`) | `payments/subscription/subscription_screen.dart`, `subscription_provider.dart`, `admin/admin_subscriptions_page.dart` | `/subscription` | exists | |
+| 183-187 | اشتراك التطبيق: اختر خطتك / نراجع / ما انقبل / فعّال / الحساب ما انفتح | `Stu2Money?screen=subscribe` (`state=choose|review|rejected|active|notopen`) | `payments/subscription/subscription_screen.dart`, `subscription_provider.dart`, `admin/admin_subscriptions_page.dart` | `/subscription` | exists | |
 | 188 | مكافآتي | `Stu2Money?screen=rewards` | `rewards/my_rewards_page.dart`, `rewards_api.dart`, `coupon_field.dart`, `invited_by_field.dart` | push | exists | |
 | 189 | المدفوعات والاشتراكات | `Stu2Money?screen=history` | `payments/subscription/subscription_screen.dart`, `store/store_library.dart` (orders); no single history page | push | partial | Merge payments + subscriptions history in one list. |
 | 191, 211 | حسابي / إعدادات متقدمة | `Stu2Profile?screen=profile` (`adv=1`) | `profile/profile_screen.dart`, `profile_hero.dart`, `profile/components/setting_group.dart`, `switch_account_tile.dart`, `personal_account_tile.dart` | `/profile` | exists | |
@@ -135,12 +135,12 @@ Files: `Stu1Auth`, `Stu1Public`, `Stu1Discover`, `Stu1Learn`, `Stu1Comm`, `Stu2E
 | 195-196 | الدرجات / الشهادات | `Stu2Profile?screen=grades` (`tab=certs`) | `home/student/record/student_record_pages.dart`, `certificates/student/my_certificates_screen.dart`, `exams/exam_results_screen.dart` | profile | partial | Certificates exist; one grades page (all courses) to check against `student_record_pages.dart`. |
 | 197 | بياناتي الدراسية | `Stu2Profile?screen=study` | `profile/study_profile/study_profile_pages.dart`, `study_profile_form.dart` | profile | exists | |
 | 198 | ربط ولي الأمر | `Stu2Profile?screen=parent` | `parent/student_link_code_screen.dart` (student shows code), `profile/profile_screen.dart` | profile | exists | Add kid-code (login) linkage if BACKEND adds it. |
-| 199 | العرض والقراءة | `Stu2Profile?screen=display` | `profile/display/display_settings_page.dart`, `design/app_display.dart` | profile | exists | |
+| 199 | العرض والقراءة | `Stu2Profile?screen=display` | `profile/display/display_settings_page.dart`, `D:/platform/redesign-ref/design/app_display.dart` | profile | exists | |
 | 200-201 | نسخة من بياناتي: جاهزة / نجهّزها | `Stu2Profile?screen=data` (`state=ready|wait`) | `profile/privacy_export.dart` | profile | exists | |
 | 202 | ملفي العام | `Stu2Profile?screen=public` | `profile/public_profile/public_profile_page.dart`, `public_profile_view.dart` | `/@name` | exists | Privacy review needed: what a student's public profile shows. |
 | 203-205 | التحميلات / بدون نت / فاضية | `Stu2Profile?screen=downloads` (`state=offline|empty`) | `downloads/downloads_screen.dart`, `core/offline/*` | `/downloads` (phone/desktop only) | exists | Web redirects home. |
 | 206-207 | تحقّق من شهادة: صحيحة / ملغاة | `Stu2Profile?screen=verify` (`state=ok|revoked`) | `certificates/issue/cert_verify_page.dart`, `cert_verify_view.dart`, `cert_verify_logic.dart` | public verify link | exists | |
-| 208-210 | عن الفهيم / الشروط والأحكام / سياسة الخصوصية | `Stu2Profile?screen=about` (`tab=about|terms|privacy`) | `profile/about/about_and_terms_screen.dart`, `about_terms_parts.dart` | push, `/terms`, `/privacy` | exists | |
+| 208-210 | عن التطبيق / الشروط والأحكام / سياسة الخصوصية | `Stu2Profile?screen=about` (`tab=about|terms|privacy`) | `profile/about/about_and_terms_screen.dart`, `about_terms_parts.dart` | push, `/terms`, `/privacy` | exists | |
 
 ## New features (no Flutter counterpart)
 
@@ -164,7 +164,7 @@ Files: `Stu1Auth`, `Stu1Public`, `Stu1Discover`, `Stu1Learn`, `Stu1Comm`, `Stu2E
 
 - `BookFlow.dc.html` (+ `BookM*/BookW*`): none today; will touch `payments/enrollment/*`, `courses/student/details/course_detail_screen.dart`, `teachers/teacher_discovery.dart`, `calendar/calendar_api.dart`.
 - `SubjectProfile.dc.html` (+ `SubjM*/SubjW*`): `courses/course_space/*`, `courses/course_profile/*`, `courses/student/details/*`, `sessions/material/*`, `sessions/video/*`, `live/room/*`, `messaging/chat/*`, `rag/*`, `calendar/*`.
-- `StuHome.dc.html`: `home/student/home_screen.dart`, `dashboard/dashboard_screen.dart`, `design/home_kit.dart`.
+- `StuHome.dc.html`: `home/student/home_screen.dart`, `dashboard/dashboard_screen.dart`, `D:/platform/redesign-ref/design/home_kit.dart`.
 - `Stu1Auth.dc.html`: `onboarding/*`, `onboarding/join/*`, `auth/*` (login, register, verify, forget, mfa, approval, fee); kid code is new.
 - `Stu1Public.dc.html`: `guest/*`, `share/share_link_page.dart`, `profile/about/*`, `records/record_guest_page.dart`.
 - `Stu1Discover.dc.html`: `courses/student/my_courses/*`, `courses/student/list/*`, `courses/category/*`, `courses/roadmap/*`, `profile/student_favorite_screen.dart`.

@@ -26,8 +26,6 @@ import 'package:flutter_education_app/design/app_buttons.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/features/courses/student/details/components/app_responsive.dart'
-    show Breakpoints;
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
@@ -41,6 +39,7 @@ import 'package:flutter_education_app/design/app_kit.dart'
     show AppListSkeleton, AppRefresh, AppKpiGrid, AppStatCard, AppTabs, AppTabItem, AppSpace, appErrorMessage, AppBanner;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
 import 'package:flutter_education_app/design/app_side_sheet.dart' show AppSheetMode;
+import 'sup/sup_kit.dart';
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  icons · contact types · quick-start presets
@@ -1009,14 +1008,12 @@ class _AdminContentPageState extends State<AdminContentPage> {
       );
     }
 
-    return AdminPage(
-      title: t('من نحن والشروط', 'About & terms'),
-      subtitle: 'content_page_title'.tr,
-      icon: Icons.info_rounded,
-      maxWidth: Breakpoints.contentMax,
-      onRefresh: () => _load(silent: _info != null),
-      body: body,
-    );
+    return SupPage(
+        kicker: 'a2_legal_kicker'.tr, headline: 'a2_legal_head'.tr, line: 'a2_legal_line'.tr,
+        title: t('من نحن والشروط', 'About & terms'),
+        onRefresh: () => _load(silent: _info != null),
+        body: body,
+      );
   }
 }
 

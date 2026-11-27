@@ -4,13 +4,14 @@
 // About · Terms & conditions · Privacy & terms. Everything comes from what the admin edits on the dashboard's
 // "App content" page (admin_content_page.dart): GET /api/v1/app-content/about | /terms?lang=.
 //
-//   Terms / Privacy : calm hero (icon · title · intro · updated · version · read time · sections), the sections as
-//                     numbered cards in reading typography; a sticky table of contents — section chips pinned under
-//                     the app bar on a phone, an "On this page" column beside the text on a wide window — that
-//                     follows the scroll and jumps to a section; a closing note. The app assistant is one tap away
-//                     (kill switch rag.app_assistant): the bot button in the app bar and a floating "Ask about this
-//                     page" pill (phone) or a card under the table of contents (wide) open it with a question about
-//                     the page already typed ([AppAssistant.ask]).
+//   Terms / Privacy : redesign Stu1Public?screen=legal (S-A2): the area hero, then ONE card with the الخصوصية /
+//                     الشروط segment (the other document opens in place), the intro and facts, and every section
+//                     as a row (its glyph, title, text) between hairlines; a sticky table of contents — section chips
+//                     pinned on a phone for a long document (6+ sections), an "On this page"
+//                     column on a wide window — that follows the scroll and jumps to a section; a closing note.
+//                     The app assistant is one tap away (kill switch rag.app_assistant): the bot button in the app
+//                     bar and a floating "Ask about this page" pill (phone) or a card under the table of contents
+//                     (wide) open it with a question about the page already typed ([AppAssistant.ask]).
 //   About           : hero (logo · name · tagline · version), figures, mission, features, team, Contact & support
 //                     (contacts, the assistant, the app version + release notes).
 //
@@ -19,6 +20,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 library;
 
+import 'package:flutter_education_app/features/guest/sa_hero_page.dart';
+import 'package:flutter_education_app/design/app_area.dart' show AppArea;
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -26,7 +29,8 @@ import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/app_identity.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppEmpty, AppRefresh, appText;
+import 'package:flutter_education_app/design/app_kit.dart'
+    show AppBorder, AppCard, AppEmpty, AppIconBox, AppRefresh, AppSpace, AppTabItem, AppTabs, AppType, appText;
 import 'package:flutter_education_app/design/app_notice.dart' show showAppNotice;
 import 'package:flutter_education_app/features/rag/app_assistant.dart' show AppAssistant;
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
@@ -81,6 +85,8 @@ class TermsScreen extends StatefulWidget {
 }
 
 class _TermsScreenState extends State<TermsScreen> {
+  /// Which document is open: the route's, then the segment's.
+  late bool _privacy = widget.privacy;
   final _scroll = ScrollController();
   final _viewport = GlobalKey();
   final _keys = <GlobalKey>[];
@@ -153,18 +159,23 @@ class _TermsScreenState extends State<TermsScreen> {
     }
   }
 
-  void _ask() => AppAssistant.ask(widget.privacy ? 'assistant_q_privacy'.tr : 'assistant_q_terms'.tr);
+  void _ask() => AppAssistant.ask(_privacy ? 'assistant_q_privacy'.tr : 'assistant_q_terms'.tr);
 
   Future<void> _load(AboutTermsProvider p, {bool force = false}) =>
-      widget.privacy ? p.loadPrivacy(context, forceRefresh: force) : p.loadTerms(context, forceRefresh: force);
+      _privacy ? p.loadPrivacy(context, forceRefresh: force) : p.loadTerms(context, forceRefresh: force);
 
-  TermsPageModel? _doc(AboutTermsProvider p) => widget.privacy ? p.privacy : p.terms;
+  TermsPageModel? _doc(AboutTermsProvider p) => _privacy ? p.privacy : p.terms;
 
-  /// The other document (the privacy policy from the terms, and back), on top of this one.
-  void _openOther() => Navigator.of(context).push(MaterialPageRoute(
-        settings: RouteSettings(name: widget.privacy ? '/terms' : '/privacy'),
-        builder: (_) => TermsScreen(privacy: !widget.privacy, canAsk: widget.canAsk),
-      ));
+  /// The other document, in place (the segment on the card, S-A2): back to its first section.
+  void _switchDoc(bool privacy) {
+    if (privacy == _privacy) return;
+    setState(() {
+      _privacy = privacy;
+      _active = 0;
+    });
+    if (_scroll.hasClients) _scroll.jumpTo(0);
+    _load(context.read<AboutTermsProvider>());
+  }
 
   Future<void> _copyLink(String url) async {
     await Clipboard.setData(ClipboardData(text: url));
@@ -183,32 +194,32 @@ class _TermsScreenState extends State<TermsScreen> {
     context.watch<LangProvider>();
     final p = context.watch<AboutTermsProvider>();
     final doc = _doc(p);
-    final docLang = widget.privacy ? p.privacyLang : p.termsLang;
-    final busy = widget.privacy ? p.isLoadingPrivacy : p.isLoadingTerms;
+    final docLang = _privacy ? p.privacyLang : p.termsLang;
+    final busy = _privacy ? p.isLoadingPrivacy : p.isLoadingTerms;
     if (doc != null && docLang != AppConfig.lang && !busy) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _load(p);
       });
     }
     final canAsk = widget.canAsk ?? _assistantAvailable(context);
-    final title = widget.privacy ? 'privacy_policy'.tr : 'terms_of_service'.tr;
+    final title = _privacy ? 'privacy_policy'.tr : 'terms_of_service'.tr;
     return Directionality(
       textDirection: Helpers.pageDirection,
       child: BasePage(
-        key: ValueKey(widget.privacy ? 'terms.privacy' : 'terms'),
+        key: ValueKey(_privacy ? 'terms.privacy' : 'terms'),
         appBar: ScreenAppBar(
           title: title,
           showBack: Navigator.of(context).canPop(), // the public /terms and /privacy links open with nothing behind them
           actions: canAsk && doc != null ? [AskAboutPageAction(onTap: _ask)] : null,
         ),
-        child: SafeArea(child: _body(p, canAsk)),
+        child: SafeArea(child: SaHeroPage(area: AppArea.me, kicker: 'sa_legal_kicker'.tr, title: title, child: _body(p, canAsk))),
       ),
     );
   }
 
   Widget _body(AboutTermsProvider p, bool canAsk) {
     final doc = _doc(p);
-    final error = widget.privacy ? p.privacyError : p.termsError;
+    final error = _privacy ? p.privacyError : p.termsError;
     if (doc == null && error == null) return const ReadingSkeleton();
     if (doc == null) {
       return AppEmpty(
@@ -229,12 +240,21 @@ class _TermsScreenState extends State<TermsScreen> {
     return LayoutBuilder(builder: (context, box) => _page(p, terms, box.maxWidth, canAsk));
   }
 
+  /// The privacy / terms segment (redesign Stu1Public?screen=legal): the other document opens in place.
+  Widget _docTabs() => AppTabs(
+        key: const ValueKey('terms.tabs'),
+        expand: true,
+        items: [AppTabItem('sa_legal_privacy'.tr), AppTabItem('sa_legal_terms'.tr)],
+        index: _privacy ? 0 : 1,
+        onChanged: (i) => _switchDoc(i == 0),
+      );
+
   Widget _page(AboutTermsProvider p, TermsPageModel terms, double width, bool canAsk) {
     final c = context.colors;
     final wide = width >= _tocBreakpoint;
     final sections = terms.sections;
     final titles = [for (final s in sections) s.title];
-    final showChips = !wide && sections.length >= 3;
+    final showChips = !wide && sections.length >= 6; // a short document reads straight down (S-A2)
     _pinned = showChips ? _chipsHeight : 0;
 
     // the reading column: centred; on a wide window it shares the centred group with the table of contents
@@ -248,38 +268,39 @@ class _TermsScreenState extends State<TermsScreen> {
     final updated = meta?.lastUpdated ?? '';
     final version = meta?.version ?? '';
     final minutes = readingMinutes([for (final s in sections) '${s.title} ${s.body}']);
+    final intro = terms.intro.isNotEmpty ? terms.intro : (_privacy ? 'privacy_intro'.tr : 'terms_intro'.tr);
 
-    final hero = ParentComponent(
+    // redesign (S-A2): the intro and the facts in one quiet block under the segment
+    final head = ParentComponent(
       featureKey: 'terms.header',
-      child: ReadingHero(
-        icon: widget.privacy ? Icons.privacy_tip_outlined : Icons.gavel_rounded,
-        title: terms.title.isNotEmpty ? terms.title : (widget.privacy ? 'privacy_policy'.tr : 'terms_of_service'.tr),
-        intro: terms.intro.isNotEmpty ? terms.intro : (widget.privacy ? 'privacy_intro'.tr : 'terms_intro'.tr),
-        meta: [
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Text(intro, style: AppType.body(context).copyWith(color: c.textMedium)),
+        AppSpace.gapSm,
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
           if (updated.isNotEmpty) ReadingMetaPill(icon: Icons.update_rounded, label: '${'legal_effective'.tr} $updated'),
           if (version.isNotEmpty) ReadingMetaPill(icon: Icons.tag_rounded, label: '${'about_version'.tr} $version'),
           ReadingMetaPill(icon: Icons.schedule_rounded, label: readingTr('reading_minutes', {'n': minutes})),
-          ReadingMetaPill(icon: Icons.view_agenda_outlined, label: readingTr('terms_n_sections', {'n': sections.length})),
-        ],
-      ),
+        ]),
+      ]),
     );
 
-    final cards = ParentComponent(
+    // every section a row on ONE card: its glyph in the area tint, the title, the text; a hairline between rows
+    final rows = ParentComponent(
       featureKey: 'terms.sections',
-      child: Column(children: [
-        for (var i = 0; i < sections.length; i++) ...[
-          if (i > 0) const SizedBox(height: 16),
-          KeyedSubtree(
-            key: _keys[i],
-            child: ReadingSectionCard(
-              number: i + 1,
-              icon: contentIcon(sections[i].iconName),
-              title: sections[i].title,
-              body: sections[i].body,
+      child: AppCard(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          _docTabs(),
+          AppSpace.gapMd,
+          head,
+          for (var i = 0; i < sections.length; i++) ...[
+            Divider(height: AppSpace.xl, thickness: AppBorder.hairline, color: c.kit.line),
+            KeyedSubtree(
+              key: _keys[i],
+              child: _LegalRow(icon: contentIcon(sections[i].iconName), title: sections[i].title, body: sections[i].body),
             ),
-          ),
-        ],
-      ]),
+          ],
+        ]),
+      ),
     );
 
     final highlights = terms.highlights.isEmpty
@@ -292,17 +313,17 @@ class _TermsScreenState extends State<TermsScreen> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         ReadingNote(
           icon: Icons.verified_user_outlined,
-          text: widget.privacy ? 'privacy_footer'.tr : 'terms_footer'.tr,
+          text: _privacy ? 'privacy_footer'.tr : 'terms_footer'.tr,
           caption: [
             if (updated.isNotEmpty) '${'legal_effective'.tr} $updated',
             if (version.isNotEmpty) '${'about_version'.tr} $version',
-          ].join('  ·  '),
+          ].join('،  '),
         ),
         const SizedBox(height: 16),
         ReadingLegalActions(
-          otherLabel: widget.privacy ? 'legal_read_terms'.tr : 'legal_read_privacy'.tr,
-          otherIcon: widget.privacy ? Icons.gavel_rounded : Icons.privacy_tip_outlined,
-          onOther: _openOther,
+          otherLabel: _privacy ? 'legal_read_terms'.tr : 'legal_read_privacy'.tr,
+          otherIcon: _privacy ? Icons.gavel_rounded : Icons.privacy_tip_outlined,
+          onOther: () => _switchDoc(!_privacy),
           email: email.isEmpty ? null : email,
           onEmail: email.isEmpty ? null : () => _email(email),
           onCopyLink: terms.url.isEmpty ? null : () => _copyLink(terms.url),
@@ -329,8 +350,6 @@ class _TermsScreenState extends State<TermsScreen> {
           key: _viewport,
           controller: _scroll,
           slivers: [
-            padded(hero, top: 8, bottom: highlights != null ? 16 : (showChips ? 8 : 24)),
-            if (highlights != null) padded(highlights, bottom: showChips ? 8 : 24),
             if (showChips)
               SliverPersistentHeader(
                 pinned: true,
@@ -343,7 +362,8 @@ class _TermsScreenState extends State<TermsScreen> {
                   ),
                 ),
               ),
-            padded(cards, top: showChips ? 8 : 0),
+            padded(rows, top: AppSpace.md),
+            if (highlights != null) padded(highlights, top: AppSpace.lg),
             padded(footer, top: 24, bottom: canAsk && !wide ? 104 : 40),
           ],
         ),
@@ -359,12 +379,16 @@ class _TermsScreenState extends State<TermsScreen> {
           bottom: 0,
           width: _tocWidth,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.only(top: 24, bottom: 24),
-            child: ReadingTocList(
-              titles: titles,
-              active: _active,
-              onTap: _jump,
-              footer: canAsk ? ReadingAskCard(onAsk: _ask, compact: true) : null,
+            padding: const EdgeInsets.only(top: AppSpace.md, bottom: AppSpace.lg),
+            // the side card: the section index
+            child: AppCard(
+              padding: const EdgeInsets.all(AppSpace.sm),
+              child: ReadingTocList(
+                titles: titles,
+                active: _active,
+                onTap: _jump,
+                footer: canAsk ? ReadingAskCard(onAsk: _ask, compact: true) : null,
+              ),
             ),
           ),
         ),
@@ -377,6 +401,31 @@ class _TermsScreenState extends State<TermsScreen> {
         end: 16,
         bottom: 16,
         child: AskAboutPageChip(onTap: _ask, expanded: _chipOpen),
+      ),
+    ]);
+  }
+}
+
+/// One section of a legal document: its glyph in the area tint, the title and the text (reading typography).
+class _LegalRow extends StatelessWidget {
+  const _LegalRow({required this.icon, required this.title, required this.body});
+
+  final IconData icon;
+  final String title, body;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      AppIconBox(icon: icon),
+      const SizedBox(width: AppSpace.md),
+      Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Semantics(header: true, child: Text(title, style: AppType.section(context))),
+          if (body.trim().isNotEmpty) ...[
+            AppSpace.gapXs,
+            ReadingBody(text: body),
+          ],
+        ]),
       ),
     ]);
   }

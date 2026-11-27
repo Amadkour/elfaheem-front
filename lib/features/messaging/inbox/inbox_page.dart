@@ -24,11 +24,14 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/app_digits.dart';
+import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart' show MyAuthProvider;
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart' show T2Scope;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
@@ -442,8 +445,12 @@ class _InboxPageState extends State<InboxPage> {
         final hasInbox = tabs.any((t) => t != InboxTab.notifications);
         final inbox = hasInbox ? _ensureInbox() : null;
         final unread = _unread(context);
-        return BasePage(
-          useWebCard: true,
+        // a student's inbox (redesign S-C, Stu1Comm?screen=inbox): the chat area, the count in a hero that holds the tabs
+        final student = _role() == 'student' && !_orgScoped;
+        // a teacher's inbox (redesign T1, Tea1Home?screen=inbox): the teacher hero with one line, the tabs under it
+        final teacher = _role() == 'teacher' && !_orgScoped;
+        final page = BasePage(
+          useWebCard: !student && !teacher,
           width: AppWidth.wide,
           appBar: ScreenAppBar(helpPageId: 'inbox', 
             title: widget.title ?? 'inbox_title'.tr,
@@ -452,7 +459,55 @@ class _InboxPageState extends State<InboxPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (tabs.length > 1)
+              if (student)
+                ListenableBuilder(
+                  listenable: inbox ?? Listenable.merge(const []),
+                  builder: (context, _) => ScInboxHero(
+                    waiting: inbox?.countOf(InboxSegment.todo) ?? 0,
+                    late: inbox?.overdue ?? 0,
+                    tabs: tabs.length > 1
+                        ? AppTabs(
+                            expand: true,
+                            index: tabs.indexOf(tab),
+                            onChanged: (i) => setState(() => _tab = tabs[i]),
+                            items: [
+                              for (final t in tabs)
+                                AppTabItem(inboxTabLabel(t),
+                                    count: switch (t) {
+                                      InboxTab.todo => inbox?.countOf(InboxSegment.todo),
+                                      InboxTab.notifications => unread,
+                                      _ => null,
+                                    }),
+                            ],
+                          )
+                        : null,
+                  ),
+                )
+              else if (teacher) ...[
+                T1InboxHero(title: widget.title ?? 'inbox_title'.tr),
+                if (tabs.length > 1)
+                  ListenableBuilder(
+                    listenable: inbox ?? Listenable.merge(const []),
+                    builder: (context, _) => Padding(
+                      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xs),
+                      child: AppTabs(
+                        expand: true,
+                        index: tabs.indexOf(tab),
+                        onChanged: (i) => setState(() => _tab = tabs[i]),
+                        items: [
+                          for (final t in tabs)
+                            AppTabItem(inboxTabLabel(t),
+                                count: switch (t) {
+                                  InboxTab.todo => inbox?.countOf(InboxSegment.todo),
+                                  InboxTab.notifications => unread,
+                                  _ => null,
+                                }),
+                        ],
+                      ),
+                    ),
+                  ),
+              ]
+              else if (tabs.length > 1)
                 ListenableBuilder(
                   listenable: inbox ?? Listenable.merge(const []),
                   builder: (context, _) => InboxTabBar(
@@ -483,7 +538,43 @@ class _InboxPageState extends State<InboxPage> {
             ],
           ),
         );
+        if (teacher) return T2Scope(child: page);
+        return student ? AppAreaScope(area: AppArea.chat, child: page) : page;
       },
     );
+  }
+}
+
+/// A teacher's inbox head (plain values): "Inbox" and what it holds, in the teacher hero.
+class T1InboxHero extends StatelessWidget {
+  const T1InboxHero({super.key, required this.title});
+  final String title;
+
+  @override
+  Widget build(BuildContext context) => AppHero(overlap: false, wipe: false, title: title, subtitle: 't1_hm_inbox_sub'.tr);
+}
+
+/// A student's inbox head (plain values): "4 things wait for you, one is late", the tabs on the hero.
+class ScInboxHero extends StatelessWidget {
+  const ScInboxHero({super.key, required this.waiting, required this.late, this.tabs});
+  final int waiting;
+  final int late;
+  final Widget? tabs;
+
+  @override
+  Widget build(BuildContext context) {
+    final title = waiting == 0
+        ? 'sc_inbox_all_done'.tr
+        : countText(waiting,
+                ar1: 'شي واحد ينتظرك',
+                ar2: 'شيئين ينتظرونك',
+                arFew: '{n} أشياء تنتظرك',
+                arMany: '{n} شي ينتظرك',
+                en1: '1 thing waits for you',
+                en: '{n} things wait for you') +
+            (late == 0
+                ? ''
+                : '${(AppConfig.lang == 'ar' ? '، ' : ', ')}${countText(late, ar1: 'وحدة متأخرة', ar2: 'ثنتين متأخرة', arFew: '{n} متأخرة', en1: 'one is late', en: '{n} are late')}');
+    return AppHero(overlap: false, wipe: false, title: appDigits(title), bottom: tabs);
   }
 }

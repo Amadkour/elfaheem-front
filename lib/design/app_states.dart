@@ -16,7 +16,7 @@
 // ApiException is never printed (its toString looks like a stack trace): the generic ds_error_body text is shown.
 library;
 
-import 'dart:math' as math;
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
@@ -24,12 +24,13 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/offline/sync/offline_reads.dart' show needsConnectionText;
 
+import 'app_area.dart';
 import 'app_badges.dart';
 import 'app_blocks.dart';
 import 'app_buttons.dart';
-import 'app_gradients.dart' show AppGradientIcon;
 import 'app_kit.dart' show AppListSkeleton, AppShimmer, AppSkeletonBox;
 import 'app_motion_kit.dart';
+import 'app_responsive.dart' show Breakpoints;
 import 'app_tokens.dart';
 
 /// The text to show for a failed load: an [ApiException]'s own (safe) message, else the generic one.
@@ -42,155 +43,65 @@ String appErrorMessage(Object? error) {
 // The plate: the one drawn illustration of the empty and error states
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// A small vector plate for an empty or failed state: a tinted block (a round of the tone) with two sheets of
-/// paper on it, the front one carrying [icon] and three faint text lines — "a page with nothing written on it yet".
-/// Pure CustomPaint in the theme's colours, no stock art, no emoji; it settles in once (AppPopIn, from 0.96, never
-/// from nothing) and is still under Reduce motion.
+/// The plate of an empty or failed state (KIT_SPEC §5.9): a 120 × 96 tinted plate with three round corners and one
+/// tight one ([AppRadius.plate]), the [icon] large in the matching ink. Under an area / role scope it takes the
+/// scope's tint; otherwise the block [tone] (or [fill] / [ink] when given). It pops in once (AppPop) and is still
+/// under Reduce motion.
 class AppStatePlate extends StatelessWidget {
-  const AppStatePlate({super.key, required this.icon, this.tone = AppBlockTone.peach, this.accent, this.size = 120});
+  const AppStatePlate({
+    super.key,
+    required this.icon,
+    this.tone = AppBlockTone.peach,
+    this.accent,
+    this.size = 120,
+    this.fill,
+    this.ink,
+  });
 
   final IconData icon;
 
-  /// The block tone behind the sheets (peach for empty states; a failed load passes [accent] = danger).
+  /// The plate's block tone when there is no area scope (a category keeps its tone).
   final AppBlockTone tone;
 
-  /// The icon's colour and the chip under it: the primary by default, the danger tone on an error plate.
+  /// The icon's colour (kept for existing callers; [ink] wins).
   final Color? accent;
 
   /// The plate's width; its height is 4 : 5 of it.
   final double size;
 
-  /// The icon's chip on the front sheet, as a share of [size].
-  static const double _chipScale = 0.3;
+  /// The plate's fill and the icon's ink, when the caller knows them (error, offline).
+  final Color? fill, ink;
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    final block = AppBlockColors.of(context, tone);
-    final ink = accent ?? c.primary;
-    final chip = size * _chipScale;
-    final tint = appTintOn(context, ink, surface: c.cardBg);
-    final rtl = Directionality.of(context) == TextDirection.rtl;
+    final scoped = AppAreaScope.areaOf(context) != null || AppAreaScope.roleOf(context) != null;
+    final Color bg;
+    final Color fg;
+    if (fill != null) {
+      bg = fill!;
+      fg = ink ?? accent ?? context.colors.textDark;
+    } else if (scoped) {
+      final set = AppAreaScope.of(context);
+      bg = set.tint;
+      fg = ink ?? set.ink;
+    } else {
+      final block = AppBlockColors.of(context, tone);
+      bg = block.surface;
+      fg = ink ?? (accent == null ? block.ink : appInkOn(context, accent!, block.surface));
+    }
     return ExcludeSemantics(
-      child: AppPopIn(
-        from: 0.96,
-        child: SizedBox(
+      child: AppPop(
+        group: 'plate',
+        child: Container(
           width: size,
           height: size * 0.8,
-          child: Stack(alignment: Alignment.center, children: [
-            Positioned.fill(
-              child: CustomPaint(
-                painter: _PlatePainter(
-                  block: block.surface,
-                  paper: c.cardBg,
-                  line: c.divider,
-                  faint: Color.lerp(c.divider, c.textLight, c.isDark ? 0.25 : 0.1)!,
-                  chip: tint,
-                  chipSize: chip,
-                  rtl: rtl,
-                ),
-              ),
-            ),
-            // the icon sits on the chip the painter drew, at the sheet's top-start corner
-            Align(
-              alignment: const AlignmentDirectional(_PlatePainter.chipAlignX, _PlatePainter.chipAlignY),
-              // D-650 r3: the brand plate's glyph wears the gradient; an error plate keeps its danger ink
-              child: accent == null
-                  ? AppGradientIcon(icon, size: chip * 0.55, on: [Color.alphaBlend(tint, c.cardBg)])
-                  : Icon(icon, size: chip * 0.55, color: appInkOn(context, ink, tint)),
-            ),
-          ]),
+          decoration: BoxDecoration(color: bg, borderRadius: AppRadius.plate),
+          alignment: Alignment.center,
+          child: Icon(icon, size: AppIconSize.hero, color: fg),
         ),
       ),
     );
   }
-}
-
-class _PlatePainter extends CustomPainter {
-  const _PlatePainter({
-    required this.block,
-    required this.paper,
-    required this.line,
-    required this.faint,
-    required this.chip,
-    required this.chipSize,
-    required this.rtl,
-  });
-
-  final Color block, paper, line, faint, chip;
-  final double chipSize;
-  final bool rtl;
-
-  /// Where the icon chip sits (AlignmentDirectional coordinates, so the widget layer can put the icon on it).
-  static const double chipAlignX = -0.42;
-  static const double chipAlignY = -0.26;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width, h = size.height;
-    if (rtl) {
-      // the plate reads from the start: mirror the whole drawing for Arabic
-      canvas.translate(w, 0);
-      canvas.scale(-1, 1);
-    }
-    // the tinted round behind everything: a block, off-centre, larger than the sheets
-    final round = Rect.fromCenter(center: Offset(w * 0.5, h * 0.52), width: w * 0.86, height: h * 0.96);
-    canvas.drawRRect(RRect.fromRectAndRadius(round, Radius.circular(w * 0.2)), Paint()..color = block);
-
-    final sheet = Rect.fromLTWH(w * 0.2, h * 0.12, w * 0.6, h * 0.8);
-    final radius = Radius.circular(w * 0.07);
-    final hairline = Paint()
-      ..color = line
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = AppBorder.hairline;
-
-    // the back sheet, turned a little
-    canvas.save();
-    canvas.translate(sheet.center.dx, sheet.center.dy);
-    canvas.rotate(-math.pi / 28);
-    canvas.translate(-sheet.center.dx + w * 0.07, -sheet.center.dy - h * 0.03);
-    final backRect = RRect.fromRectAndRadius(sheet, radius);
-    canvas.drawRRect(backRect, Paint()..color = paper);
-    canvas.drawRRect(backRect, hairline);
-    canvas.restore();
-
-    // the front sheet
-    final front = RRect.fromRectAndRadius(sheet, radius);
-    canvas.drawRRect(front, Paint()..color = paper);
-    canvas.drawRRect(front, hairline);
-
-    // the chip the icon sits on (top-start of the sheet)
-    // Alignment(x, y) centres a child of size s at (w + x · (w − s)) / 2
-    final cx = w * 0.5 + chipAlignX * (w * 0.5 - chipSize / 2);
-    final cy = h * 0.5 + chipAlignY * (h * 0.5 - chipSize / 2);
-    final chipRect = Rect.fromCenter(center: Offset(cx, cy), width: chipSize, height: chipSize);
-    canvas.drawRRect(RRect.fromRectAndRadius(chipRect, Radius.circular(chipSize * 0.3)), Paint()..color = chip);
-
-    // three faint lines of "text" under it, the last one shorter
-    final linePaint = Paint()
-      ..color = faint
-      ..strokeCap = StrokeCap.round
-      ..strokeWidth = math.max(2, h * 0.035);
-    final x0 = sheet.left + w * 0.09;
-    final x1 = sheet.right - w * 0.09;
-    final y0 = chipRect.bottom + h * 0.12;
-    final step = h * 0.11;
-    for (var i = 0; i < 3; i++) {
-      final y = y0 + i * step;
-      final end = i == 2 ? x0 + (x1 - x0) * 0.55 : x1;
-      canvas.drawLine(Offset(x0, y), Offset(end, y), linePaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_PlatePainter o) =>
-      o.block != block ||
-      o.paper != paper ||
-      o.line != line ||
-      o.faint != faint ||
-      o.chip != chip ||
-      o.chipSize != chipSize ||
-      o.rtl != rtl;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -219,29 +130,71 @@ class AppEmpty extends StatelessWidget {
   /// The plate's block tone (a category keeps its tone: `AppBlockTone.forKey(id)`).
   final AppBlockTone tone;
 
-  /// The widest the text block gets (a comfortable measure for a two-line sentence).
-  static const double _measure = 360;
+  /// The widest the message gets (a comfortable measure for a two-line sentence).
+  static const double _measure = 300;
+
+  @override
+  Widget build(BuildContext context) => AppStateLayout(
+        plate: AppStatePlate(icon: icon, tone: tone),
+        title: title,
+        message: message,
+        action: actionLabel != null && onAction != null
+            ? (bool phone) => AppButton.primary(label: actionLabel!, onPressed: onAction, expand: phone)
+            : null,
+        measure: _measure,
+      );
+}
+
+/// The shared layout of the empty, error and success states (KIT_SPEC §5.9): the plate, the title in the section
+/// role, the message in body text at most [measure] wide, and the one action: full width on phones, hugging its
+/// label from 700 px. Centred in the free height; scrolls inside a box shorter than itself.
+class AppStateLayout extends StatelessWidget {
+  const AppStateLayout({
+    super.key,
+    required this.plate,
+    required this.title,
+    this.message,
+    this.action,
+    this.secondary,
+    this.measure = 300,
+    this.titleStyle,
+  });
+
+  final Widget plate;
+  final String title;
+  final String? message;
+
+  /// Built with `phone` (true below 700 px).
+  final Widget Function(bool phone)? action;
+  final Widget? secondary;
+  final double measure;
+  final TextStyle? titleStyle;
 
   @override
   Widget build(BuildContext context) {
-    // in a box shorter than itself (a table's body on a small phone with large text) it scrolls instead of overflowing
+    final phone = MediaQuery.sizeOf(context).width < Breakpoints.mobile;
+    final msg = message;
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg, vertical: AppSpace.xl),
+        padding: EdgeInsets.symmetric(horizontal: phone ? AppSpace.md : AppSpace.lg, vertical: AppSpace.xl),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: _measure),
+          constraints: BoxConstraints(maxWidth: phone ? double.infinity : AppWidth.form.max),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            AppStatePlate(icon: icon, tone: tone),
+            plate,
             const SizedBox(height: AppSpace.lg),
-            Text(title, textAlign: TextAlign.center, style: AppType.section(context)),
-            if (message != null && message!.isNotEmpty) ...[
+            Text(title, textAlign: TextAlign.center, style: titleStyle ?? AppType.section(context)),
+            if (msg != null && msg.isNotEmpty) ...[
               const SizedBox(height: AppSpace.xs),
-              Text(message!, textAlign: TextAlign.center, style: AppType.body(context)),
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: measure),
+                child: Text(msg, textAlign: TextAlign.center, style: AppType.body(context)),
+              ),
             ],
-            if (actionLabel != null && onAction != null) ...[
+            if (action != null) ...[
               const SizedBox(height: AppSpace.lg),
-              AppButton.primary(label: actionLabel!, onPressed: onAction),
+              phone ? SizedBox(width: double.infinity, child: action!(true)) : action!(false),
             ],
+            if (secondary != null) ...[const SizedBox(height: AppSpace.xs), secondary!],
           ]),
         ),
       ),
@@ -260,13 +213,18 @@ class AppNeedsConnection extends StatelessWidget {
   Widget build(BuildContext context) => Semantics(
         liveRegion: true,
         container: true,
-        child: AppEmpty(
+        child: AppStateLayout(
           key: const ValueKey('app.needsConnection'),
-          icon: Icons.cloud_off_rounded,
+          plate: Builder(builder: (context) {
+            final warn = context.colors.kit.warn;
+            return AppStatePlate(icon: Icons.cloud_off_rounded, fill: warn.tint, ink: warn.ink);
+          }),
           title: AppConfig.lang == 'ar' ? 'لا يوجد اتصال' : 'You are offline',
           message: needsConnectionText(),
-          actionLabel: onRetry == null ? null : (AppConfig.lang == 'ar' ? 'أعد المحاولة' : 'Try again'),
-          onAction: onRetry,
+          action: onRetry == null
+              ? null
+              : (phone) => AppButton.secondary(
+                  label: AppConfig.lang == 'ar' ? 'أعد المحاولة' : 'Try again', onPressed: onRetry, expand: phone),
         ),
       );
 }
@@ -325,27 +283,106 @@ class AppErrorState extends StatelessWidget {
         ),
       );
     }
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg, vertical: AppSpace.xl),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: _measure),
-          child: Semantics(
-            liveRegion: true,
-            container: true,
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              AppStatePlate(icon: Icons.cloud_off_rounded, tone: AppBlockTone.paper, accent: c.danger),
-              const SizedBox(height: AppSpace.lg),
-              Text(head, textAlign: TextAlign.center, style: AppType.section(context)),
-              const SizedBox(height: AppSpace.xs),
-              Text(body, textAlign: TextAlign.center, style: AppType.body(context)),
-              if (onRetry != null) ...[
-                const SizedBox(height: AppSpace.lg),
-                AppButton.primary(label: 'retry'.tr, icon: Icons.refresh_rounded, onPressed: onRetry),
-              ],
-            ]),
+    final err = c.kit.error;
+    return Semantics(
+      liveRegion: true,
+      container: true,
+      child: AppStateLayout(
+        plate: AppStatePlate(icon: Icons.cloud_off_rounded, fill: err.tint, ink: err.color),
+        title: head,
+        message: body,
+        measure: _measure,
+        action: onRetry == null
+            ? null
+            : (phone) =>
+                AppButton.secondary(label: 'retry'.tr, icon: Icons.refresh_rounded, onPressed: onRetry, expand: phone),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Success
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// A finished step (KIT_SPEC §5.9): a 96 px circle in the ok tint with the drawn tick (it pops in), the title in the
+/// page-title role, a message, ONE primary action and an optional [secondary] (an AppButton.ghost) under it.
+/// [burst] fires the confetti once from the circle's centre, 150 ms after the tick starts (student areas only).
+class AppSuccess extends StatefulWidget {
+  const AppSuccess({
+    super.key,
+    required this.title,
+    this.message,
+    this.actionLabel,
+    this.onAction,
+    this.burst,
+    this.secondary,
+  });
+
+  final String title;
+  final String? message;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+  final BurstMoment? burst;
+  final Widget? secondary;
+
+  /// The circle's size.
+  static const double circle = 96;
+
+  /// When the burst fires: the tick starts 700 ms in, the burst 150 ms after it.
+  static const Duration burstAt = Duration(milliseconds: 850);
+
+  @override
+  State<AppSuccess> createState() => _AppSuccessState();
+}
+
+class _AppSuccessState extends State<AppSuccess> {
+  final GlobalKey _anchor = GlobalKey();
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.burst != null) {
+      _timer = Timer(AppSuccess.burstAt, () {
+        final ctx = _anchor.currentContext;
+        if (mounted && ctx != null) AppBurst.fire(ctx, widget.burst!, anchor: _anchor);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ok = context.colors.kit.ok;
+    final w = widget;
+    return Semantics(
+      liveRegion: true,
+      container: true,
+      child: AppStateLayout(
+        plate: AppPop(
+          group: 'success',
+          child: Container(
+            key: _anchor,
+            width: AppSuccess.circle,
+            height: AppSuccess.circle,
+            decoration: BoxDecoration(color: ok.tint, shape: BoxShape.circle),
+            alignment: Alignment.center,
+            child: AppInkCheck(size: AppSuccess.circle * .75, color: ok.ink),
           ),
         ),
+        title: w.title,
+        titleStyle: AppType.pageTitle(context),
+        message: w.message,
+        action: w.actionLabel != null && w.onAction != null
+            ? (phone) => AppButton.primary(label: w.actionLabel!, onPressed: w.onAction, expand: phone)
+            : null,
+        secondary: w.secondary,
       ),
     );
   }
@@ -391,11 +428,12 @@ class AppLoadingState extends StatelessWidget {
 
   Widget _card(BuildContext context, {bool tall = false}) {
     final c = context.colors;
+    final width = MediaQuery.sizeOf(context).width;
     return Container(
-      padding: AppSpace.card,
+      padding: width < Breakpoints.mobile ? AppSpace.card : AppSpace.cardWide,
       decoration: BoxDecoration(
         color: c.cardBg,
-        borderRadius: AppRadius.cardAll,
+        borderRadius: BorderRadius.circular(AppRadius.cardFor(width)),
         border: Border.all(color: c.divider, width: AppBorder.hairline),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [

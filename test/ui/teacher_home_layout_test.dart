@@ -3,12 +3,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/design/home_kit.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppStatCard;
-import 'package:flutter_education_app/design/home_a2.dart' show HomeCaughtUp;
 import 'package:flutter_education_app/features/messaging/inbox/unified_inbox.dart' show InboxEntry;
 import 'package:flutter_education_app/features/courses/teacher/component/teacher_stats.dart';
 import 'package:flutter_education_app/features/home/teacher/go_live_sheet.dart' show GoLiveButton;
 import 'package:flutter_education_app/features/home/teacher/home_screen.dart';
+import 'package:flutter_education_app/features/home/teacher/t1_home_parts.dart' show T1FirstSteps, T1Figure;
 import 'package:flutter_education_app/features/home/teacher/teacher_home_extra.dart';
 import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
 import 'package:flutter_education_app/features/home/teacher/schedules/schedules_screen.dart';
@@ -184,13 +183,13 @@ void main() {
     await tester.pumpWidget(layoutHost(body(schedule: schedule, pending: const {'grading': 4})));
     await tester.pump(const Duration(seconds: 1));
     expect(find.byKey(const ValueKey('home.queue')), findsOneWidget);
-    expect(find.byType(AppStatCard), findsNWidgets(4));
+    expect(find.byType(T1Figure), findsNWidgets(4));
     expect(find.byType(HomeDayRibbon), findsNothing, reason: 'Today is compact: lines, no ribbon');
-    // nothing waits, a free day, no course: the queue is still a card ("You're all caught up"), never a bare title
+    // nothing waits, a free day, no course: the queue is still a card (the three first steps), never a bare title
     await tester.pumpWidget(layoutHost(body(greeting: const TeacherGreeting(name: 'A', helpPageId: null))));
     await tester.pump(const Duration(seconds: 1));
     expect(find.byKey(const ValueKey('home.queue')), findsOneWidget);
-    expect(find.byType(HomeCaughtUp), findsOneWidget);
+    expect(find.byType(T1FirstSteps), findsOneWidget, reason: "no course yet: the three first steps");
     await tester.pumpWidget(const SizedBox());
   });
 

@@ -18,6 +18,7 @@ library;
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart' show Trans;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_icons.dart' show DirIcons;
@@ -26,7 +27,7 @@ import 'package:flutter_education_app/core/plural.dart' show daysText;
 
 import '../org/org_v3.dart' show orgCall, orgErrorText;
 import 'admin_common.dart' show asMap, t;
-import 'admin_page.dart';
+import 'sup/sup_kit.dart';
 
 const kUsernameStatsFeatureKey = 'admin.username_stats';
 const kUsernameStatsPath = '/api/v1/admin/usernames/stats';
@@ -220,14 +221,13 @@ class _AdminUsernameStatsPageState extends State<AdminUsernameStatsPage> {
         ]),
       );
     }
-    return AdminPage(
-      width: AppWidth.wide,
-      title: title,
-      subtitle: t('هل يستخدم الناس اسم المستخدم الاختياري؟', 'Are people using the optional @username?'),
-      icon: Icons.alternate_email_rounded,
-      onRefresh: _loading ? null : _load,
-      body: body,
-    );
+    return SupPage(
+        kicker: 'a2_recs_kicker'.tr, headline: title,
+        width: AppWidth.wide,
+        title: title,
+        onRefresh: _loading ? null : _load,
+        body: body,
+      );
   }
 }
 

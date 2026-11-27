@@ -33,6 +33,7 @@ import '../../features/admin/admin_dashboard_screen.dart' deferred as admin_dash
 import '../../features/admin/admin_entity_manage.dart' deferred as admin_entity_manage;
 import '../../features/admin/app_releases/app_release_detail.dart' deferred as app_release_detail;
 import '../../features/admin/app_releases/app_releases_page.dart' deferred as app_releases_page;
+import '../../design/gallery/kit_gallery_page.dart' deferred as kit_gallery;
 import '../../design/master_detail/entity_detail_page.dart' deferred as entity_page;
 import '../../features/org/org_academic_pages.dart' deferred as org_academic;
 import '../../features/org/org_access_joining.dart' deferred as org_access_joining;
@@ -411,6 +412,10 @@ Widget deferredOrgReceivedReports() =>
 
 Widget deferredAppReleases() =>
     DeferredPage(id: 'app_releases_page', load: app_releases_page.loadLibrary, builder: (_) => app_releases_page.AppReleasesPage());
+
+/// The redesign kit's component gallery (`/kit_gallery`, KIT_SPEC 7.1).
+Widget deferredKitGallery() =>
+    DeferredPage(id: 'kit_gallery', load: kit_gallery.loadLibrary, builder: (_) => kit_gallery.KitGalleryPage());
 
 Widget deferredAppReleaseDetail(int id) =>
     DeferredPage(id: 'app_release_detail', load: app_release_detail.loadLibrary, builder: (_) => app_release_detail.AppReleaseDetailPage(id: id));

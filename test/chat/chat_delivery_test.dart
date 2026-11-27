@@ -32,7 +32,8 @@ class FakeServer extends ChatApi {
   List<ChatMessage> Function(int? after)? pageAfter;
 
   @override
-  Future<ChatMessage> send(int id, {required String clientId, String? body, List<int> attachmentIds = const [], int? replyToId}) async {
+  Future<ChatMessage> send(int id, {required String clientId, String? body, List<int> attachmentIds = const [], int? replyToId,
+      void Function(int conversationId)? onRedirect}) async {
     onSend?.call();
     _inFlight++;
     if (_inFlight > maxConcurrent) maxConcurrent = _inFlight;

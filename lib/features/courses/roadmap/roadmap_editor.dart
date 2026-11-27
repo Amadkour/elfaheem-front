@@ -17,20 +17,20 @@ import 'package:flutter_education_app/features/courses/roadmap/roadmap_api.dart'
 
 /// Opens the editor for [roadmap]; returns the saved roadmap, null when closed without saving.
 Future<Roadmap?> showRoadmapEditor(BuildContext context, {required int courseId, required Roadmap roadmap, RoadmapApi api = const RoadmapApi()}) =>
-    showAppSheet<Roadmap>(context, mode: AppSheetMode.side, (_) => _RoadmapEditorSheet(courseId: courseId, roadmap: roadmap, api: api));
+    showAppSheet<Roadmap>(context, mode: AppSheetMode.side, (_) => RoadmapEditorSheet(courseId: courseId, roadmap: roadmap, api: api));
 
-class _RoadmapEditorSheet extends StatefulWidget {
-  const _RoadmapEditorSheet({required this.courseId, required this.roadmap, required this.api});
+class RoadmapEditorSheet extends StatefulWidget {
+  const RoadmapEditorSheet({super.key, required this.courseId, required this.roadmap, required this.api});
 
   final int courseId;
   final Roadmap roadmap;
   final RoadmapApi api;
 
   @override
-  State<_RoadmapEditorSheet> createState() => _RoadmapEditorSheetState();
+  State<RoadmapEditorSheet> createState() => _RoadmapEditorSheetState();
 }
 
-class _RoadmapEditorSheetState extends State<_RoadmapEditorSheet> {
+class _RoadmapEditorSheetState extends State<RoadmapEditorSheet> {
   List<RmCourse>? _candidates;
   RoadmapDraft? _draft;
   String? _error;
@@ -61,7 +61,7 @@ class _RoadmapEditorSheetState extends State<_RoadmapEditorSheet> {
     final picked = await showAppSheet<RmCourse>(
       context,
       (_) => _CoursePicker(
-        title: prereq ? t('إضافة متطلب سابق', 'Add a prerequisite') : t('إضافة كورس تالٍ', 'Add a next course'),
+        title: prereq ? t('أضف متطلب', 'Add a requirement') : t('أضف دورة بعدها', 'Add a course after it'),
         courses: d.available(_candidates ?? const []),
       ),
     );
@@ -91,12 +91,13 @@ class _RoadmapEditorSheetState extends State<_RoadmapEditorSheet> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        AppSheetHeader(t('تعديل المسار', 'Edit path')),
+        AppSheetHeader(t('مسار التعلّم', 'Learning path')),
         Flexible(
           child: d != null
               ? RoadmapEditorForm(
                   draft: d,
                   canAdd: d.available(_candidates ?? const []).isNotEmpty,
+                  course: widget.roadmap.course,
                   onAddNext: () => _pick(prereq: false),
                   onAddPrereq: () => _pick(prereq: true),
                   onChanged: () => setState(() {}),
@@ -108,7 +109,7 @@ class _RoadmapEditorSheetState extends State<_RoadmapEditorSheet> {
         if (d != null)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-            child: AppPrimaryButton(label: t('حفظ', 'Save'), icon: Icons.check_rounded, busy: _saving, onPressed: _save),
+            child: AppPrimaryButton(label: t('حفظ المسار', 'Save the path'), icon: Icons.check_rounded, busy: _saving, onPressed: _save),
           ),
       ],
     );
@@ -124,93 +125,150 @@ class RoadmapEditorForm extends StatefulWidget {
     required this.onAddPrereq,
     required this.onChanged,
     this.canAdd = true,
+    this.course,
   });
 
   final RoadmapDraft draft;
   final VoidCallback onAddNext, onAddPrereq, onChanged;
   final bool canAdd;
 
+  /// This course: drawn between what comes before and after it (null: left out).
+  final RmCourse? course;
+
   @override
   State<RoadmapEditorForm> createState() => _RoadmapEditorFormState();
 }
 
 class _RoadmapEditorFormState extends State<RoadmapEditorForm> {
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
+  Widget _nextColumn(BuildContext context) {
     final d = widget.draft;
     final full = d.next.length >= RoadmapDraft.maxCourses;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      _Head(
+        title: t('الدورات بعدها', 'Courses after it'),
+        subtitle: t('بالترتيب الذي يدرسه الطالب. اسحب لإعادة الترتيب.', 'In the order a student takes them. Drag to reorder.'),
+      ),
+      if (d.next.isEmpty)
+        _Hint(t('لا دورات بعدها بعد', 'No courses after it yet'))
+      else
+        ReorderableListView(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          buildDefaultDragHandles: false,
+          onReorderItem: (a, b) {
+            d.moveNext(a, b);
+            widget.onChanged();
+          },
+          children: [
+            for (var i = 0; i < d.next.length; i++)
+              _CourseRow(
+                key: ValueKey('next-${d.next[i].id}'),
+                index: i,
+                course: d.next[i],
+                leading: Text('${i + 1}', style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, fontFeatures: const [FontFeature.tabularFigures()])),
+                draggable: d.next.length > 1,
+                onMoveUp: i > 0
+                    ? () {
+                        d.moveNext(i, i - 1);
+                        widget.onChanged();
+                      }
+                    : null,
+                onMoveDown: i < d.next.length - 1
+                    ? () {
+                        d.moveNext(i, i + 1);
+                        widget.onChanged();
+                      }
+                    : null,
+                onRemove: () {
+                  d.next.removeAt(i);
+                  widget.onChanged();
+                },
+              ),
+          ],
+        ),
+      _AddButton(
+        label: t('أضف دورة بعدها', 'Add a course after it'),
+        onTap: widget.canAdd && !full ? widget.onAddNext : null,
+      ),
+    ]);
+  }
+
+  Widget _prereqColumn(BuildContext context) {
+    final c = context.colors;
+    final d = widget.draft;
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      _Head(
+        title: t('المتطلبات قبلها', 'Requirements before it'),
+        subtitle: t('يراها الطالب مكتملة أو لا. لا تمنع الاشتراك.', 'Students see whether they are done. They never block enrolling.'),
+      ),
+      for (var i = 0; i < d.prereqs.length; i++)
+        _CourseRow(
+          key: ValueKey('pre-${d.prereqs[i].id}'),
+          course: d.prereqs[i],
+          leading: Icon(Icons.link_rounded, size: AppIconSize.md, color: c.textMedium),
+          onRemove: () {
+            d.prereqs.removeAt(i);
+            widget.onChanged();
+          },
+        ),
+      if (d.prereqs.isEmpty) _Hint(t('بدون متطلبات', 'None')),
+      _AddButton(
+        label: t('أضف متطلب', 'Add a requirement'),
+        onTap: widget.canAdd && d.prereqs.length < RoadmapDraft.maxCourses ? widget.onAddPrereq : null,
+      ),
+    ]);
+  }
+
+  /// This course, between what comes before and after it.
+  Widget _centerNode(BuildContext context) {
+    final c = context.colors;
+    final course = widget.course;
+    if (course == null) return const SizedBox.shrink();
+    final ink = appInkOnFill(context, c.primary);
+    return Container(
+      padding: const EdgeInsets.all(AppSpace.md),
+      decoration: BoxDecoration(color: c.primary, borderRadius: AppRadius.cardAll),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        Icon(Icons.fact_check_outlined, size: AppIconSize.lg, color: ink),
+        AppSpace.gapXs,
+        Text(course.name, textAlign: TextAlign.center, maxLines: 3, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: ink)),
+        Text(t('هذه الدورة', 'This course'), textAlign: TextAlign.center, style: AppType.meta(context).copyWith(color: ink.withValues(alpha: 0.85))),
+      ]),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final d = widget.draft;
     return ListView(
       shrinkWrap: true,
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xs),
       children: [
-        _Head(
-          title: t('الكورسات التالية', 'Next courses'),
-          subtitle: t('بالترتيب الذي يدرسه الطالب. اسحب لإعادة الترتيب.', 'In the order a student takes them. Drag to reorder.'),
-        ),
-        if (d.next.isEmpty)
-          _Hint(t('لا كورسات تالية بعد', 'No next courses yet'))
-        else
-          ReorderableListView(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            buildDefaultDragHandles: false,
-            onReorderItem: (a, b) {
-              d.moveNext(a, b);
-              widget.onChanged();
-            },
-            children: [
-              for (var i = 0; i < d.next.length; i++)
-                _CourseRow(
-                  key: ValueKey('next-${d.next[i].id}'),
-                  index: i,
-                  course: d.next[i],
-                  leading: Text('${i + 1}', style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, fontFeatures: const [FontFeature.tabularFigures()])),
-                  draggable: d.next.length > 1,
-                  onMoveUp: i > 0
-                      ? () {
-                          d.moveNext(i, i - 1);
-                          widget.onChanged();
-                        }
-                      : null,
-                  onMoveDown: i < d.next.length - 1
-                      ? () {
-                          d.moveNext(i, i + 1);
-                          widget.onChanged();
-                        }
-                      : null,
-                  onRemove: () {
-                    d.next.removeAt(i);
-                    widget.onChanged();
-                  },
-                ),
-            ],
-          ),
-        _AddButton(
-          label: t('إضافة كورس تالٍ', 'Add a next course'),
-          onTap: widget.canAdd && !full ? widget.onAddNext : null,
-        ),
-        const SizedBox(height: 16),
-        _Head(
-          title: t('المتطلبات السابقة', 'Prerequisites'),
-          subtitle: t('يراها الطالب مكتملة أو لا. لا تمنع الاشتراك.', 'Students see whether they are done. They never block enrolling.'),
-        ),
-        for (var i = 0; i < d.prereqs.length; i++)
-          _CourseRow(
-            key: ValueKey('pre-${d.prereqs[i].id}'),
-            course: d.prereqs[i],
-            leading: Icon(Icons.link_rounded, size: 18, color: c.textMedium),
-            onRemove: () {
-              d.prereqs.removeAt(i);
-              widget.onChanged();
-            },
-          ),
-        if (d.prereqs.isEmpty) _Hint(t('بدون متطلبات', 'None')),
-        _AddButton(
-          label: t('إضافة متطلب', 'Add a prerequisite'),
-          onTap: widget.canAdd && d.prereqs.length < RoadmapDraft.maxCourses ? widget.onAddPrereq : null,
-        ),
-        const SizedBox(height: 16),
+        Text(
+            t('حدد وش لازم يخلّص الطالب قبل هالدورة، ووش ننصحه ياخذ بعدها. نعرضها للطالب في صفحة الدورة ونقترحها له لما يخلّص.',
+                'Set what a student should finish before this course and what we suggest after it. We show it on the course page and suggest it when he finishes.'),
+            style: AppType.body(context).copyWith(color: context.colors.textMedium)),
+        AppSpace.gapMd,
+        LayoutBuilder(builder: (context, box) {
+          if (box.maxWidth < 720) {
+            return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              _prereqColumn(context),
+              if (widget.course != null) ...[AppSpace.gapSm, _centerNode(context), AppSpace.gapMd],
+              _nextColumn(context),
+            ]);
+          }
+          return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(child: _prereqColumn(context)),
+            if (widget.course != null) ...[
+              AppSpace.gapMd,
+              Expanded(child: Padding(padding: const EdgeInsets.only(top: AppSpace.xxl), child: _centerNode(context))),
+              AppSpace.gapMd,
+            ] else
+              AppSpace.gapMd,
+            Expanded(child: _nextColumn(context)),
+          ]);
+        }),
+        AppSpace.gapMd,
         _Head(title: t('المستوى', 'Level')),
         RoadmapLevelChips(
           value: d.level,
@@ -219,10 +277,10 @@ class _RoadmapEditorFormState extends State<RoadmapEditorForm> {
             widget.onChanged();
           },
         ),
-        const SizedBox(height: 16),
+        AppSpace.gapMd,
         _Head(
           title: t('كلمات مفتاحية', 'Topic words'),
-          subtitle: t('حتى ${RoadmapDraft.maxTags} كلمات تساعد على اقتراح كورسك لمن يهتم بها.', 'Up to ${RoadmapDraft.maxTags} words that help suggest your course to the right students.'),
+          subtitle: t('حتى ${RoadmapDraft.maxTags} كلمات تساعد على اقتراح دورتك لمن يهتم بها.', 'Up to ${RoadmapDraft.maxTags} words that help suggest your course to the right students.'),
         ),
         RoadmapTagsInput(
           tags: d.tags,
@@ -235,6 +293,13 @@ class _RoadmapEditorFormState extends State<RoadmapEditorForm> {
             d.tags.remove(tag);
             widget.onChanged();
           },
+        ),
+        AppSpace.gapMd,
+        AppBanner(
+          icon: Icons.info_outline_rounded,
+          color: context.colors.accent3,
+          text: t('المسار متاح لدوراتك الشخصية. الطلاب اللي خلّصوا ٨٠٪ يوصلهم اقتراح «الخطوة الجاية».',
+              'The path works for your personal courses. Students who finish 80% get the "next step" suggestion.'),
         ),
       ],
     );
@@ -371,15 +436,30 @@ class _AddButton extends StatelessWidget {
   final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) => Align(
-    alignment: AlignmentDirectional.centerStart,
-    child: TextButton.icon(
-      onPressed: onTap,
-      style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
-      icon: const Icon(Icons.add_rounded, size: 20),
-      label: Text(label),
-    ),
-  );
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Material(
+      color: onTap == null ? c.inputBg : Color.alphaBlend(c.primaryTint, c.cardBg),
+      shape: RoundedRectangleBorder(borderRadius: AppRadius.controlAll, side: BorderSide(color: c.divider, width: AppBorder.hairline)),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: AppTouch.min),
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(Icons.add_rounded, size: AppIconSize.md, color: onTap == null ? c.textLight : c.primary),
+            AppSpace.gapXs,
+            Flexible(
+              child: Text(label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppType.label(context).copyWith(color: onTap == null ? c.textLight : appInk(context, c.primary))),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
 }
 
 class _CourseRow extends StatelessWidget {
@@ -523,12 +603,12 @@ class _CoursePickerState extends State<_CoursePicker> {
             child: TextField(
               autofocus: true,
               onChanged: (v) => setState(() => _q = v),
-              decoration: InputDecoration(prefixIcon: const Icon(Icons.search_rounded), hintText: t('ابحث في كورساتك', 'Search your courses'), isDense: true),
+              decoration: InputDecoration(prefixIcon: const Icon(Icons.search_rounded), hintText: t('ابحث في دوراتك', 'Search your courses'), isDense: true),
             ),
           ),
         Flexible(
           child: list.isEmpty
-              ? AppEmpty(icon: Icons.search_off_rounded, title: t('لا كورسات أخرى', 'No other courses'))
+              ? AppEmpty(icon: Icons.search_off_rounded, title: t('لا دورات أخرى', 'No other courses'))
               : ListView(
                   shrinkWrap: true,
                   padding: const EdgeInsets.only(bottom: 16),

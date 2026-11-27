@@ -3,22 +3,22 @@
 // Teacher inbox: approve → the student gets the certificate automatically
 // (email + in-app notification); reject → the student is notified.
 
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/features/certificates/certificate_requests_provider.dart';
-import 'package:flutter_education_app/design/app_notice.dart';
-import 'package:flutter_education_app/design/app_refresh.dart';
-import 'package:flutter_education_app/design/app_kit.dart'
-    show AppListSkeleton, AppEmpty, AppCard, AppButton, AppWidthBox, AppWidth, appFieldDecoration, appFieldTextStyle;
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/core/routing/deferred_screens.dart' show deferredCertificateDesigns;
+import 'package:flutter_education_app/features/analytics/analytics_summary.dart' show anStudentsWord;
+import 'package:flutter_education_app/features/analytics/analytics_ui.dart' show anFmt;
+import 'package:flutter_education_app/features/certificates/issue/cert_issue_history.dart' show CertIssueHistoryPage;
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart';
+import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;
-import 'package:flutter_education_app/features/data_lab/data_lab_widgets.dart' show DlAvatar, DlBar, dlTabular;
 import 'package:flutter_education_app/features/admin/admin_common.dart' show ErrorRetry;
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
-import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/master_detail/entity_chip.dart';
 import 'package:flutter_education_app/design/master_detail/entity_panel_controller.dart';
 import 'package:flutter_education_app/design/master_detail/master_detail_scaffold.dart';
@@ -58,24 +58,23 @@ class _ViewState extends State<_View> {
       for (final i in p.items) EntityRef(EntityKind.student, i.studentId, label: i.studentName, imageUrl: i.studentImageUrl),
     ];
 
-    final body = CertificateRequestsBody(
-      loading: p.loading,
-      error: p.hasError ? (p.errorMessage ?? 'pl_requests_load_failed'.tr) : null,
-      count: p.items.length,
-      onRefresh: p.load,
-      // the list's one orchestrated entrance: the first cards rise in once
-      itemBuilder: (_, i) => AppReveal(index: i, group: 'cert.requests', child: _RequestCard(item: p.items[i])),
-    );
-
     return Scaffold(
-      appBar: ScreenAppBar(title: 'certificate_requests'.tr), // the app's back chip + title (L4)
+      appBar: AppHeader(title: 'certificate_requests'.tr),
       body: SafeArea(
         child: MasterDetailScaffold(
           controller: _panel,
           rootLabel: 'certificate_requests'.tr,
-          list: Align(
-            alignment: Alignment.topCenter,
-            child: AppWidthBox(width: AppWidth.content, child: body),
+          list: T2Scope(
+            child: CertificateRequestsBody(
+              loading: p.loading,
+              error: p.hasError ? (p.errorMessage ?? 'pl_requests_load_failed'.tr) : null,
+              count: p.items.length,
+              onRefresh: p.load,
+              onDesigns: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => deferredCertificateDesigns())),
+              onHistory: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const CertIssueHistoryPage())),
+              // the list's one orchestrated entrance: the first cards rise in once
+              itemBuilder: (_, i) => AppReveal(index: i, group: 'cert.requests', child: _RequestCard(item: p.items[i])),
+            ),
           ),
         ),
       ),
@@ -83,7 +82,9 @@ class _ViewState extends State<_View> {
   }
 }
 
-/// The page body from plain values (loading · error · empty · list), so the layout harness can pump it.
+/// The page body from plain values (loading · error · empty · list), so the layout harness can pump it: the
+/// certificates hero ("3 students are waiting for their certificate", the count, the designs and the history), then
+/// the requests riding up over it and one line on what approving does.
 class CertificateRequestsBody extends StatelessWidget {
   const CertificateRequestsBody({
     super.key,
@@ -92,6 +93,8 @@ class CertificateRequestsBody extends StatelessWidget {
     required this.count,
     required this.onRefresh,
     required this.itemBuilder,
+    this.onDesigns,
+    this.onHistory,
   });
 
   final bool loading;
@@ -99,28 +102,61 @@ class CertificateRequestsBody extends StatelessWidget {
   final int count;
   final Future<void> Function() onRefresh;
   final IndexedWidgetBuilder itemBuilder;
+  final VoidCallback? onDesigns, onHistory;
 
   @override
   Widget build(BuildContext context) {
-    if (loading && count == 0) return const AppListSkeleton();
-    // A failed first load used to show "no requests" — say it failed and offer a retry instead.
-    if (error != null && count == 0) return ErrorRetry(message: error!, onRetry: () => onRefresh());
-    if (count == 0) {
-      return AppRefresh(
-        onRefresh: onRefresh,
-        scrollable: false,
-        child: AppEmpty(icon: Icons.mark_email_read_outlined, title: 'no_certificate_requests'.tr),
-      );
+    final List<Widget> body;
+    if (loading && count == 0) {
+      body = [const AppListSkeleton()];
+    } else if (error != null && count == 0) {
+      // A failed first load used to show "no requests" — say it failed and offer a retry instead.
+      body = [AppCard(child: ErrorRetry(message: error!, onRetry: () => onRefresh()))];
+    } else if (count == 0) {
+      body = [AppCard(child: AppEmpty(icon: Icons.mark_email_read_outlined, title: 'no_certificate_requests'.tr))];
+    } else {
+      body = [
+        for (var i = 0; i < count; i++) Builder(builder: (context) => itemBuilder(context, i)),
+        const _ApproveNote(),
+      ];
     }
+    final hero = AppHero(
+      kicker: 't2_cert_kicker'.tr,
+      title: count > 0 ? anFmt('t2_cert_waiting', {'students': anStudentsWord(count)}) : 'certificate_requests'.tr,
+      subtitle: 't2_cert_sub'.tr,
+      stats: count > 0 ? [AppHeroStat(value: '$count', label: 't2_cert_stat_waiting'.tr)] : const [],
+      actions: [
+        if (onDesigns != null)
+          ParentComponent(
+            featureKey: 'profile.certificate_designs',
+            child: AppButton.secondary(label: 't2_cert_designs'.tr, icon: Icons.image_outlined, onPressed: onDesigns),
+          ),
+        if (onHistory != null)
+          AppButton.secondary(label: 't2_cert_history'.tr, icon: Icons.history_rounded, onPressed: onHistory),
+      ],
+    );
     return AppRefresh(
       onRefresh: onRefresh,
-      child: ListView.separated(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(AppSpace.md),
-        itemCount: count,
-        separatorBuilder: (_, _) => const SizedBox(height: AppSpace.sm),
-        itemBuilder: itemBuilder,
-      ),
+      child: T2HeroScroll(width: AppWidth.reading, hero: hero, children: body),
+    );
+  }
+}
+
+/// "When you approve, the certificate reaches the student by email and in the app, and joins the log."
+class _ApproveNote extends StatelessWidget {
+  const _ApproveNote();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.colors.kit.primaryTone;
+    return Container(
+      padding: const EdgeInsets.all(AppSpace.sm),
+      decoration: BoxDecoration(color: t.tint, borderRadius: BorderRadius.circular(AppRadius.tile)),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(Icons.info_outline_rounded, size: AppIconSize.md, color: t.ink),
+        const SizedBox(width: AppSpace.xs),
+        Expanded(child: Text('t2_cert_note'.tr, style: AppType.label(context).copyWith(color: t.ink))),
+      ]),
     );
   }
 }
@@ -144,11 +180,17 @@ class _RequestCard extends StatelessWidget {
     return AppCard(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          DlAvatar(name: item.studentName, url: item.studentImageUrl, size: AppTouch.min - AppSpace.xxs),
+          AppProgressRing(
+            value: item.progress / 100,
+            size: AppDashSize.avatarSm,
+            tone: done ? c.kit.ok : c.kit.warn,
+          ),
           const SizedBox(width: AppSpace.sm),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(item.studentName, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+              if (item.createdAt != null)
+                Text(anFmt('t2_cert_asked', {'date': AppTime.date(item.createdAt!)}), style: AppType.meta(context)),
               const SizedBox(height: AppSpace.xxs / 2),
               Row(children: [
                 Icon(Icons.workspace_premium_rounded, size: AppIconSize.sm, color: c.textLight),
@@ -168,19 +210,16 @@ class _RequestCard extends StatelessWidget {
           ),
         ]),
         const SizedBox(height: AppSpace.md),
-        // how far the student got: the bar fills once, emerald when the course is complete
-        Row(children: [
-          Expanded(child: DlBar(value: item.progress, color: done ? c.success : c.primary, height: AppSpace.xs)),
-          const SizedBox(width: AppSpace.sm),
-          Text('${item.progress.toStringAsFixed(0)}% ${'complete_label'.tr}',
-              style: AppType.label(context).copyWith(color: c.textMedium, fontFeatures: dlTabular)),
-        ]),
         if ((item.note ?? '').isNotEmpty) ...[
           const SizedBox(height: AppSpace.sm),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: AppSpace.sm, vertical: AppSpace.xs),
-            decoration: BoxDecoration(color: c.inputBg, borderRadius: AppRadius.controlAll),
+            decoration: BoxDecoration(
+              color: c.kit.well,
+              borderRadius: BorderRadius.circular(AppRadius.tile),
+              border: Border.all(color: c.kit.line, width: AppBorder.strong),
+            ),
             child: Text('“${item.note}”', style: AppType.body(context).copyWith(color: c.textDark)),
           ),
         ],
@@ -204,7 +243,7 @@ class _RequestCard extends StatelessWidget {
           final approve = AppButton.primary(
               expand: true,
               busy: busy,
-              icon: Icons.check_rounded,
+              icon: Icons.send_rounded,
               label: 'approve_and_send'.tr,
               onPressed: () async {
                 final ok = await p.approve(item.requestId);

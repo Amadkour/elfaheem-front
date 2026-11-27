@@ -798,7 +798,12 @@ class CourseSessionTile extends StatelessWidget {
     this.panel,
     this.wide = false,
     this.group,
+    this.numbered = false,
   });
+
+  /// The teacher's card list (Tea1Course, T1): no timeline rail, a number badge leads the card and the kind / state
+  /// chips sit under the meta line. The student's timeline keeps its rail.
+  final bool numbered;
 
   final CourseSessionView data;
   final CourseSessionRail rail;
@@ -815,6 +820,23 @@ class CourseSessionTile extends StatelessWidget {
 
   /// A month header drawn above the row, on the line ([courseSessionGroups]).
   final String? group;
+
+  /// Kind and state words of the numbered card ("Live" · "Done").
+  Widget _numberedChips(BuildContext context, Color surface) {
+    final c = context.colors;
+    final kind = switch (data.kind) {
+      CourseSessionKind.live => _Chip(label: _t('مباشر', 'Live'), tone: c.danger, on: surface),
+      CourseSessionKind.section => _Chip(label: _t('سكشن', 'Section'), tone: c.purple, on: surface),
+      CourseSessionKind.recorded => _Chip(label: _t('مسجّل', 'Recorded'), tone: c.primary, on: surface),
+    };
+    final state = switch (data.state) {
+      CourseSessionState.live => _Chip(label: _t('مباشر الآن', 'Live now'), tone: c.danger, on: surface, live: true),
+      CourseSessionState.next => _Chip(label: _t('التالية', 'Up next'), tone: c.primary, on: surface),
+      CourseSessionState.done => _Chip(label: _t('انتهت', 'Done'), tone: c.success, on: surface),
+      _ => null,
+    };
+    return Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [?state, kind]);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -856,10 +878,11 @@ class CourseSessionTile extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (chip != null) ...[chip, const SizedBox(height: AppSpace.xs - 2)],
+        if (chip != null && !numbered) ...[chip, const SizedBox(height: AppSpace.xs - 2)],
         title,
         const SizedBox(height: AppSpace.xs - 2),
         _Meta(data: data, color: metaColor, tone: tone, on: surface),
+        if (numbered) ...[const SizedBox(height: AppSpace.xs), _numberedChips(context, surface)],
         if (wide && data.subtitle != null && data.subtitle!.trim().isNotEmpty && !done) ...[
           const SizedBox(height: AppSpace.xs - 2),
           Text(
@@ -911,7 +934,9 @@ class CourseSessionTile extends StatelessWidget {
             children: [
               Padding(
                 padding: EdgeInsets.only(top: (_tileSize - tile) / 2),
-                child: CourseSessionKindTile(kind: data.kind, state: s, size: tile, on: surface),
+                child: numbered
+                    ? _NumberBadge(number: data.number, state: s, size: tile)
+                    : CourseSessionKindTile(kind: data.kind, state: s, size: tile, on: surface),
               ),
               const SizedBox(width: AppSpace.sm),
               Expanded(child: body),
@@ -957,7 +982,7 @@ class CourseSessionTile extends StatelessWidget {
       ),
     );
 
-    final line = _Rail(
+    final line = numbered ? Padding(padding: const EdgeInsets.symmetric(vertical: _rowGap), child: card) : _Rail(
       rail: group != null ? (top: CourseRailTone.plain, bottom: rail.bottom) : rail,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: _rowGap),
@@ -987,7 +1012,7 @@ class CourseSessionTile extends StatelessWidget {
 
     return Semantics(
       container: true,
-      child: group == null
+      child: group == null || numbered
           ? line
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -996,6 +1021,39 @@ class CourseSessionTile extends StatelessWidget {
                 line,
               ],
             ),
+    );
+  }
+}
+
+/// The number of a session on the teacher's card: green when it is done, the primary tint when it is next, the danger
+/// tint while it is live, neutral otherwise.
+class _NumberBadge extends StatelessWidget {
+  const _NumberBadge({required this.number, required this.state, required this.size});
+
+  final int number;
+  final CourseSessionState state;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final base = switch (state) {
+      CourseSessionState.done => c.success,
+      CourseSessionState.live => c.danger,
+      CourseSessionState.next => c.primary,
+      _ => null,
+    };
+    final fill = base == null ? c.inputBg : appTintOn(context, base, surface: c.cardBg);
+    final ink = base == null ? c.textMedium : appInkOn(context, base, fill);
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(AppRadius.control), color: fill),
+      child: Text(
+        '$number',
+        style: AppType.section(context).copyWith(color: ink, fontWeight: FontWeight.w700, height: 1),
+      ),
     );
   }
 }

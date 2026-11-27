@@ -5,9 +5,10 @@
 //   AppTabs(items: [AppTabItem('Open', count: 3), AppTabItem('Done')], index: i, onChanged: (v) => setState(() => i = v))
 //   AppUnderlineTabs(...)   the lighter variant for sections of a page (same API)
 //
-// AppTabs is a pill track (the input surface with a warm hairline) whose selected pill — the brand gradient primary → primary_dark
-// (D-649), with the on-hero ink — slides to the chosen tab; it never walks into the gradient's teal. AppUnderlineTabs draws
-// the labels in ink with a 2 px ink rule under the chosen one. When the tabs do not fit, the strip scrolls
+// AppTabs is the kit's segmented pill (KIT_SPEC §5.5): a track in `kit.track`, a 4 px inset and gap, and a card-coloured
+// pill with a soft shadow that slides to the chosen tab with a small overshoot (AppMorphPill, M13); labels 13 · 600,
+// the chosen one in textDark. AppUnderlineTabs draws the labels in ink with a 2 px rule in the area set's ink under
+// the chosen one. When the tabs do not fit, the strip scrolls
 // horizontally and keeps the selected tab in view; with `expand` the tabs share the width when they fit. On web /
 // desktop the arrow keys move the selection (the arrow that points "forward" follows the text direction) and the
 // strip shows the focus ring. Each tab is a selected / unselected button for screen readers.
@@ -17,8 +18,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../config/theme/theme_config_provider.dart';
+import 'app_area.dart';
 import 'app_badges.dart';
-import 'app_gradients.dart' show AppBrandLayer, AppGradientIcon;
+import 'app_motion_kit.dart' show AppMorphPill;
 import 'app_tokens.dart';
 
 class AppTabItem {
@@ -103,6 +105,9 @@ class _TabStripState extends State<_TabStrip> {
 
   static const double _gap = AppSpace.xs;
 
+  /// The gap between two pills.
+  static const double _pillGap = AppSpace.xxs;
+
   /// The pill track's inset around the pills.
   static const double _trackPad = AppSpace.xxs;
 
@@ -112,7 +117,7 @@ class _TabStripState extends State<_TabStrip> {
   /// The smallest count bubble (a round one-digit pill).
   static const double _bubble = AppIconSize.md;
 
-  TextStyle _style(BuildContext context) => AppType.row(context).copyWith(fontWeight: FontWeight.w600, height: 1.2);
+  TextStyle _style(BuildContext context) => AppType.label(context).copyWith(fontWeight: FontWeight.w600, height: 1.2);
 
   double _textWidth(BuildContext context, String text, TextStyle style) {
     final p = TextPainter(
@@ -166,15 +171,16 @@ class _TabStripState extends State<_TabStrip> {
     final pad = underline ? 0.0 : _trackPad;
     final index = widget.index.clamp(0, items.length - 1);
     final motion = AppMotion.of(context);
+    final set = AppAreaScope.of(context);
+    final gap = underline ? 0.0 : _pillGap;
 
     return LayoutBuilder(builder: (context, box) {
       final widths = [for (final it in items) _natural(context, it, style)];
-      // the open tab's label span (its natural width less the side padding): the pill's cream stays past it
-      final label = widths[index] - 2 * (underline ? AppSpace.sm : AppSpace.md);
-      final total = widths.fold<double>(0, (a, b) => a + b);
+      final gaps = gap * (items.length - 1);
+      final total = widths.fold<double>(0, (a, b) => a + b) + gaps;
       final avail = box.hasBoundedWidth ? box.maxWidth - pad * 2 - (underline ? 0 : 2 * AppBorder.hairline) : total;
       if (widget.expand && total < avail) {
-        final each = avail / items.length;
+        final each = (avail - gaps) / items.length;
         for (var i = 0; i < widths.length; i++) {
           widths[i] = each > widths[i] ? each : widths[i];
         }
@@ -183,14 +189,14 @@ class _TabStripState extends State<_TabStrip> {
       var acc = 0.0;
       for (final w in widths) {
         offsets.add(acc);
-        acc += w;
+        acc += w + gap;
       }
-      final contentW = acc;
+      final contentW = acc - gap;
 
       Widget tab(int i) {
         final it = items[i];
         final sel = i == index;
-        final ink = sel ? (underline ? c.textDark : AppBrandLayer.of(context).buttonInk) : c.textMedium;
+        final ink = sel ? c.textDark : c.textMedium;
         final ts = style.copyWith(color: ink);
         return Semantics(
           button: true,
@@ -210,13 +216,12 @@ class _TabStripState extends State<_TabStrip> {
               child: Center(
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   if (it.icon != null) ...[
-                    // D-650 r3: the brand glyph family, on the green pill when open, on the track when not
-                    AppGradientIcon(it.icon!,
-                        size: AppIconSize.md,
-                        on: sel && !underline ? [AppBrandLayer.of(context).button.first] : [c.cardBg, c.background, c.inputBg]),
+                    Icon(it.icon!, size: AppIconSize.md, color: sel ? set.ink : ink),
                     const SizedBox(width: _gap),
                   ],
-                  Text(it.label, maxLines: 1, softWrap: false, overflow: TextOverflow.visible, style: ts),
+                  // Flexible: on a split strip (three tabs at 316 px) a label that is a hair too wide ellipsizes
+                  // instead of overflowing the tab
+                  Flexible(child: Text(it.label, maxLines: 1, softWrap: false, overflow: TextOverflow.ellipsis, style: ts)),
                   if (it.count != null) ...[
                     const SizedBox(width: _gap),
                     AnimatedContainer(
@@ -225,13 +230,13 @@ class _TabStripState extends State<_TabStrip> {
                       // no `alignment`: it would make the bubble fill the tab's whole height
                       padding: const EdgeInsetsDirectional.symmetric(horizontal: AppSpace.xxs + 1, vertical: 2),
                       decoration: BoxDecoration(
-                        color: sel && !underline ? c.onHero.withValues(alpha: 0.22) : c.primaryTint,
+                        color: set.tint,
                         borderRadius: BorderRadius.circular(AppRadius.pill),
                       ),
                       child: Text(appCountText(it.count!),
                           maxLines: 1,
                           textAlign: TextAlign.center,
-                          style: AppType.overline(context).copyWith(color: sel && !underline ? c.onHero : c.primary)),
+                          style: AppType.overline(context).copyWith(color: set.ink, letterSpacing: 0)),
                     ),
                   ],
                 ]),
@@ -241,29 +246,42 @@ class _TabStripState extends State<_TabStrip> {
         );
       }
 
+      final row = Row(mainAxisSize: MainAxisSize.min, children: [
+        for (var i = 0; i < items.length; i++) ...[
+          if (i > 0 && gap > 0) SizedBox(width: gap),
+          tab(i),
+        ],
+      ]);
       final strip = SizedBox(
         width: contentW,
         height: AppTouch.min,
-        child: Stack(children: [
-          AnimatedPositionedDirectional(
-            duration: motion.base,
-            curve: AppMotion.curve,
-            start: offsets[index],
-            width: widths[index],
-            top: underline ? null : _trackPad,
-            bottom: underline ? 0 : _trackPad,
-            height: underline ? _rule : null,
-            child: ExcludeSemantics(
-              child: DecoratedBox(
-                // the selected pill wears the brand fill, cream past the label (D-650 r2); the underline stays an ink rule
-                decoration: underline
-                    ? BoxDecoration(color: c.textDark, borderRadius: BorderRadius.circular(_rule / 2))
-                    : AppBrandLayer.buttonFill(context, content: label, borderRadius: BorderRadius.circular(AppRadius.pill)),
+        child: underline
+            ? Stack(children: [
+                AnimatedPositionedDirectional(
+                  duration: motion.base,
+                  curve: AppMotion.curve,
+                  start: offsets[index],
+                  width: widths[index],
+                  bottom: 0,
+                  height: _rule,
+                  child: ExcludeSemantics(
+                    child: DecoratedBox(
+                        decoration: BoxDecoration(color: set.ink, borderRadius: BorderRadius.circular(_rule / 2))),
+                  ),
+                ),
+                row,
+              ])
+            // the kit's sliding pill (M13): the card colour with a soft shadow, behind the row of labels
+            : AppMorphPill(
+                count: items.length,
+                index: index,
+                widths: widths,
+                gap: gap,
+                inset: const EdgeInsets.symmetric(vertical: _trackPad),
+                color: c.cardBg,
+                shadow: AppShadow.pill(context),
+                child: row,
               ),
-            ),
-          ),
-          Row(mainAxisSize: MainAxisSize.min, children: [for (var i = 0; i < items.length; i++) tab(i)]),
-        ]),
       );
 
       final fits = contentW <= avail + 0.5;
@@ -278,7 +296,7 @@ class _TabStripState extends State<_TabStrip> {
         onKeyEvent: _onKey,
         child: Builder(builder: (context) {
           final focused = Focus.of(context).hasFocus;
-          final edge = focused ? c.primary : c.divider;
+          final edge = focused ? c.kit.partner : (underline ? c.kit.line : c.kit.track);
           final width = focused ? AppBorder.focus : AppBorder.hairline;
           return AnimatedContainer(
             duration: motion.fast,
@@ -289,7 +307,7 @@ class _TabStripState extends State<_TabStrip> {
             decoration: underline
                 ? BoxDecoration(border: Border(bottom: BorderSide(color: edge, width: width)))
                 : BoxDecoration(
-                    color: c.inputBg,
+                    color: c.kit.track,
                     borderRadius: BorderRadius.circular(AppRadius.pill),
                     border: Border.all(color: edge, width: width),
                   ),

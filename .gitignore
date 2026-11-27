@@ -104,7 +104,8 @@ tools/runner/runner.env
 !.agents/skills/extension-to-functions-codebase/
 !.agents/skills/firebase-*/
 !.agents/skills/xcode-project-setup/
+test/visual/redesign/goldens/
 
-# redesign reference screenshots
+# Alfaheem (A-008): reference screenshots and the playwright install of tool/redesign/ref_shots.mjs
 docs/redesign/ref/
 tool/redesign/node_modules/

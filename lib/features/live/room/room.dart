@@ -64,11 +64,13 @@ import 'package:flutter_education_app/features/live/live_lobby_sheets.dart';
 import 'package:flutter_education_app/features/live/live_room_host.dart';
 // Host controls (live hardening L2): docs/live/teacher_controls_wiring.md, the "Host controls" region below
 import 'package:flutter_education_app/features/live/live_controls_api.dart'
-    show kLiveRoomLockFeatureKey, kLiveTeacherControlsFeatureKey, liveControlTargetFrom, liveIdentityIsStudent,
+    show kLiveRoomLockFeatureKey, LiveControlsApi, kLiveTeacherControlsFeatureKey, liveControlTargetFrom, liveIdentityIsStudent,
         liveIsGuestIdentity, liveControlsError, LiveControlTarget, LivePublishSource;
 import 'package:flutter_education_app/features/live/live_participant_controls.dart'
     show LiveHostControlsController, LiveHostControlsHeader, LiveParticipantControlsButton, showLiveParticipantControls;
 import 'package:flutter_education_app/features/live/live_end_signal.dart';
+import 'package:flutter_education_app/features/live/live_room_people.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_teacher_ended.dart' show LiveEndHandoff, LiveEndSummary;
 import 'package:flutter_education_app/features/live/live_host_handover.dart';
 import 'package:flutter_education_app/features/live/live_rec_signal.dart';
 import 'package:flutter_education_app/core/live/live_events_client.dart' show LiveEventsClient;
@@ -123,6 +125,9 @@ import 'package:flutter_education_app/design/app_icons.dart';
 import 'package:flutter_education_app/features/live/room/widgets/recorder_web_stub.dart'
 if (dart.library.html) 'package:flutter_education_app/features/live/room/widgets/recorder_web_impl.dart' as web_rec;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/core/app_digits.dart' show appDigits;
+import 'package:flutter_education_app/features/live/room/student/student_live_api.dart';
+import 'package:flutter_education_app/features/live/room/student/student_room_view.dart' show StudentRoomView, showStudentAskSheet;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Design System
@@ -327,6 +332,10 @@ class RoomPage extends StatefulWidget {
   /// a 401 would otherwise send the guest to the login screen.
   final bool isGuest;
 
+  /// A guest's own LiveKit token (the join answer's): his hand and question go to the PUBLIC routes with it
+  /// (D-1950), never an authenticated call. Null for everyone else.
+  final String? guestToken;
+
   /// False → listen-only: no microphone / camera controls at all.
   final bool canPublish;
 
@@ -387,6 +396,7 @@ class RoomPage extends StatefulWidget {
         this.sessionName,
         this.recordingEnabled = false,
         this.isGuest = false,
+        this.guestToken,
         this.canPublish = true,
         this.roomRef,
         this.isHost,
@@ -774,6 +784,8 @@ class _RoomPageState extends State<RoomPage>
             onAllowSpeak: widget.isTeacher && !widget.isGuest
                 ? (id) => _guestAllowSpeak(id, true)
                 : null,
+            // WP1: a hidden student's hand comes with "bring on stage" (the guests keep their allow-speak).
+            onStage: _roster != null ? (id) => unawaited(_setStage(id, true)) : null,
           ),
         );
       case _SidePanel.chat:
@@ -1579,6 +1591,7 @@ class _RoomPageState extends State<RoomPage>
     if (widget.isTeacher && !_isMeeting) LiveQuizBroadcast.latest.addListener(_onQuizPublished);
     _startLobby(); // host only; see the "Lobby" region
     _startControls(); // host only; see the "Host controls" region
+    _startRoster(); // host only: the roster with the hidden students (WP1)
     _startHostWatch(); // meetings: a handover gives this room the host controls (D-310)
     _startCompanion(); // the person's phone as camera / mic / speaker (D-520)
 
@@ -1716,6 +1729,7 @@ class _RoomPageState extends State<RoomPage>
     _syncFocusSystemUi(force: false); // D-306: the system bars come back with the room gone
     _lobby?.dispose();
     _controls?.dispose();
+    _stopRoster();
     _stopHostWatch();
     // Annotation: the Android overlay is hidden by disposeLiveNativeEvents() below (it owns onClosed).
     annotationOverlayActive.removeListener(_onAnnotOverlay);
@@ -1914,8 +1928,27 @@ class _RoomPageState extends State<RoomPage>
         log('[LIVE] mic gate release: $e');
       }
     }
+    _noteClassEnded(recorded: rec != null);
     _leaveRoom();
     return null;
+  }
+
+  /// A course class the teacher just ended: the pre-join page under this room shows the summary (live_teacher_ended.dart)
+  /// once the room closes. Meetings, guests and every other viewer show nothing.
+  void _noteClassEnded({required bool recorded}) {
+    if (!widget.isTeacher || widget.isGuest || _isMeeting) return;
+    final people = _people.where((p) => !isHostIdentity(p.identity)).toList();
+    final guestsNow = people.where((p) => liveIsGuestIdentity(p.identity)).length;
+    final studentsNow = people.length - guestsNow;
+    final present = _enrolledStudents.where((s) => s.isAttended).length;
+    final name = (widget.sessionName ?? '').trim();
+    LiveEndHandoff.put(LiveEndSummary(
+      title: name.isNotEmpty ? name : liveTr('lr_live_session', widget.ref.kind),
+      duration: Duration(seconds: _sessionElapsedSeconds),
+      attended: math.max(present, math.max(studentsNow, _roster?.studentsPresent ?? 0)),
+      guests: math.max(guestsNow, _roster?.guestsPresent ?? 0),
+      recorded: recorded,
+    ));
   }
 
   // ── NEW: pause recording ──────────────────────────────────────────────────
@@ -2319,6 +2352,7 @@ class _RoomPageState extends State<RoomPage>
   // ── Listeners ──────────────────────────────────────────────────────────────
   void _setUpListeners() => _listener
     ..on<RoomConnectedEvent>((_) async {
+      _rosterSoon();
       // Room is fully connected — safe to start the recorder now.
       // This fires exactly once after the LiveKit handshake completes,
       // so the MediaProjection dialog appears AFTER the camera/mic are
@@ -2401,6 +2435,7 @@ class _RoomPageState extends State<RoomPage>
     ..on<ParticipantDisconnectedEvent>((e) {
       if (isCompanionIdentity(e.participant.identity)) return _scheduleSort(); // a phone is not a person (D-520)
       _hands.drop(e.participant.identity);
+      _rosterSoon();
       _remoteRecLeft(e.participant.identity); // their recording indicator goes with them (D-310)
       _share.participantLeft(e.participant.identity); // their request, approval and grant go too
       _board.participantLeft(e.participant.identity); // a presenter who left takes the board with them
@@ -2409,6 +2444,7 @@ class _RoomPageState extends State<RoomPage>
     ..on<ParticipantConnectedEvent>((e) {
       if (isCompanionIdentity(e.participant.identity)) return _scheduleSort(); // a phone is not a person (D-520)
       _hands.reannounceLocal();
+      _rosterSoon();
       _announceRec(); // a newcomer learns at once that this meeting is recorded (D-310)
       // Annotation: the responder (presenter, else the first host) sends the newcomer the board.
       if (_annotEnabled) _annot.onParticipantJoined(e.participant.identity);
@@ -2526,6 +2562,9 @@ class _RoomPageState extends State<RoomPage>
               senderIsHost: p != null && _isServerHost(p),
               senderName: senderName,
               senderImageUrl: participantPhotoFromMetadata(p?.metadata));
+          return;
+        case LiveDataRoute.serverSignal:
+          _onServerSignal(event.data, fromServer: p == null);
           return;
         case LiveDataRoute.handOrChat:
           // Hands and chat: matched by topic, and by payload type for senders that set no topic.
@@ -3189,6 +3228,7 @@ class _RoomPageState extends State<RoomPage>
     } else {
       setState(() => _showParticipants = true);
       _panelAnim.forward();
+      unawaited(_roster?.refresh());
       await _fetchEnrolledStudents();
     }
   }
@@ -3207,7 +3247,7 @@ class _RoomPageState extends State<RoomPage>
     _startSessionClock();
     LiveRoomScope.maybeOf(context)?.bindLeave(_leaveFromMiniBox);
     final minimized = _minimized;
-    final page = _buildRoomPage();
+    final page = _studentPrivate ? _buildStudentRoom() : _buildRoomPage();
     if (minimized == null) return page;
     // In the box: nothing of the page is painted, so its decorative loops (the share view's glow, banner pulses)
     // stop until it is full-screen again (D27).
@@ -3215,6 +3255,98 @@ class _RoomPageState extends State<RoomPage>
       valueListenable: minimized,
       builder: (_, min, child) => TickerMode(enabled: !min, child: child!),
       child: page,
+    );
+  }
+
+  // ── Redesign S-B: the student's private room (RULES 1.7, backend D-1950) ─────────────────────────────────────
+  //
+  // A student whose token is private (metadata {"privacy": "private"}) sees only the stage, "أنت والمعلم" and four
+  // controls (student/student_room_view.dart); the hand and the question go through the server
+  // (student/student_live_api.dart), never the data channel, which is closed for him. Every guest of a public link
+  // gets this room too (no head count, no participant list); his hand / question go to the PUBLIC routes with his own
+  // LiveKit token (GuestStudentLiveApi, auth: false), so a guest room never calls an authenticated API.
+  // Everyone else: _buildRoomPage.
+  bool get _studentPrivate => liveRoomIsPrivate(
+      isTeacher: widget.isTeacher, isGuest: widget.isGuest, host: _host, metadata: widget.room.localParticipant?.metadata);
+
+  bool _studentFull = false;
+  bool _studentHandUp = false;
+  bool _studentHandBusy = false;
+  late final StudentLiveApi _studentApi = widget.isGuest
+      ? GuestStudentLiveApi(widget.ref, token: () => widget.guestToken)
+      : StudentLiveApi(widget.ref);
+
+  Future<void> _studentToggleHand() async {
+    setState(() => _studentHandBusy = true);
+    try {
+      final up = await _studentApi.hand(!_studentHandUp);
+      if (!mounted) return;
+      setState(() => _studentHandUp = up);
+      if (up) showAppNotice('sb_live_hand_sent'.tr, icon: Icons.back_hand_outlined);
+    } catch (e) {
+      if (mounted) showAppNotice(ApiException.from(e).message, error: true);
+    } finally {
+      if (mounted) setState(() => _studentHandBusy = false);
+    }
+  }
+
+  Future<void> _studentAsk() async {
+    final text = await showStudentAskSheet(context);
+    if (text == null || text.isEmpty || !mounted) return;
+    try {
+      await _studentApi.ask(text);
+      if (mounted) showAppNotice('sb_live_ask_sent'.tr, icon: Icons.check_rounded);
+    } catch (e) {
+      if (mounted) showAppNotice(ApiException.from(e).message, error: true);
+    }
+  }
+
+  Future<void> _studentToggleMic() async {
+    final lp = widget.room.localParticipant;
+    if (lp == null) return;
+    await lp.setMicrophoneEnabled(!lp.isMicrophoneEnabled());
+    if (mounted) setState(() {});
+  }
+
+  Widget _buildStudentRoom() {
+    final scope = LiveRoomScope.maybeOf(context);
+    return PopScope(
+      canPop: !_studentFull,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && _studentFull) setState(() => _studentFull = false);
+      },
+      child: Scaffold(
+        key: const ValueKey('live_room.student'),
+        backgroundColor: _bg,
+        body: ValueListenableBuilder<int>(
+          valueListenable: _clockTick,
+          builder: (_, _, _) {
+            final own = Duration(seconds: _sessionElapsedSeconds);
+            final live = _sessionClockTimer == null
+                ? null
+                : (meetingLiveFor(widget.liveStartedAt, DateTime.now().toUtc(), own: own) ?? own);
+            final name = (widget.sessionName ?? '').trim();
+            return StudentRoomView(
+              lessonTitle: name.isNotEmpty ? name : liveTr('lr_live_session', widget.ref.kind),
+              teacherName: widget.hostName,
+              liveFor: live == null ? null : appDigits(liveClock(live)),
+              stage: _buildMainVideo(),
+              stageOverlays: [_buildPresenterCam()],
+              micOn: widget.room.localParticipant?.isMicrophoneEnabled() ?? false,
+              micAllowed: _allowed.mic,
+              handUp: _studentHandUp,
+              handBusy: _studentHandBusy,
+              fullScreen: _studentFull,
+              onToggleFullScreen: () => setState(() => _studentFull = !_studentFull),
+              onToggleMic: _studentToggleMic,
+              onToggleHand: _studentToggleHand,
+              onAsk: _studentAsk,
+              onLeave: () => unawaited(_endSessionWithRecording()),
+              onMinimize: scope == null || _endingSession ? null : scope.minimize,
+            );
+          },
+        ),
+      ),
     );
   }
 
@@ -4376,6 +4508,13 @@ class _RoomPageState extends State<RoomPage>
       focused: _focusOn,
       onMinimize: scope == null || _endingSession ? null : scope.minimize,
       pulse: _recDotOpacity,
+      // The host's head count and the amber "N waiting" pill (Tea1Live); a student or a guest never sees either.
+      peopleCount: _canModerate && !_endingSession
+          ? math.max(_peopleCount, _roster?.items.where((p) => !p.companion).length ?? 0)
+          : null,
+      onPeople: _canModerate && !_endingSession ? _toggleParticipantPanel : null,
+      waitingCount: _lobby?.waitingCount ?? 0,
+      onWaiting: _lobby == null || _endingSession ? null : _openLobby,
     );
   }
 
@@ -5048,6 +5187,7 @@ class _RoomPageState extends State<RoomPage>
     if (host) {
       _startLobby();
       _startControls();
+      _startRoster();
       showAppNotice(t('أصبحت مضيف هذا الاجتماع: يمكنك قبول المنتظرين وإدارة المشاركين والتسجيل.',
           'You are now the host of this meeting: you can admit people, manage participants and record.'),
           icon: Icons.admin_panel_settings_rounded);
@@ -5056,6 +5196,7 @@ class _RoomPageState extends State<RoomPage>
       _lobby = null;
       _controls?.dispose();
       _controls = null;
+      _stopRoster();
     }
     _syncAttention();
   }
@@ -5203,6 +5344,136 @@ class _RoomPageState extends State<RoomPage>
       ..stopScreenShare = ((target) => _stopPresenter(target.identity))
       ..onScreenShareRevoked = ((identity) => _share.takeGrant(identity));
     if (!off.contains(kLiveRoomLockFeatureKey)) unawaited(_controls!.loadLock());
+  }
+
+  // ── WP1: the host's roster (hidden students) and "bring on stage" ──────────────────────────────────────────
+  //
+  // A student's / guest's LiveKit token is hidden (D-1950), so the host's participant list no longer holds them: the
+  // roster comes from GET …/people (live_room_people.dart), refreshed when the panel opens, when someone joins or
+  // leaves and on the server's `nb.hand` / `nb.ask` messages, with a slow poll as the fallback.
+  LivePeopleController? _roster;
+  Timer? _rosterTimer;
+  Timer? _rosterSoonTimer;
+
+  void _startRoster() {
+    if (!_canModerate || _roster != null) return;
+    _roster = LivePeopleController(api: LiveControlsApi(widget.ref, api: widget.apiClient))..addListener(_onRosterChanged);
+    unawaited(_roster!.refresh());
+    _rosterTimer = Timer.periodic(const Duration(seconds: 45), (_) => unawaited(_roster?.refresh()));
+  }
+
+  void _stopRoster() {
+    _rosterTimer?.cancel();
+    _rosterTimer = null;
+    _rosterSoonTimer?.cancel();
+    _rosterSoonTimer = null;
+    _roster?.removeListener(_onRosterChanged);
+    _roster?.dispose();
+    _roster = null;
+  }
+
+  void _onRosterChanged() {
+    if (mounted) setState(() {});
+  }
+
+  /// Someone came or went: refresh the roster shortly (several at once make one call).
+  void _rosterSoon() {
+    if (_roster == null) return;
+    _rosterSoonTimer?.cancel();
+    _rosterSoonTimer = Timer(const Duration(seconds: 2), () => unawaited(_roster?.refresh()));
+  }
+
+  /// The server's `nb.hand` / `nb.ask` (host only, sent without a participant: a packet from a person is ignored).
+  void _onServerSignal(List<int> data, {required bool fromServer}) {
+    if (!fromServer || _roster == null) return;
+    try {
+      final m = jsonDecode(utf8.decode(data));
+      if (m is! Map) return;
+      final sig = parseLiveServerSignal(m);
+      if (sig == null) return;
+      // the person who raised a hand / asked may have just joined hidden: refresh the roster soon (debounced; the
+      // 45 s poll stays the fallback)
+      _rosterSoon();
+      final now = DateTime.now().millisecondsSinceEpoch;
+      if (sig.isHand) {
+        if (sig.raised == true) {
+          _hands.add(LiveHand(identity: sig.identity, name: sig.name, ts: now));
+        } else {
+          _hands.remove(sig.identity);
+        }
+        _roster?.markHand(sig.identity, sig.raised == true);
+      } else {
+        _chat.add(LiveChatMessage(
+          id: 'ask_${sig.identity}_${sig.at ?? now}',
+          identity: sig.identity,
+          name: sig.name,
+          text: sig.text!,
+          ts: sig.at ?? now,
+        ));
+      }
+    } catch (_) {
+      // a malformed packet is dropped
+    }
+  }
+
+  /// Brings [identity] on stage / takes them off (the ⋮ row and the hands queue).
+  Future<void> _setStage(String identity, bool on) async {
+    final roster = _roster;
+    if (roster == null) return;
+    try {
+      final done = await roster.setStage(identity, on);
+      if (done == true) {
+        _showSnack((on ? 't1_lv_stage_on_done' : 't1_lv_stage_off_done').tr);
+        if (on) _hands.lower(identity); // they got what they asked for
+      } else if (done == false) {
+        _showSnack('t1_lv_stage_failed'.tr, error: true);
+      }
+    } catch (e) {
+      _showSnack(liveControlsError(e), error: true);
+    }
+  }
+
+  /// The stage toggle of a roster row (null when the person cannot be brought on stage).
+  Widget? _stageButton(LiveRoomPerson? person) {
+    final roster = _roster;
+    if (roster == null || person == null || !person.canStage) return null;
+    final busy = roster.staging.contains(person.identity);
+    final on = person.onStage;
+    return IconButton(
+      key: ValueKey('live_room.stage.${person.identity}'),
+      tooltip: (on ? 't1_lv_stage_off' : 't1_lv_stage_on').tr,
+      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+      onPressed: busy ? null : () => unawaited(_setStage(person.identity, !on)),
+      icon: Icon(
+        on ? Icons.videocam_off_outlined : Icons.present_to_all_rounded,
+        size: AppIconSize.md,
+        color: on ? LivePalette.warning : LivePalette.accent,
+      ),
+    );
+  }
+
+  /// A row's trailing: the stage toggle, then the host controls' ⋮ (either may be missing).
+  Widget? _rowTrailing(LiveRoomPerson? person, Widget? controls) {
+    final stage = _stageButton(person);
+    if (stage == null) return controls;
+    if (controls == null) return stage;
+    return Row(mainAxisSize: MainAxisSize.min, children: [stage, controls]);
+  }
+
+  /// Roster people the LiveKit list cannot show (hidden): not a host or a phone, not a signed-in student already
+  /// drawn from the enrolment list, not a guest already in the participant list.
+  List<LiveRoomPerson> _hiddenRosterRows() {
+    final roster = _roster;
+    if (roster == null) return const [];
+    final live = widget.room.remoteParticipants.keys.toSet();
+    return [
+      for (final p in roster.items)
+        if (!p.host &&
+            !p.companion &&
+            !live.contains(p.identity) &&
+            (p.guest || p.userId == null || !_enrolledStudents.any((s) => s.id == p.userId)))
+          p,
+    ];
   }
 
   /// Right before end-for-all (true) and after it failed (false): tells every room why they are about to leave.
@@ -5802,6 +6073,11 @@ class _RoomPageState extends State<RoomPage>
                     (s) => liveIdentityIsStudent(p.identity, p.name, studentId: s.id, studentName: s.name)))
             .toList();
 
+    // WP1: hidden students / guests the LiveKit list cannot show, from the host's roster.
+    final hiddenRoster = _hiddenRosterRows();
+    final hiddenGuests = [for (final p in hiddenRoster) if (p.guest) p];
+    final hiddenOthers = [for (final p in hiddenRoster) if (!p.guest) p];
+
     // the panel lives on the END side: right in English, left in Arabic (it was pinned right in both)
     final rtl = Directionality.of(context) == TextDirection.rtl;
     return Positioned.fill(
@@ -5967,10 +6243,22 @@ class _RoomPageState extends State<RoomPage>
                       handUp: _hands.isUp(g.identity),
                       trailing: widget.isTeacher && !widget.isGuest ? _guestMenu(g) : null,
                     ),
+                for (final g in hiddenGuests)
+                  _ParticipantRow(
+                    name: g.name,
+                    isOnline: true,
+                    isTeacher: false,
+                    isGuest: true,
+                    isAttended: false,
+                    micOn: g.onStage,
+                    camOn: g.onStage,
+                    handUp: g.handRaised || _hands.isUp(g.identity),
+                    trailing: _rowTrailing(g, null),
+                  ),
 
                 // Student list
                 Expanded(
-                  child: _enrolledStudents.isEmpty && others.isEmpty
+                  child: _enrolledStudents.isEmpty && others.isEmpty && hiddenOthers.isEmpty && hiddenGuests.isEmpty
                       ? Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -5994,8 +6282,21 @@ class _RoomPageState extends State<RoomPage>
                   )
                       : ListView.builder(
                     padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
-                    itemCount: others.length + _enrolledStudents.length,
+                    itemCount: others.length + hiddenOthers.length + _enrolledStudents.length,
                     itemBuilder: (ctx, i) {
+                      if (i >= others.length && i < others.length + hiddenOthers.length) {
+                        final h = hiddenOthers[i - others.length];
+                        return _ParticipantRow(
+                          name: h.name,
+                          isOnline: true,
+                          isTeacher: false,
+                          isAttended: false,
+                          micOn: h.onStage,
+                          camOn: h.onStage,
+                          handUp: h.handRaised || _hands.isUp(h.identity),
+                          trailing: _rowTrailing(h, null),
+                        );
+                      }
                       if (i < others.length) {
                         final o = others[i];
                         final name = o.name.isNotEmpty ? o.name : o.identity;
@@ -6011,12 +6312,14 @@ class _RoomPageState extends State<RoomPage>
                           trailing: _controlsButton(o, name),
                         );
                       }
-                      final s = _enrolledStudents[i - others.length];
+                      final s = _enrolledStudents[i - others.length - hiddenOthers.length];
+                      final person = _roster?.byUserId(s.id);
                       final rp = widget.room.remoteParticipants.values
                           .firstWhereOrNull(
                             (p) => liveIdentityIsStudent(p.identity, p.name, studentId: s.id, studentName: s.name),
                       );
                       final online = rp != null ||
+                          person != null ||
                           liveIdentities.contains(s.id.toString()) ||
                           liveIdentities.contains(s.name);
                       return _ParticipantRow(
@@ -6028,8 +6331,9 @@ class _RoomPageState extends State<RoomPage>
                         leaveDate: s.leaveDate,
                         micOn: rp != null && _micOnFor(rp),
                         camOn: rp != null && _camOnFor(rp),
-                        handUp: rp != null && _hands.isUp(rp.identity),
-                        trailing: _controlsButton(rp, s.name),
+                        handUp: (rp != null && _hands.isUp(rp.identity)) ||
+                            (person != null && (person.handRaised || _hands.isUp(person.identity))),
+                        trailing: _rowTrailing(person, _controlsButton(rp, s.name)),
                       );
                     },
                   ),

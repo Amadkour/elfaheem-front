@@ -22,6 +22,11 @@ import 'package:flutter_education_app/design/app_kit.dart';
 
 import '../../admin/admin_common.dart' show t;
 import '../../admin/admin_page.dart';
+import '../../help/help_info_button.dart';
+import '../../profile/teacher/t2_frame.dart';
+import '../../admin/sup/sup_kit.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import '../../../utils/widget/base_page.dart';
 import 'store_manage_api.dart';
 import 'store_manage_views.dart';
 
@@ -36,7 +41,11 @@ const double kStoreSplitWidth = 1000;
 
 /// The list + editor without a page around it (the admin hub shows it as a tab).
 class StoreItemsPane extends StatefulWidget {
-  const StoreItemsPane({super.key});
+  const StoreItemsPane({super.key, this.teacherHero = false});
+
+  /// The teacher's redesigned page (Tea2Money.dc.html?screen=store): the hero band with New item and the figures,
+  /// the list riding up over it in one scroll. The admin hub's tab keeps the plain list.
+  final bool teacherHero;
 
   @override
   State<StoreItemsPane> createState() => StoreItemsPaneState();
@@ -96,8 +105,86 @@ class StoreItemsPaneState extends State<StoreItemsPane> {
     ));
   }
 
+  /// The redesign: one scroll, the hero (New item, the counts), then the list card and, from [kStoreSplitWidth],
+  /// the editor beside it.
+  Widget _heroLayout(BuildContext context) => LayoutBuilder(builder: (context, box) {
+        final wide = box.maxWidth >= kStoreSplitWidth;
+        final open = _items.where((x) => x.id == _openId).firstOrNull;
+        final published = _items.where((x) => x.status == 'published').length;
+        final sold = _items.fold<int>(0, (n, x) => n + x.salesCount);
+        final hero = AppHero(
+          title: t('ملخصاتك وبنوك أسئلتك للبيع', 'Your summaries and question banks for sale'),
+          subtitle: t('كتب وملخصات ومذكرات تبيعها للطلاب.', 'Books, summaries and notes you sell to students.'),
+          actions: [AppButton.hot(label: t('عنصر جديد', 'New item'), icon: Icons.add_rounded, onPressed: () => _open(null, wide))],
+          stats: _items.isEmpty
+              ? const []
+              : [
+                  AppHeroStat(value: '${_items.length}', label: t('عناصر', 'Items')),
+                  AppHeroStat(value: '$published', label: t('منشورة', 'Published')),
+                  AppHeroStat(value: '$sold', label: t('نسخة مباعة', 'Copies sold')),
+                ],
+        );
+        final list = AppCard(
+          child: StoreItemsListBody(
+            items: _items,
+            status: _status,
+            loading: _loading,
+            selectedId: wide ? _openId : null,
+            onStatus: (s) => setState(() => _status = s),
+            onOpen: (it) => _open(it, wide),
+            onNew: () => _open(null, wide),
+          ),
+        );
+        final editor = (open == null && !_creating)
+            ? AppCard(
+                child: AppEmpty(
+                  icon: Icons.touch_app_outlined,
+                  title: t('اختر عنصراً', 'Pick an item'),
+                  message: t('أو أنشئ عنصراً جديداً لتعديله هنا.', 'Or create a new one to edit it here.'),
+                ),
+              )
+            : AppCard(
+                child: StoreItemEditor(key: ValueKey(open?.id ?? 'new'), item: open, onChanged: _changed, onDeleted: _deleted),
+              );
+        return AppRefresh(
+          onRefresh: load,
+          child: T2HeroScroll(hero: hero, children: [
+            if (_error != null && _items.isEmpty)
+              AppCard(child: _errorState())
+            else if (!wide)
+              list
+            else
+              Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Expanded(flex: 2, child: list),
+                AppSpace.gapLg,
+                Expanded(flex: 3, child: editor),
+              ]),
+          ]),
+        );
+      });
+
+  Widget _errorState() {
+    final forbidden = _error == 'store_manage_forbidden';
+    return AppEmpty(
+      icon: forbidden ? Icons.storefront_outlined : Icons.cloud_off_rounded,
+      title: forbidden ? t('البيع في المتجر غير مفعّل لحسابك', 'Selling in the store is not on for your account') : t('تعذّر التحميل', 'Could not load'),
+      message: forbidden ? t('تفعّله إدارة المنصة للمعلمين.', 'The platform admins switch it on for teachers.') : null,
+      actionLabel: forbidden ? null : t('إعادة المحاولة', 'Retry'),
+      onAction: forbidden
+          ? null
+          : () {
+              setState(() {
+                _error = null;
+                _loading = true;
+              });
+              load();
+            },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (widget.teacherHero) return _heroLayout(context);
     if (_error != null && _items.isEmpty) {
       final forbidden = _error == 'store_manage_forbidden';
       return AppEmpty(
@@ -166,13 +253,15 @@ class StoreManagePage extends StatelessWidget {
   const StoreManagePage({super.key});
 
   @override
-  Widget build(BuildContext context) => AdminPage(
-        width: AppWidth.wide,
-        title: t('عناصري في المتجر', 'My store items'),
-        subtitle: t('كتب وملخصات ومذكرات تبيعها للطلاب.', 'Books, summaries and notes you sell to students.'),
-        icon: Icons.storefront_rounded,
-        helpPageId: 'store.manage',
-        body: const StoreItemsPane(),
+  Widget build(BuildContext context) => T2Scope(
+        child: BasePage(
+          enableFooterWidget: false,
+          appBar: AppHeader(
+            title: t('عناصري في المتجر', 'My store items'),
+            actions: const [HelpInfoButton(pageId: 'store.manage')],
+          ),
+          child: const StoreItemsPane(teacherHero: true),
+        ),
       );
 }
 
@@ -531,25 +620,26 @@ class _StoreAdminHubPageState extends State<StoreAdminHubPage> {
   @override
   Widget build(BuildContext context) {
     if (!widget.superAdmin) return const StoreManagePage();
-    return AdminPage(
-      width: AppWidth.wide,
+    // the redesign (SupFinance store): what waits for review leads the super admin's hero, the three parts are its pill
+    final waiting = _pending ?? 0;
+    return SupPage(
       title: t('المتجر الرقمي', 'Digital store'),
-      subtitle: t('العناصر ومراجعتها وطلبات الشراء.', 'Items, their review and the purchase orders.'),
-      icon: Icons.storefront_rounded,
+      kicker: 't2_sstore_kicker'.tr,
+      headline: waiting > 0 ? 't2_sstore_waiting'.tr.replaceAll('{n}', '$waiting') : 't2_sstore_head'.tr,
+      line: t('العناصر ومراجعتها وطلبات الشراء.', 'Items, their review and the purchase orders.'),
       helpPageId: 'admin.store',
-      bottom: Padding(
-        padding: const EdgeInsets.only(top: AppSpace.xs),
-        child: AppTabs(
-          index: _tab,
-          onChanged: (i) => setState(() => _tab = i),
-          items: [
-            AppTabItem(t('العناصر', 'Items'), icon: Icons.menu_book_rounded),
-            AppTabItem(t('المراجعة', 'Review'), icon: Icons.rule_rounded, count: _pending),
-            AppTabItem(t('الطلبات', 'Orders'), icon: Icons.receipt_long_rounded),
-          ],
-        ),
-      ),
-      body: IndexedStack(index: _tab, children: [
+      actions: [
+        if (waiting > 0 && _tab != 1)
+          SupHeroButton(label: 't2_sstore_review'.tr, icon: Icons.rule_rounded, onTap: () => setState(() => _tab = 1)),
+      ],
+      tabs: [
+        AppTabItem(t('العناصر', 'Items'), icon: Icons.menu_book_rounded),
+        AppTabItem(t('المراجعة', 'Review'), icon: Icons.rule_rounded, count: _pending),
+        AppTabItem(t('الطلبات', 'Orders'), icon: Icons.receipt_long_rounded),
+      ],
+      tab: _tab,
+      onTab: (i) => setState(() => _tab = i),
+      body: SupTabStack(index: _tab, children: [
         const StoreItemsPane(),
         StoreReviewPane(onCount: (n) => setState(() => _pending = n == 0 ? null : n)),
         const StoreOrdersPane(),

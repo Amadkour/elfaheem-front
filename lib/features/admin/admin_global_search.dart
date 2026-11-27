@@ -409,16 +409,20 @@ Future<void> showAdminGlobalSearch(
 /// Looks like a search field; a tap (or Enter / Space on it) opens the palette of the nearest
 /// [AppCommandPaletteScope]. Without a scope (a test, a preview) it does nothing.
 class AdminSearchLauncher extends StatelessWidget {
-  const AdminSearchLauncher({super.key, this.onOpen});
+  const AdminSearchLauncher({super.key, this.onOpen, this.glass = false});
 
   /// Overrides the scope's opener.
   final VoidCallback? onOpen;
 
+  /// The hero's look (redesign A1): a glass pill with the on-hero ink and the design's question as the hint.
+  final bool glass;
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final hint = t('ابحث عن طالب أو معلم أو دورة أو صفحة…', 'Search a student, teacher, course or page…');
+    final hint = glass ? 'a1_search_hint'.tr : t('ابحث عن طالب أو معلم أو دورة أو صفحة…', 'Search a student, teacher, course or page…');
     final open = onOpen ?? AppCommandPaletteScope.openerOf(context);
+    final radius = glass ? BorderRadius.circular(AppRadius.pill) : AppRadius.controlAll;
     return Semantics(
       button: true,
       label: hint,
@@ -426,22 +430,27 @@ class AdminSearchLauncher extends StatelessWidget {
       onTap: open,
       // paper on the home's sky block: a well that reads as the one thing to type into
       child: Material(
-        color: c.cardBg,
+        color: glass ? c.heroGlass : c.cardBg,
         shape: RoundedRectangleBorder(
-          borderRadius: AppRadius.controlAll,
-          side: BorderSide(color: c.divider, width: AppBorder.hairline),
+          borderRadius: radius,
+          side: BorderSide(color: glass ? c.heroGlassBorder : c.divider, width: AppBorder.hairline),
         ),
         child: InkWell(
-          borderRadius: AppRadius.controlAll,
+          borderRadius: radius,
           onTap: open,
           child: ConstrainedBox(
             constraints: const BoxConstraints(minHeight: AppTouch.primary),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
               child: Row(children: [
-                Icon(Icons.search_rounded, size: AppIconSize.lg, color: c.textMedium),
+                Icon(Icons.search_rounded, size: AppIconSize.lg, color: glass ? c.onHero : c.textMedium),
                 AppSpace.gapSm,
-                Expanded(child: Text(hint, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.body(context).copyWith(color: c.textLight))),
+                Expanded(
+                  child: Text(hint,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppType.body(context).copyWith(color: glass ? c.onHeroMuted : c.textLight)),
+                ),
                 if (MediaQuery.sizeOf(context).width >= 720) const _KeyCap('Ctrl K'),
               ]),
             ),

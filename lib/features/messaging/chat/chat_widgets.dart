@@ -714,11 +714,15 @@ class ChatComposerBar extends StatelessWidget {
     this.replyTo,
     this.replyIsMine = false,
     this.onCancelReply,
+    this.hint,
   });
 
   final TextEditingController controller;
   final FocusNode focusNode;
   final VoidCallback onSend;
+
+  /// The placeholder (default "Message"); the teacher's announcements say the reply goes to the teacher alone.
+  final String? hint;
   final ValueChanged<String> onChanged;
   final VoidCallback? onAttach;
   final List<ChatLocalFile> files;
@@ -784,7 +788,7 @@ class ChatComposerBar extends StatelessWidget {
                   style: appText(14.5, w: FontWeight.w400, c: c.textDark, h: 1.35),
                   onChanged: onChanged,
                   decoration: InputDecoration(
-                    hintText: 'chat_message_hint'.tr,
+                    hintText: hint ?? 'chat_message_hint'.tr,
                     hintStyle: appText(14.5, w: FontWeight.w400, c: c.textMedium),
                     isDense: true,
                     counterText: '',

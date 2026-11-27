@@ -64,7 +64,7 @@ String? homeEventTag(CalEvent e) => switch (e.source) {
       'exam' => 'home_exam'.tr,
       'meeting' => 'home_meeting'.tr,
       'extra' => 'home_extra_session'.tr,
-      _ => e.kind == 'lab' ? 'home_lab'.tr : (e.mode == 'online' ? 'home_online'.tr : null),
+      _ => e.kind == 'lab' ? 'home_lab'.tr : (e.mode == 'online' ? 'sv_home_online'.tr : null),
     };
 
 /// A calendar event as an agenda row (times through AppTime; live while running at [nowUtc]).
@@ -101,7 +101,7 @@ String homeDaySummaryOf(List<CalEvent> today, DateTime nowUtc) {
   final live = today.where((e) => !e.start.isAfter(nowUtc) && e.end.isAfter(nowUtc)).length;
   final next = today.where((e) => e.start.isAfter(nowUtc)).firstOrNull;
   return [
-    today.length == 1 ? 'home_sum_sessions_one'.tr : 'home_sum_sessions'.tr.replaceAll('{n}', '${today.length}'),
+    today.length == 1 ? 'sv_home_sum_sessions_one'.tr : 'sv_home_sum_sessions'.tr.replaceAll('{n}', '${today.length}'),
     if (live > 0) 'home_sum_live'.tr.replaceAll('{n}', '$live'),
     if (live == 0 && next != null) 'home_sum_next'.tr.replaceAll('{t}', AppTime.time(next.start)),
   ].join(' · ');
@@ -330,7 +330,7 @@ class StudentCourseSummary extends StatelessWidget {
             onTap: onOpen == null ? null : () => onOpen!(x.courseId),
           ),
       ],
-      moreLabel: courses.length > shown ? 'home_courses_all'.tr.replaceAll('{n}', '${courses.length}') : null,
+      moreLabel: courses.length > shown ? 'sv_home_courses_all'.tr.replaceAll('{n}', '${courses.length}') : null,
       onMore: onShowAll,
     );
   }

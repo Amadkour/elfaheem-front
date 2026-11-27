@@ -17,7 +17,8 @@ import '../../config/app_config.dart';
 import '../../design/app_kit.dart';
 import '../parent/parent_link_providers.dart';
 import 'admin_common.dart';
-import 'admin_page.dart';
+import 'adm_kit.dart' show admRole;
+import 'sup/sup_kit.dart';
 import 'admin_parent_link_settings_page.dart';
 import 'admin_parent_requests_page.dart';
 
@@ -89,56 +90,62 @@ class _AdminParentLinkingPageState extends State<AdminParentLinkingPage> {
     // on a phone the tab bar already costs a row: the subtitle would push the table off the screen
     final narrow = width < 600;
     return ListenableBuilder(
-      listenable: _handle,
+      listenable: Listenable.merge([_handle, _requests]),
       builder: (context, _) {
         final onSettings = tab == 1;
-        return AdminPage(
+        // redesign A1 (AdmPeople links): the role's hero with the requests waiting, Requests / Settings on the hero
+        final pending = _requests.pendingTotal;
+        return SupPage(
           key: const ValueKey('admin_parent_linking'),
+          role: admRole(context),
           width: AppWidth.wide,
           title: t('ربط أولياء الأمور', 'Parent linking'),
-          subtitle: narrow
+          kicker: 'admin_group_people'.tr,
+          headline: onSettings
+              ? t('قواعد ربط ولي الأمر بالطالب', 'The rules for linking a parent to a student')
+              : (pending > 0 ? 'a1_links_waiting'.tr.replaceAll('{n}', '$pending') : 'pl_requests_title'.tr),
+          line: narrow
               ? null
               : onSettings
-              ? t('قواعد ربط ولي الأمر بالطالب. تسري على الطلبات الجديدة فقط.', 'The rules for linking a parent to a student. They apply to new requests only.')
-              : t('طلبات ربط أولياء الأمور بالطلاب: راجعها واعتمدها أو ارفضها', 'Parent ⇄ student link requests: review, approve or reject them'),
-          icon: Icons.family_restroom_rounded,
-          onRefresh: onSettings
-              ? (_handle.saving || !_handle.ready ? null : () => _handle.reload?.call())
-              : (_requests.isLoading ? null : _reloadRequests),
+                  ? t('تسري على الطلبات الجديدة فقط.', 'They apply to new requests only.')
+                  : t('راجع المستندات، ووافق أو ارفض.', 'Review the documents, then approve or reject.'),
+          // a refresh that cannot run yet does nothing
+          onRefresh: () async {
+            if (onSettings) {
+              if (!_handle.saving && _handle.ready) await _handle.reload?.call();
+            } else if (!_requests.isLoading) {
+              await _reloadRequests();
+            }
+          },
           updatedAt: onSettings ? _handle.loadedAt : _requestsAt,
           dirty: onSettings && _handle.dirty,
-          primaryAction: onSettings && _handle.ready
-              ? AppButton.primary(
+          actions: [
+            if (onSettings && _handle.ready)
+              AppButton.primary(
                   key: const ValueKey('admin_parent_linking.save'),
                   label: 'pl_save'.tr,
                   busy: _handle.saving,
-                  onPressed: _handle.dirty ? () => _handle.save?.call() : null)
+                  onPressed: _handle.dirty ? () => _handle.save?.call() : null),
+          ],
+          tabs: hasSettings
+              ? [
+                  AppTabItem(t('الطلبات', 'Requests'), icon: Icons.inbox_rounded, count: pending > 0 ? pending : null),
+                  AppTabItem(t('الإعدادات', 'Settings'), icon: Icons.settings_suggest_rounded),
+                ]
               : null,
-          body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            if (hasSettings)
-              Padding(
-                padding: EdgeInsets.fromLTRB(gutter, AppSpace.sm, gutter, 0),
-                child: AppTabs(
-                  key: const ValueKey('admin_parent_linking.tabs'),
-                  items: [
-                    AppTabItem(t('الطلبات', 'Requests'), icon: Icons.inbox_rounded),
-                    AppTabItem(t('الإعدادات', 'Settings'), icon: Icons.settings_suggest_rounded),
-                  ],
-                  index: tab,
-                  onChanged: _select,
-                ),
-              ),
-            Expanded(
-              child: IndexedStack(index: tab, children: [
-                ChangeNotifierProvider<AdminParentLinkProvider>.value(value: _requests, child: const ParentRequestsBody()),
-                if (hasSettings && _settingsSeen)
-                  ChangeNotifierProvider<AdminParentLinkProvider>.value(
-                      value: _settings, child: ParentLinkSettingsForm(key: ValueKey('settings$_epoch'), handle: _handle))
-                else
-                  const SizedBox.shrink(),
-              ]),
-            ),
-          ]),
+          tab: tab,
+          onTab: _select,
+          body: Padding(
+            padding: EdgeInsets.fromLTRB(gutter, AppSpace.sm, gutter, 0),
+            child: IndexedStack(index: tab, children: [
+              ChangeNotifierProvider<AdminParentLinkProvider>.value(value: _requests, child: const ParentRequestsBody()),
+              if (hasSettings && _settingsSeen)
+                ChangeNotifierProvider<AdminParentLinkProvider>.value(
+                    value: _settings, child: ParentLinkSettingsForm(key: ValueKey('settings$_epoch'), handle: _handle))
+              else
+                const SizedBox.shrink(),
+            ]),
+          ),
         );
       },
     );

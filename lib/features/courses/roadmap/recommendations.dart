@@ -6,7 +6,8 @@
 //
 //   ProfileRecommendations   the profile block: 3 courses + "See all" · "My interests" · "Not interested" per row
 //                            (with Undo); recommendations turned off → one slim row to turn them back on
-//   RecommendationsPage      the whole list (≤ 30)
+//   RecommendationsPage      the whole list (≤ 30), redesign Stu1Discover?screen=recs: RecommendationCard on the
+//                            one course card (CourseCardSliver: rows on a phone, a grid of tiles from 600 px)
 //   showInterestsSheet       pick fields, grouped with their sub-fields (empty = inferred from the courses taken) ·
 //                            Show recommendations switch · "Show N hidden courses again"
 //
@@ -15,17 +16,24 @@
 // Presentational parts take plain values (test/ui/roadmap_layout_test.dart).
 library;
 
+import 'package:flutter_education_app/features/guest/sa_hero_page.dart';
+import 'package:flutter_education_app/config/app_config.dart';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_responsive.dart' show Breakpoints;
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/app_navigator.dart' show AppNavigator;
 import 'package:flutter_education_app/utils/widget/app_network_image.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/courses/roadmap/roadmap_api.dart';
+import 'package:flutter_education_app/features/courses/course_list_card.dart';
+import 'package:flutter_education_app/features/courses/course_price_tag.dart' show coursePriceLabel;
 
 /// The profile block; draws nothing for an account / state that has no recommendations.
 class ProfileRecommendations extends StatefulWidget {
@@ -71,7 +79,7 @@ class _ProfileRecommendationsState extends State<ProfileRecommendations> {
     try {
       await widget.api.dismiss(item.course.id);
       showAppNotice(
-        t('لن نقترح هذا الكورس مجدداً', 'We won’t suggest this course again'),
+        t('لن نقترح هذه الدورة مجدداً', 'We won’t suggest this course again'),
         actionLabel: t('تراجع', 'Undo'),
         onAction: () => _undo(item),
       );
@@ -160,7 +168,7 @@ class RecommendationsSectionView extends StatelessWidget {
     } else if (p.items.isEmpty) {
       body = _SlimRow(
         icon: Icons.explore_outlined,
-        text: t('سنقترح كورسات حين تبدأ كورساً أو تختار اهتماماتك.', 'We’ll suggest courses once you start one or pick your interests.'),
+        text: t('سنقترح دورات حين تبدأ دورة أو تختار اهتماماتك.', 'We’ll suggest courses once you start one or pick your interests.'),
         action: t('اهتماماتي', 'My interests'),
         onTap: onInterests,
       );
@@ -366,7 +374,7 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
         setState(() => _page = RecPage(items: [for (final x in p.items) if (x.course.id != item.course.id) x], total: p.total - 1));
       }
       showAppNotice(
-        t('لن نقترح هذا الكورس مجدداً', 'We won’t suggest this course again'),
+        t('لن نقترح هذه الدورة مجدداً', 'We won’t suggest this course again'),
         actionLabel: t('تراجع', 'Undo'),
         onAction: () async {
           try {
@@ -388,30 +396,101 @@ class _RecommendationsPageState extends State<RecommendationsPage> {
     return BasePage(
       key: const ValueKey(kRoadmapRecsKey),
       appBar: ScreenAppBar(title: t('مقترح لك', 'Recommended for you')),
-      child: AppRefresh(
+      child: SaHeroPage(area: AppArea.learn, kicker: 'sa_recs_kicker'.tr, title: 'sa_recs_title'.tr, squiggle: 'sa_recs_squiggle'.tr, child: AppRefresh(
         onRefresh: _load,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-          children: [
-            if (_error != null)
-              AppEmpty(icon: Icons.cloud_off_rounded, title: _error!, actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _load)
-            else if (p == null)
-              const AppListSkeleton(items: 6, withAvatar: true)
-            else if (p.items.isEmpty)
-              AppEmpty(icon: Icons.explore_outlined, title: t('لا توصيات الآن', 'No recommendations right now'))
-            else
-              for (final item in p.items)
-                RecommendationRow(
+        // redesign (Stu1Discover?screen=recs, S-A2): the one course card, its reason as a tag, "مو مهتم" on each
+        child: LayoutBuilder(builder: (context, box) {
+          final gutter = box.maxWidth >= Breakpoints.mobile ? AppSpace.lg : AppSpace.md;
+          final side = math.max(gutter, (box.maxWidth - AppWidth.wide.max) / 2);
+          final width = math.max(0.0, box.maxWidth - 2 * side);
+          final Widget body;
+          if (_error != null) {
+            body = SliverToBoxAdapter(
+              child: AppEmpty(icon: Icons.cloud_off_rounded, title: _error!, actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _load),
+            );
+          } else if (p == null) {
+            body = const SliverFillRemaining(hasScrollBody: true, child: CourseListSkeleton(padding: EdgeInsets.zero));
+          } else if (p.items.isEmpty) {
+            body = SliverToBoxAdapter(child: AppEmpty(icon: Icons.explore_outlined, title: t('لا توصيات الآن', 'No recommendations right now')));
+          } else {
+            body = CourseCardSliver(
+              width: width,
+              count: p.items.length,
+              itemBuilder: (context, i, shape) {
+                final item = p.items[i];
+                return RecommendationCard(
+                  key: ValueKey('recs.${item.course.id}'),
                   item: item,
+                  shape: shape,
                   onOpen: () {
                     RecEventLog.instance.opened(item.course.id);
                     AppNavigator.openCourse(item.course.id);
                   },
                   onDismiss: () => _dismiss(item),
-                ),
-          ],
-        ),
-      ),
+                );
+              },
+            );
+          }
+          return CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverPadding(padding: EdgeInsets.fromLTRB(side, AppSpace.md, side, AppSpace.xl), sliver: body),
+            ],
+          );
+        }),
+      )),
+    );
+  }
+}
+
+/// One recommended course on the one course card: the subject cover, the title, the teacher, the reason (a tag on
+/// a row, a chip on a tile's cover), "مو مهتم" and the price.
+class RecommendationCard extends StatelessWidget {
+  const RecommendationCard({super.key, required this.item, required this.shape, required this.onOpen, this.onDismiss});
+
+  final RecItem item;
+  final CourseCardShape shape;
+  final VoidCallback onOpen;
+  final VoidCallback? onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    final co = item.course;
+    final row = shape == CourseCardShape.row;
+    final reason = AppStatusBadge(label: item.reasonText, accent: AppAccent.grape, icon: Icons.auto_awesome_rounded);
+    // a Wrap: "Not interested" and the price share the line, and the price drops under it on a narrow card
+    final actions = Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: AppSpace.xs,
+      runSpacing: AppSpace.xs,
+      children: [
+        if (onDismiss != null)
+          AppButton.secondary(
+            key: ValueKey('recs.dismiss.${co.id}'),
+            label: 'sa_recs_not_interested'.tr,
+            icon: Icons.close_rounded,
+            size: AppButtonSize.sm,
+            onPressed: onDismiss,
+          ),
+        CoursePriceFooter(price: coursePriceLabel(co.currency, co.isFree ? 0 : co.finalPrice), free: co.isFree || co.finalPrice == 0),
+      ],
+    );
+    return CourseListCard(
+      shape: shape,
+      title: co.name,
+      imageUrl: co.imageUrl ?? '',
+      subject: co.field?.name,
+      meta: [if ((co.teacherName ?? '').isNotEmpty) co.teacherName!],
+      chip: row ? null : CourseCoverChip(label: item.reasonText, icon: Icons.auto_awesome_rounded),
+      footer: row
+          ? Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              reason,
+              const SizedBox(height: AppSpace.xs),
+              actions,
+            ])
+          : actions,
+      onTap: onOpen,
     );
   }
 }
@@ -512,7 +591,7 @@ class _InterestsSheetState extends State<_InterestsSheet> {
         if (p != null)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-            child: AppPrimaryButton(label: t('حفظ', 'Save'), icon: Icons.check_rounded, busy: _saving, onPressed: _save),
+            child: AppButton.primary(label: t('احفظ اهتماماتي', 'Save my interests'), expand: true, busy: _saving, onPressed: _save),
           ),
       ],
     );
@@ -554,13 +633,12 @@ class InterestsForm extends StatelessWidget {
   final VoidCallback? onShowHidden;
 
   Widget _chip(BuildContext context, RmField f) {
-    final c = context.colors;
-    return FilterChip(
-      label: Text(f.name, style: AppType.label(context).copyWith(color: picked.contains(f.id) ? appInk(context, c.primary) : c.textDark)),
+    // redesign (Stu1Discover?sheet=interests): the kit chip, a tick on the chosen ones
+    return AppChip(
+      label: f.name,
+      icon: picked.contains(f.id) ? Icons.check_rounded : null,
       selected: picked.contains(f.id),
-      onSelected: (_) => onToggle(f.id),
-      showCheckmark: true,
-      materialTapTargetSize: MaterialTapTargetSize.padded,
+      onTap: () => onToggle(f.id),
     );
   }
 
@@ -572,7 +650,7 @@ class InterestsForm extends StatelessWidget {
       children: [
         AppSwitchTile(
           title: t('أظهر التوصيات', 'Show recommendations'),
-          subtitle: t('كورسات مقترحة في ملفك الشخصي وبطاقة رحلتك في الرئيسية', 'Suggested courses on your profile and the journey card on your home'),
+          subtitle: t('دورات مقترحة في ملفك وبطاقة مسارك في الرئيسية', 'Suggested courses on your profile and the journey card on your home'),
           value: show,
           onChanged: onShow,
         ),
@@ -581,8 +659,8 @@ class InterestsForm extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           inferred
-              ? t('اخترناها من كورساتك. غيّرها كما تحب.', 'We picked these from your courses. Change them as you like.')
-              : t('اختر ما يناسبك، أو لا شيء لنختار من كورساتك.', 'Pick what suits you, or none and we’ll go by your courses.'),
+              ? t('اخترناها من دوراتك. غيّرها كما تحب.', 'We picked these from your courses. Change them as you like.')
+              : t('اختر اللي يناسبك، أو خلّها ونختار من دوراتك.', 'Pick what suits you, or none and we’ll go by your courses.'),
           style: AppType.meta(context),
         ),
         const SizedBox(height: 12),
@@ -623,7 +701,7 @@ class InterestsForm extends StatelessWidget {
               onPressed: onShowHidden,
               style: TextButton.styleFrom(minimumSize: const Size(48, 44)),
               icon: const Icon(Icons.visibility_outlined, size: 18),
-              label: Text(t('أظهر الكورسات المخفية مجدداً ($hidden)', 'Show hidden courses again ($hidden)')),
+              label: Text(t('أظهر الدورات المخفية مجدداً ($hidden)', 'Show hidden courses again ($hidden)')),
             ),
           ),
       ],

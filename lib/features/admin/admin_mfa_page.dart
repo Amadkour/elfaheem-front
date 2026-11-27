@@ -8,6 +8,7 @@
 // The presentational parts ([MfaStatusView], [MfaSetupView], [MfaRecoveryCodesView]) take plain values and are what
 // test/auth/mfa_test.dart pumps under the layout harness.
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart' show Trans;
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
@@ -18,8 +19,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../auth/auth_provider.dart';
 import '../auth/mfa.dart';
 import 'admin_common.dart' show t;
-import 'admin_page.dart';
 import 'package:flutter_education_app/design/app_icons.dart';
+import 'sup/sup_kit.dart';
 
 /// The settings entry's label.
 String mfaEntryLabel() => t('التحقق بخطوتين', 'Two-step verification');
@@ -647,11 +648,10 @@ class _AdminMfaPageState extends State<AdminMfaPage> {
     return PopScope(
       // the forced enrollment cannot be skipped once the codes are on screen (the session already exists)
       canPop: !(_forced && _stage == _Stage.codes),
-      child: AdminPage(
+      child: SupPage(
+        kicker: 'a2_people_kicker'.tr, headline: 'a2_mfa_head'.tr,
         key: const ValueKey('admin.mfa'),
         title: mfaEntryLabel(),
-        icon: Icons.verified_user_rounded,
-        maxWidth: 760,
         onRefresh: _dead ? null : _load,
         body: body is MfaStatusView && !_dead ? AppRefresh(onRefresh: _load, child: body) : body,
       ),

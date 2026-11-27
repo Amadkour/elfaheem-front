@@ -33,7 +33,7 @@ class Breakpoints {
   static const double contentMax = 860;
 
   /// sidebar width on web
-  static const double sidebarW = 248;
+  static const double sidebarW = 260;
 
   /// The shell for a window / constraints width.
   static AppShellKind shellFor(double width) {

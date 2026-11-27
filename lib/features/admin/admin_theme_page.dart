@@ -16,6 +16,7 @@ import 'admin_providers.dart';
 import 'package:flutter_education_app/design/app_kit.dart'
     show AppListSkeleton, AppRefresh, AppButton, AppIconButton, AppCard, AppSpace, AppType, AppStatusBadge, AppTone, AppErrorState, AppUnsavedGuard, AppTouch, AppRadius, AppGrid, AppBorder, AppIconSize, appInk, appFieldDecoration, appFieldTextStyle;
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal, AppTilt;
+import 'sup/sup_kit.dart';
 
 Color? _parseHex(String s) {
   final h = s.trim().replaceFirst('#', '');
@@ -71,19 +72,18 @@ class _View extends StatelessWidget {
       );
     }
 
-    return AdminPage(
-      title: 'theme'.tr,
-      subtitle: 'admin_pick_a_ready_theme_or_build_your_own'.tr,
-      icon: Icons.palette_rounded,
-      onRefresh: p.load,
-      primaryAction: AppButton.primary(
+    return SupPage(
+        kicker: 'a2_site_kicker'.tr, headline: 'a2_theme_head'.tr,
+        title: 'theme'.tr,
+        onRefresh: p.load,
+        body: body,
+        actions: [AppButton.primary(
         key: const ValueKey('theme_float'),
         label: 'admin_custom_theme'.tr,
         icon: Icons.palette_rounded,
         onPressed: p.items.isEmpty ? null : () => _openEditor(context, p),
-      ),
-      body: body,
-    );
+      )],
+      );
   }
 }
 

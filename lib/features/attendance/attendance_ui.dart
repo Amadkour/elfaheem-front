@@ -247,3 +247,11 @@ class _AttLiveDotState extends State<AttLiveDot> with SingleTickerProviderStateM
     );
   }
 }
+
+/// How the teacher shows the open window: the 6-digit code (the projector's big code), the QR of the same code, or
+/// the manual register (its own page, never part of the window's screens). The app-wide window is one: the sheet,
+/// the projector screen and the QR card all read [attViewMode].
+enum AttView { code, qr, manual }
+
+/// The view the teacher chose for the window that is open now (set when the sheet opens; the projector reads it).
+final ValueNotifier<AttView> attViewMode = ValueNotifier<AttView>(AttView.code);

@@ -46,13 +46,64 @@ import 'package:flutter_education_app/features/home/teacher/teacher_models.dart'
 /// what is live, D-630). [live] → "Return to live" with a ringed red dot. [compact] → the round icon only (narrow
 /// headers). [onHero] → the greeting hero's call to action: a full-height cream pill in the primary ink.
 class GoLiveButton extends StatelessWidget {
-  const GoLiveButton({super.key, this.live = false, this.onTap, this.busy = false, this.compact = false, this.onHero = false});
+  const GoLiveButton({super.key, this.live = false, this.onTap, this.busy = false, this.compact = false, this.onHero = false, this.block = false});
+
+  /// T1 (Tea1Home): the hero's one call to action as a full-width live-red pill with the white dot ("Go live" /
+  /// "Back to the live").
+  final bool block;
 
   final bool live;
   final VoidCallback? onTap;
   final bool busy;
   final bool compact;
   final bool onHero;
+
+  Widget _blockButton(BuildContext context) {
+    final c = context.colors;
+    final label = live ? 't1_hm_go_back'.tr : 't1_hm_go_live'.tr;
+    final ink = c.onHero;
+    final dot = busy
+        ? SizedBox.square(dimension: AppIconSize.sm, child: CircularProgressIndicator(strokeWidth: AppBorder.focus, color: ink))
+        : Container(
+            width: AppSpace.sm,
+            height: AppSpace.sm,
+            decoration: BoxDecoration(color: ink, shape: BoxShape.circle, boxShadow: [BoxShadow(color: ink.withValues(alpha: .35), spreadRadius: AppSpace.xxs)]),
+          );
+    return Semantics(
+      button: true,
+      label: label,
+      excludeSemantics: true,
+      child: AppPressScale(
+        enabled: !busy && onTap != null,
+        scale: 0.98,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [c.danger, Color.lerp(c.danger, c.onHero, .12)!]),
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            boxShadow: [BoxShadow(color: c.danger.withValues(alpha: .35), blurRadius: AppSpace.md, offset: const Offset(0, AppSpace.xs))],
+          ),
+          child: Material(
+            type: MaterialType.transparency,
+            child: InkWell(
+              key: const ValueKey('t1_home.go_live'),
+              onTap: busy ? null : onTap,
+              customBorder: const StadiumBorder(),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: AppTouch.min + AppSpace.xs),
+                child: Center(
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: ink))),
+                    const SizedBox(width: AppSpace.sm),
+                    dot,
+                  ]),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   static String labelFor(bool live) => live ? t('العودة للبث', 'Return to live') : t('ابدأ البث', 'Go live');
 
@@ -61,6 +112,7 @@ class GoLiveButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (block) return _blockButton(context);
     final c = context.colors;
     // the primary action in emerald, not a solid live red (D-630: red only where it means something): on the forest
     // hero (the greeting hero's call to action, or inside a ChromeBar) a cream plate in emerald ink, elsewhere the
@@ -213,7 +265,10 @@ GoLiveCourse goLiveCourseOf(TeacherCourse x) {
 
 /// The header's "Go live": follows the open room ([LiveRoomHost]) and the home's live sessions.
 class GoLiveEntry extends StatefulWidget {
-  const GoLiveEntry({super.key, required this.courses, required this.schedule, this.loading = false, this.onDone, this.onNewCourse, this.onHero = false});
+  const GoLiveEntry({super.key, required this.courses, required this.schedule, this.loading = false, this.onDone, this.onNewCourse, this.onHero = false, this.block = false});
+
+  /// The T1 hero's full-width live-red call to action ([GoLiveButton.block]).
+  final bool block;
 
   /// Drawn as the greeting hero's call to action ([GoLiveButton.onHero]).
   final bool onHero;
@@ -272,6 +327,7 @@ class _GoLiveEntryState extends State<GoLiveEntry> {
           busy: _busy || widget.loading,
           compact: MediaQuery.sizeOf(context).width < 340,
           onHero: widget.onHero,
+          block: widget.block,
           onTap: _tap,
         ),
       );
@@ -596,7 +652,7 @@ class GoLiveSheetView extends StatelessWidget {
       if (courses.isEmpty)
         _NoCourse(onNewCourse: onNewCourse)
       else ...[
-        _Label(t('الكورس', 'Course')),
+        _Label(t('الدورة', 'Course')),
         _CoursePicker(courses: courses, selected: courseId, onPick: onCourse),
         _Label(t('الحصة', 'Session'), first: false),
         if (loadingSessions)
@@ -620,7 +676,7 @@ class GoLiveSheetView extends StatelessWidget {
             onTap: onUseSuggestion == null || s == null ? null : () => onUseSuggestion!(false),
             icon: Icons.bolt_rounded,
             tone: c.primary,
-            title: t('حصة مباشرة جديدة الآن', 'New live session now'),
+            title: t('حصة مباشرة جديدة الحين', 'New live session now'),
             subtitle: t('تُضاف إلى حصص الكورس وتبدأ فورًا', "Added to the course's sessions, starts right away"),
             child: !useSuggestion || s == null
                 ? Padding(
@@ -646,14 +702,14 @@ class GoLiveSheetView extends StatelessWidget {
                 : null,
           ),
         ],
-        _Label(t('قبل الدخول', 'Before you go in'), first: false),
+        _Label(t('قبل تدخل', 'Before you go in'), first: false),
         if (!rejoin)
           AppSwitchTile(
             icon: Icons.fiber_manual_record_rounded,
             // the switch keeps the app's primary track (M22); only the small dot says "recording" in red
             iconColor: record ? c.danger : c.textLight,
-            title: t('تسجيل الحصة', 'Record this session'),
-            subtitle: t('يشاهدها الطلاب لاحقًا من صفحة الكورس', 'Students can watch it later from the course'),
+            title: t('سجّل الحصة', 'Record this session'),
+            subtitle: t('يشوفها الطلاب بعدين من صفحة الدورة', 'Students can watch it later from the course'),
             value: record,
             onChanged: busy ? null : onRecord,
           ),
@@ -664,7 +720,7 @@ class GoLiveSheetView extends StatelessWidget {
               on: camera,
               iconOn: Icons.videocam_rounded,
               iconOff: Icons.videocam_off_rounded,
-              label: camera ? t('الكاميرا تعمل', 'Camera on') : t('الكاميرا مغلقة', 'Camera off'),
+              label: camera ? t('الكاميرا شغّالة', 'Camera on') : t('الكاميرا مغلقة', 'Camera off'),
               onChanged: busy ? null : onCamera,
             ),
           ),
@@ -674,7 +730,7 @@ class GoLiveSheetView extends StatelessWidget {
               on: mic,
               iconOn: Icons.mic_rounded,
               iconOff: Icons.mic_off_rounded,
-              label: mic ? t('الميكروفون يعمل', 'Mic on') : t('الميكروفون مغلق', 'Mic off'),
+              label: mic ? t('المايك شغّال', 'Mic on') : t('المايك مغلق', 'Mic off'),
               onChanged: busy ? null : onMic,
             ),
           ),
@@ -703,13 +759,13 @@ class GoLiveSheetView extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(_kSheetInset, AppSpace.sm, _kSheetInset, AppSpace.xs),
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            if (courses.isNotEmpty) _GoButton(label: rejoin ? t('العودة إلى البث', 'Rejoin the live') : t('ابدأ البث الآن', 'Go live now'), busy: busy, onPressed: onGo),
+            if (courses.isNotEmpty) _GoButton(label: rejoin ? t('ارجع للبث', 'Rejoin the live') : t('ابدأ البث الحين', 'Go live now'), busy: busy, onPressed: onGo),
             if (onMeetNow != null)
               Padding(
                 padding: const EdgeInsets.only(top: AppSpace.xxs),
                 child: Center(
                   child: AppButton.ghost(
-                    label: t('اجتماع مباشر بدون كورس', 'Meet now, without a course'),
+                    label: t('اجتماع مباشر بدون دورة', 'Meet now, without a course'),
                     icon: Icons.video_call_rounded,
                     onPressed: busy ? null : onMeetNow,
                   ),
@@ -765,9 +821,9 @@ class _Header extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
             Semantics(
               header: true,
-              child: Text(t('ابدأ بثًا مباشرًا', 'Go live'), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.headline(context)),
+              child: Text(t('ابدأ بث مباشر', 'Go live'), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.headline(context)),
             ),
-            Text(t('اختر الكورس وستكون في الغرفة خلال ثوانٍ', "Pick the course, you'll be in the room in seconds"),
+            Text(t('اختر الدورة والحصة، وجهّز الكاميرا والمايك قبل تدخل', 'Pick the course and the session, set up camera and mic before you go in'),
                 maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
           ]),
         ),
@@ -808,7 +864,7 @@ class _CoursePicker extends StatelessWidget {
   final ValueChanged<int> onPick;
 
   /// A card's width in the sideways row: two lines of a title and the next card peeking at a phone's edge.
-  static const double _cardWidth = 224;
+  static const double _cardWidth = 150;
 
   @override
   Widget build(BuildContext context) {
@@ -844,8 +900,6 @@ class _CourseCard extends StatelessWidget {
   final bool selected;
   final VoidCallback? onTap;
 
-  static const double _thumb = AppTouch.min - AppSpace.xxs / 2;
-
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
@@ -869,51 +923,51 @@ class _CourseCard extends StatelessWidget {
               duration: motion,
               curve: AppMotion.curve,
               padding: const EdgeInsets.all(AppSpace.xs),
-              alignment: AlignmentDirectional.centerStart,
               decoration: BoxDecoration(
                 borderRadius: r,
                 border: Border.all(color: selected ? ring : c.divider, width: selected ? AppBorder.focus : AppBorder.hairline),
               ),
-              child: Row(children: [
+              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+                // the cover (or the course's own block tone with its initial) with the check on it
                 ClipRRect(
                   borderRadius: AppRadius.chipAll,
-                  child: SizedBox.square(
-                    dimension: _thumb,
-                    child: course.imageUrl.isNotEmpty
-                        ? AppNetworkImage(url: course.imageUrl, width: _thumb, height: _thumb)
-                        : ColoredBox(
-                            color: block.surface,
-                            child: Center(child: Text(initial, style: AppType.section(context).copyWith(color: block.ink))),
+                  child: SizedBox(
+                    height: AppTouch.min + AppSpace.md,
+                    child: Stack(fit: StackFit.expand, children: [
+                      course.imageUrl.isNotEmpty
+                          ? AppNetworkImage(url: course.imageUrl, width: double.infinity, height: AppTouch.min + AppSpace.md)
+                          : ColoredBox(
+                              color: block.surface,
+                              child: Center(child: Text(initial, style: AppType.headline(context).copyWith(color: block.ink))),
+                            ),
+                      PositionedDirectional(
+                        top: AppSpace.xs,
+                        start: AppSpace.xs,
+                        child: AnimatedOpacity(
+                          opacity: selected ? 1 : 0,
+                          duration: motion,
+                          child: Container(
+                            width: AppIconSize.lg,
+                            height: AppIconSize.lg,
+                            decoration: BoxDecoration(shape: BoxShape.circle, color: ensureContrast(c.primary, [c.onHero])),
+                            child: Icon(Icons.check_rounded, size: AppIconSize.sm, color: c.onHero),
                           ),
+                        ),
+                      ),
+                    ]),
                   ),
                 ),
-                const SizedBox(width: AppSpace.sm),
-                Expanded(
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                    Text(course.title,
-                        maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600, height: 1.25)),
-                    const SizedBox(height: AppSpace.xxs / 2),
-                    Text(
-                      [
-                        goLiveStudentsText(course.students),
-                        if (!course.published) t('مسودة', 'Draft'),
-                      ].join(' · '),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppType.meta(context),
-                    ),
-                  ]),
-                ),
-                const SizedBox(width: AppSpace.xxs),
-                AnimatedOpacity(
-                  opacity: selected ? 1 : 0,
-                  duration: motion,
-                  child: Container(
-                    width: AppIconSize.md + 2,
-                    height: AppIconSize.md + 2,
-                    decoration: BoxDecoration(shape: BoxShape.circle, color: ensureContrast(c.primary, [c.onHero])),
-                    child: Icon(Icons.check_rounded, size: AppIconSize.xs, color: c.onHero),
-                  ),
+                const SizedBox(height: AppSpace.xs),
+                Text(course.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context).copyWith(fontWeight: FontWeight.w600, height: 1.25)),
+                const SizedBox(height: AppSpace.xxs / 2),
+                Text(
+                  [
+                    goLiveStudentsText(course.students),
+                    if (!course.published) t('مسودة', 'Draft'),
+                  ].join(' · '),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppType.meta(context),
                 ),
               ]),
             ),

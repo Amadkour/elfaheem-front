@@ -18,6 +18,12 @@ import 'package:flutter_education_app/features/live/companion/companion_parts.da
 import 'package:flutter_education_app/features/live/companion/companion_platform.dart' as companion_platform;
 import 'package:flutter_education_app/features/live/companion/companion_sheet.dart' show pickCompanionSources;
 import 'package:flutter_education_app/features/live/room/prejoin_layout.dart';
+import 'package:flutter_education_app/features/live/room/prejoin_student.dart';
+import 'package:flutter_education_app/features/live/room/prejoin_teacher.dart';
+import 'package:flutter_education_app/features/live/room/widgets/live_teacher_ended.dart' show LiveEndHandoff, TeacherEndedPage;
+import 'package:flutter_education_app/features/help/help_info_button.dart' show HelpInfoButton;
+import 'package:flutter_education_app/core/app_time.dart' show AppTime;
+import 'package:flutter_education_app/features/live/room/student/student_live_parts.dart' show liveStartedMinutes;
 import 'package:flutter_education_app/features/live/room/prejoin_mic_meter_stub.dart'
     if (dart.library.js_interop) 'package:flutter_education_app/features/live/room/prejoin_mic_meter_web.dart' as mic_meter;
 import 'package:flutter_education_app/features/live/room/join_args.dart';
@@ -438,6 +444,7 @@ class _PreJoinPageState extends State<PreJoinPage> {
         recordingEnabled: data.recordingEnabled,
         sessionName: args.sessionName,
         isGuest: args.guest,
+        guestToken: args.guest ? data.token : null, // the public hand / ask routes (D-1950)
         canPublish: args.canPublish,
         roomRef: args.ref,
         isHost: args.isHost,
@@ -590,8 +597,18 @@ class _PreJoinPageState extends State<PreJoinPage> {
     }
 
     handle.minimized.addListener(onMinimized);
+    LiveEndHandoff.take(); // a summary left by an earlier class never shows for this one
     await handle.closed;
     handle.minimized.removeListener(onMinimized);
+    // A course class the teacher ended: the summary page takes this page's place (redesign T1); anything else pops.
+    final ended = widget.args.isTeacher && !widget.args.guest && !widget.args.ref.isMeeting ? LiveEndHandoff.take() : null;
+    if (ended != null && mounted) {
+      final route = ModalRoute.of(this.context);
+      if (route != null && route.isCurrent) {
+        unawaited(Navigator.of(this.context).pushReplacement(MaterialPageRoute<void>(builder: (_) => TeacherEndedPage(summary: ended))));
+        return;
+      }
+    }
     _dismissSelf();
   }
 
@@ -615,6 +632,15 @@ class _PreJoinPageState extends State<PreJoinPage> {
     if (mounted) Navigator.of(context).pop();
   }
 
+  /// "اليوم ٧:٣٠ م" for today's class, else the date and time (AppTime: the viewer's time zone and 12 / 24 h).
+  String _startLine(DateTime startsAt) {
+    final utc = startsAt.toUtc();
+    final now = AppTime.toZone(DateTime.now().toUtc());
+    final at = AppTime.toZone(utc);
+    final today = at.year == now.year && at.month == now.month && at.day == now.day;
+    return today ? 't1_lv_today_at'.tr.replaceAll('{t}', AppTime.time(utc)) : AppTime.dateTime(utc);
+  }
+
   /// The room's name, or "Live session" / "Live meeting" by its kind (D-106).
   String get _title {
     final name = (widget.args.sessionName ?? '').trim();
@@ -629,6 +655,79 @@ class _PreJoinPageState extends State<PreJoinPage> {
     LivePalette.sync(context);   // live classroom colours follow the app theme
     AppShellNav.markFullScreen(context); // no tab bar on the pre-join page, even inside a tab (D-081)
     final args = widget.args;
+    // A student joining his course class (redesign S-B): the student page (the teacher and himself only, no
+    // count). The teacher, a meeting and a guest keep PreJoinLayout.
+    if (!args.isTeacher && !args.guest && !args.hostRole && !args.ref.isMeeting) {
+      return Scaffold(
+        key: const ValueKey('prejoin'),
+        backgroundColor: context.colors.kit.deep,
+        body: StudentPreJoinLayout(
+          lessonTitle: _title,
+          teacherName: args.hostName,
+          userName: args.userName,
+          startedMinutes: liveStartedMinutes(args.startsAt),
+          preview: _videoTrack != null && _enableVideo
+              ? LiveVideoView(_videoTrack!, fit: VideoViewFit.cover, mirror: VideoViewMirrorMode.mirror)
+              : null,
+          micOn: _enableAudio,
+          camOn: _enableVideo,
+          micLevel: _enableAudio && _audioTrack != null ? _micLevel : null,
+          onToggleMic: _audioInputs.isEmpty && !_enableAudio ? null : _toggleAudio,
+          onToggleCam: _videoInputs.isEmpty && !_enableVideo ? null : _toggleCamera,
+          mics: _asDevices(_audioInputs, 'lr_microphone'.tr),
+          cams: _asDevices(_videoInputs, 'lr_camera'.tr),
+          selectedMic: _selectedAudioDevice?['device_id'] as String?,
+          selectedCam: _selectedVideoDevice?['device_id'] as String?,
+          onMicChanged: _selectAudio,
+          onCamChanged: _selectVideo,
+          busy: _busy,
+          onJoin: _busy ? null : () => _join(context),
+          onBack: _back,
+          issue: _issue,
+          onRetry: _retry,
+          phoneSlot: _companionHere ? PreJoinPhoneRow(selected: _phoneSources, onTap: _pickPhone) : null,
+        ),
+      );
+    }
+    // The teacher of a course class (redesign T1): the dark hero page with the preview and the paper card. A meeting
+    // host, a member of a meeting and a guest keep PreJoinLayout.
+    if (args.isTeacher && !args.guest && !args.ref.isMeeting) {
+      final starts = args.startsAt;
+      return Scaffold(
+        key: const ValueKey('prejoin'),
+        backgroundColor: context.colors.kit.deep,
+        body: TeacherPreJoinLayout(
+          lessonTitle: _title,
+          userName: args.userName,
+          liveNow: starts != null && !starts.isAfter(DateTime.now()),
+          timeLine: starts == null ? null : _startLine(starts),
+          joinLabel: liveTr('lr_join_session', args.ref.kind),
+          preview: _videoTrack != null && _enableVideo
+              ? LiveVideoView(_videoTrack!, fit: VideoViewFit.cover, mirror: VideoViewMirrorMode.mirror)
+              : null,
+          previewShape: SelfViewStore.instance.value.shape,
+          onPreviewShape: (s) => unawaited(SelfViewStore.instance.update(SelfViewStore.instance.value.copyWith(shape: s))),
+          micOn: _enableAudio,
+          camOn: _enableVideo,
+          micLevel: _enableAudio && _audioTrack != null ? _micLevel : null,
+          onToggleMic: _audioInputs.isEmpty && !_enableAudio ? null : _toggleAudio,
+          onToggleCam: _videoInputs.isEmpty && !_enableVideo ? null : _toggleCamera,
+          mics: _asDevices(_audioInputs, 'lr_microphone'.tr),
+          cams: _asDevices(_videoInputs, 'lr_camera'.tr),
+          selectedMic: _selectedAudioDevice?['device_id'] as String?,
+          selectedCam: _selectedVideoDevice?['device_id'] as String?,
+          onMicChanged: _selectAudio,
+          onCamChanged: _selectVideo,
+          busy: _busy,
+          onJoin: _busy ? null : () => _join(context),
+          onBack: _back,
+          issue: _issue,
+          onRetry: _retry,
+          phoneSlot: _companionHere ? PreJoinPhoneRow(selected: _phoneSources, onTap: _pickPhone) : null,
+          helpButton: const HelpInfoButton(pageId: 'live.prejoin'),
+        ),
+      );
+    }
     return Scaffold(
       key: const ValueKey('prejoin'),
       backgroundColor: context.colors.background,

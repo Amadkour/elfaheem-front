@@ -1,11 +1,15 @@
 // lib/design/app_badges.dart
 //
-// Status and count badges of the design system (Warm Editorial, system.md §2: a full pill, the label flexes,
-// success = emerald, achievements = gold, and a tone is never small text on its own tint as it comes — it is
-// darkened, lifted in dark mode, until it reads).
+// Status and count badges of the design system (the redesign kit, KIT_SPEC §5.5 / §5.10: a full pill, the label
+// flexes; each tone is a kit role with its tint and its ink, which pass AA on each other by construction).
+//
+//   tone      tint / ink
+//   neutral   kit.track / textMedium        info   kit.primaryTone      success  kit.ok      warning  kit.warn
+//   danger    kit.live                      brand  the area set's tone  gold     kit.warmTone
 //
 //   AppStatusBadge(label: 'Active', tone: AppTone.success, dot: true)   a full pill on an opaque warm tint
 //   AppStatusBadge(label: 'Top mark', tone: AppTone.gold)                achievements, streaks, top marks only
+//   AppStatusBadge(label: 'Physics', subject: 'physics')                 a subject's / an accent's tint and ink
 //                   (danger and gold always wear a glyph, appToneGlyph: never colour alone, D-862)
 //   AppCountBadge(count: 150)                                            "99+" bubble (danger by default)
 //   AppCountBadge(count: 3, child: Icon(Icons.notifications))            the bubble over the child's top-end corner
@@ -20,7 +24,10 @@ library;
 import 'package:flutter/material.dart';
 
 import '../config/theme/theme_config_provider.dart';
+import '../core/app_digits.dart';
+import 'app_area.dart';
 import 'app_contrast.dart';
+import 'app_subject_colors.dart' show subjectKeyFor;
 import 'app_motion_kit.dart';
 import 'app_tokens.dart';
 
@@ -28,19 +35,23 @@ import 'app_tokens.dart';
 /// decoration; [success] is emerald: done, correct, active.
 enum AppTone { neutral, info, success, warning, danger, brand, gold }
 
-/// The solid colour of a tone (icons, dots, fills).
-Color appToneColor(BuildContext context, AppTone tone) {
+/// The kit tone (colour, tint, ink) of [tone] (KIT_SPEC §5.5).
+KitTone appKitTone(BuildContext context, AppTone tone) {
   final c = context.colors;
+  final kit = c.kit;
   return switch (tone) {
-    AppTone.neutral => c.textMedium,
-    AppTone.info => c.charcoal,
-    AppTone.success => c.success,
-    AppTone.warning => c.warning,
-    AppTone.danger => c.danger,
-    AppTone.brand => c.primary,
-    AppTone.gold => c.accent2,
+    AppTone.neutral => KitTone(c.textMedium, kit.track, c.textMedium),
+    AppTone.info => kit.primaryTone,
+    AppTone.success => kit.ok,
+    AppTone.warning => kit.warn,
+    AppTone.danger => kit.live,
+    AppTone.brand => AppAreaScope.of(context).tone,
+    AppTone.gold => kit.warmTone,
   };
 }
+
+/// The solid colour of a tone (icons, dots, fills).
+Color appToneColor(BuildContext context, AppTone tone) => appKitTone(context, tone).color;
 
 /// The glyph a tone always carries, so its meaning never rests on colour alone (D-862): an error / failed state wears
 /// the error mark, an achievement (gold: top mark, streak) the trophy. Null for the other tones.
@@ -63,12 +74,10 @@ IconData? appColorGlyph(BuildContext context, Color color) {
 /// (`successBase` …), so a dark-mode bubble keeps the same deep red and white figure as in light mode, where
 /// [appToneColor] gives the dark-mode INK, lifted for text and icons (D-740).
 Color appToneFill(BuildContext context, AppTone tone) {
-  final c = context.colors;
+  final kit = context.colors.kit;
   return switch (tone) {
-    AppTone.success => c.successBase,
-    AppTone.warning => c.warningBase,
-    AppTone.danger => c.dangerBase,
-    AppTone.gold => c.accent2Base,
+    // a count badge: white digits at 4.62:1 (P11), never the lighter live colour
+    AppTone.danger => kit.liveFill,
     _ => appToneColor(context, tone),
   };
 }
@@ -119,20 +128,10 @@ Color appInkOnFill(BuildContext context, Color fill) {
 }
 
 /// The soft, opaque background of a tone.
-Color appToneTint(BuildContext context, AppTone tone) {
-  final c = context.colors;
-  return switch (tone) {
-    AppTone.neutral => Color.alphaBlend(c.textMedium.withValues(alpha: c.isDark ? 0.20 : 0.10), c.cardBg),
-    _ => appTintOn(context, appToneColor(context, tone)),
-  };
-}
+Color appToneTint(BuildContext context, AppTone tone) => appKitTone(context, tone).tint;
 
-/// Text colour on [appToneTint]: the tone itself where it reads, else pulled until it does (hue kept).
-Color appToneInk(BuildContext context, AppTone tone) {
-  final c = context.colors;
-  if (tone == AppTone.neutral) return c.textDark;
-  return appInkOn(context, appToneColor(context, tone), appToneTint(context, tone));
-}
+/// Text colour on [appToneTint] (the kit's ink, AA on its tint).
+Color appToneInk(BuildContext context, AppTone tone) => appKitTone(context, tone).ink;
 
 /// A full status pill. The label flexes (ellipsis), never clips; a badge is read, not pressed, so it keeps its
 /// own small height and the row around it provides the 48 px target when it is tappable.
@@ -144,10 +143,18 @@ class AppStatusBadge extends StatelessWidget {
     this.icon,
     this.dot = false,
     this.dense = false,
+    this.accent,
+    this.subject,
   });
 
   final String label;
   final AppTone tone;
+
+  /// An accent's tint and ink; wins over [tone].
+  final AppAccent? accent;
+
+  /// A subject (slug or name, see `subjectKeyFor`): its tint and ink; wins over [tone] and [accent].
+  final String? subject;
 
   /// A leading icon (wins over [dot]). Danger and gold fall back to their own glyph ([appToneGlyph], D-862).
   final IconData? icon;
@@ -164,14 +171,19 @@ class AppStatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ink = appToneInk(context, tone);
-    final icon = this.icon ?? appToneGlyph(tone);
-    final style = (dense ? AppType.overline(context) : AppType.meta(context))
-        .copyWith(color: ink, fontWeight: FontWeight.w600, letterSpacing: 0, height: 1.2);
+    final kit = context.colors.kit;
+    final KitTone t = subject != null
+        ? kit.subject(subjectKeyFor(subject)).tone
+        : accent != null
+            ? kit.accent(accent!)
+            : appKitTone(context, tone);
+    final ink = t.ink;
+    final icon = this.icon ?? (subject == null && accent == null ? appToneGlyph(tone) : null);
+    final style = AppType.overline(context).copyWith(color: ink, fontWeight: FontWeight.w600, letterSpacing: 0, height: 1.2);
     return Container(
       constraints: BoxConstraints(minHeight: dense ? _heightDense : _height),
       padding: EdgeInsetsDirectional.symmetric(horizontal: dense ? AppSpace.xs : AppSpace.sm, vertical: AppSpace.xxs / 2),
-      decoration: BoxDecoration(color: appToneTint(context, tone), borderRadius: BorderRadius.circular(AppRadius.pill)),
+      decoration: BoxDecoration(color: t.tint, borderRadius: BorderRadius.circular(AppRadius.pill)),
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         if (icon != null) ...[
           Icon(icon, size: AppIconSize.xs, color: ink),
@@ -180,7 +192,7 @@ class AppStatusBadge extends StatelessWidget {
           Container(
             width: _dot,
             height: _dot,
-            decoration: BoxDecoration(color: appToneColor(context, tone), shape: BoxShape.circle),
+            decoration: BoxDecoration(color: t.color, shape: BoxShape.circle),
           ),
           const SizedBox(width: AppSpace.xxs + _dot / 3),
         ],
@@ -202,18 +214,23 @@ class AppCountBadge extends StatelessWidget {
     this.child,
     this.showZero = false,
     this.semanticLabel,
+    this.ringColor,
   });
 
   final int count;
   final AppTone tone;
+
+  /// The ring that lifts the bubble off its child (default: the card surface).
+  final Color? ringColor;
 
   /// The widget the bubble is laid over (top-end, directional). Null = the bare bubble.
   final Widget? child;
   final bool showZero;
   final String? semanticLabel;
 
-  /// The bubble's smallest size: a circle for one digit, a stadium past that.
-  static const double _size = 20;
+  /// The bubble's smallest size over a child (a circle for one digit, a stadium past that); bare, it is [_sizeBare].
+  static const double _size = 18;
+  static const double _sizeBare = 22;
 
   /// How far the bubble hangs over the child's corner.
   static const double _overhang = 6;
@@ -222,8 +239,15 @@ class AppCountBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final hidden = count <= 0 && !showZero;
     final c = context.colors;
-    final fill = appToneFill(context, tone);
-    final bubble = hidden
+    final kit = c.kit;
+    // danger: the live fill with white digits (P11); gold: the warm tint and ink; others: the tone's tint and ink
+    final (Color fill, Color ink) = switch (tone) {
+      AppTone.danger => (kit.liveFill, c.onHero),
+      AppTone.gold => (kit.warmTone.tint, kit.warmTone.ink),
+      _ => (appToneTint(context, tone), appToneInk(context, tone)),
+    };
+    final min = child == null ? _sizeBare : _size;
+    final Widget bubble = hidden
         ? const SizedBox.shrink()
         : Semantics(
             label: semanticLabel ?? appCountText(count),
@@ -232,31 +256,33 @@ class AppCountBadge extends StatelessWidget {
             child: AppBump(
               trigger: count,
               child: Container(
-                constraints: const BoxConstraints(minWidth: _size, minHeight: _size),
+                constraints: BoxConstraints(minWidth: min, minHeight: min),
                 padding: const EdgeInsetsDirectional.symmetric(horizontal: AppSpace.xxs + 2),
                 decoration: BoxDecoration(
                   color: fill,
                   borderRadius: BorderRadius.circular(AppRadius.pill),
                   // the ring that lifts it off the child is the surface it sits on, not a hairline
-                  border: child == null ? null : Border.all(color: c.cardBg, width: AppBorder.focus),
+                  border: child == null ? null : Border.all(color: ringColor ?? c.cardBg, width: AppBorder.focus),
                 ),
                 // shrink-wrapped around the centred figure (a Container with `alignment` would fill a Wrap's run)
                 child: Center(
                   widthFactor: 1,
                   heightFactor: 1,
                   child: Text(
-                    appCountText(count),
+                    appDigits(appCountText(count)),
                     maxLines: 1,
-                    style: AppType.overline(context).copyWith(color: appInkOnFill(context, fill), letterSpacing: 0, height: 1.1),
+                    style: AppType.overline(context).copyWith(color: ink, letterSpacing: 0, height: 1.1),
                   ),
                 ),
               ),
             ),
           );
-    if (child == null) return bubble;
+    // it lands with a slap under a student area (M4, tilt 0); elsewhere it is simply there
+    final shown = hidden ? bubble : AppSlap(tilt: 0, delay: AppMotionSpec.slapDelay, child: bubble);
+    if (child == null) return shown;
     return Stack(clipBehavior: Clip.none, children: [
       child!,
-      if (!hidden) PositionedDirectional(top: -_overhang, end: -_overhang, child: bubble),
+      if (!hidden) PositionedDirectional(top: -_overhang, end: -_overhang, child: shown),
     ]);
   }
 }

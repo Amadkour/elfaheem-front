@@ -19,8 +19,7 @@ import 'package:flutter_education_app/features/quran/quran_progress.dart';
 import 'package:flutter_education_app/features/quran/quran_record_sheet.dart';
 import 'package:flutter_education_app/features/teachers/teacher_onboarding.dart' show TeacherHubPage;
 import 'package:flutter_education_app/features/teachers/teachers_api.dart' show teacherOnboardingOff;
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart';
 
 /// The values the editor sends.
 typedef QuranCardDraft = ({
@@ -153,10 +152,11 @@ class _QuranTeacherHubPageState extends State<QuranTeacherHubPage> {
   }
 
   /// Opens the course form with the program type preset to a Quran program (D-1343).
-  Widget _addProgramButton() => AppButton(
+  Widget _addProgramButton() => AppButton.ghost(
         key: const ValueKey('quran.hub.add_program'),
-        label: t('أضف برنامج قرآن', 'Add a Quran program'),
+        label: t('أضف برنامج', 'Add a program'),
         icon: Icons.add_rounded,
+        size: AppButtonSize.sm,
         onPressed: _addProgram,
       );
 
@@ -177,96 +177,101 @@ class _QuranTeacherHubPageState extends State<QuranTeacherHubPage> {
             locked: quranTeacherApplyOff(),
             onSave: _save,
           );
-    return BasePage(
-      width: AppWidth.form,
-      appBar: ScreenAppBar(title: t('تعليم القرآن', 'My Quran teaching')),
-      child: SafeArea(
-        child: c == null
-            ? (_loading ? const AppListSkeleton(items: 4) : AppErrorState(message: _error, onRetry: _load))
-            : AppRefresh(
-                onRefresh: _load,
-                child: ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
-                  // one teacher identity (D-1665): with the teacher profile on, the name, photo, documents and the
-                  // review live there; this page keeps the record sheet, the programs and the Quran-only details
-                  if (teacherOnboardingOff())
-                    form
-                  else ...[
-                    AppActionCard(
-                      key: const ValueKey('quran.hub.teacher_profile'),
-                      icon: Icons.co_present_rounded,
-                      title: t('ملفي كمعلم وباقاتي', 'My teacher profile and packages'),
-                      subtitle: t('القرآن والتجويد والفقه والنحو: وثّق مؤهلاتك وافتح باقات بمقاعد وسعر',
-                          'Quran, tajweed, fiqh and grammar: prove your qualifications and open packages with seats and a price'),
-                      onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TeacherHubPage())),
+    final canRecord = c != null && c.courses.isNotEmpty && _meta != null;
+    final List<Widget> body;
+    if (c == null) {
+      body = [_loading ? const AppListSkeleton(items: 4) : AppCard(child: AppErrorState(message: _error, onRetry: _load))];
+    } else {
+      body = [
+        // one teacher identity (D-1665): with the teacher profile on, the name, photo, documents and the review live
+        // there; this page keeps the record sheet, the programs and the Quran-only details
+        if (teacherOnboardingOff())
+          AppCard(child: form)
+        else
+          AppActionCard(
+            key: const ValueKey('quran.hub.teacher_profile'),
+            icon: Icons.co_present_rounded,
+            title: t('ملفي كمعلم وباقاتي', 'My teacher profile and packages'),
+            subtitle: t('القرآن والتجويد والفقه والنحو: وثّق مؤهلاتك وافتح باقات بمقاعد وسعر',
+                'Quran, tajweed, fiqh and grammar: prove your qualifications and open packages with seats and a price'),
+            onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TeacherHubPage())),
+          ),
+        AppCard(
+          title: t('برامجي', 'My programs'),
+          action: c.courses.isEmpty ? null : _addProgramButton(),
+          child: c.courses.isEmpty
+              ? AppEmpty(
+                  icon: Icons.event_note_rounded,
+                  title: t('لا برامج قرآن منشورة بعد', 'No published Quran programs yet'),
+                  message: t('أضف برنامج قرآن: هو دورة نوعها "برنامج تحفيظ قرآن"، وبعد نشره يظهر هنا مع طلابه.',
+                      'Add a Quran program: a course of the type "Quran program". Once published it shows here with its students.'),
+                  actionLabel: t('أضف برنامج قرآن', 'Add a Quran program'),
+                  onAction: _addProgram,
+                )
+              : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  Text(t('برامج القرآن دورات: الحجز والدفع والحصص من صفحة الدورة.',
+                      'Quran programs are courses: booking, payment and classes live on the course page.'),
+                      style: AppType.meta(context)),
+                  const SizedBox(height: AppSpace.sm),
+                  for (var i = 0; i < c.courses.length; i++) ...[
+                    if (i > 0) const SizedBox(height: AppSpace.xs),
+                    AppTile(
+                      key: ValueKey('quran.hub.program.${c.courses[i].id}'),
+                      icon: Icons.menu_book_rounded,
+                      tone: context.colors.kit.ok,
+                      title: c.courses[i].name,
+                      subtitle: t('الطلاب وتقدّمهم', 'Students and their progress'),
+                      trailing: Icon(Icons.chevron_right_rounded, color: context.colors.textLight),
+                      onTap: () => _students(c.courses[i]),
                     ),
                   ],
-                  AppSection(
-                    title: t('برامجي', 'My programs'),
-                    subtitle: t('برامج القرآن دورات: الحجز والدفع والجلسات من صفحة الدورة.',
-                        'Quran programs are courses: booking, payment and sessions live on the course page.'),
-                    trailing: c.courses.isEmpty || _meta == null
-                        ? null
-                        : AppButton(
-                            key: const ValueKey('quran.hub.record'),
-                            label: t('سجل التسميع', 'Record sheet'),
-                            icon: Icons.edit_note_rounded,
-                            size: AppButtonSize.sm,
-                            onPressed: _record,
-                          ),
-                    child: c.courses.isEmpty
-                        ? AppEmpty(
-                            icon: Icons.event_note_rounded,
-                            title: t('لا برامج قرآن منشورة بعد', 'No published Quran programs yet'),
-                            message: t('أضف برنامج قرآن: هو كورس نوعه "برنامج تحفيظ قرآن"، وبعد نشره يظهر هنا مع طلابه.',
-                                'Add a Quran program: a course of the type "Quran program". Once published it shows here with its students.'),
-                            actionLabel: t('أضف برنامج قرآن', 'Add a Quran program'),
-                            onAction: _addProgram,
-                          )
-                        : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                            _addProgramButton(),
-                            const SizedBox(height: AppSpace.sm),
-                            for (final p in c.courses) ...[
-                              AppActionCard(
-                                key: ValueKey('quran.hub.program.${p.id}'),
-                                icon: Icons.menu_book_rounded,
-                                title: p.name,
-                                subtitle: t('الطلاب وتقدّمهم', 'Students and their progress'),
-                                onTap: () => _students(p),
-                              ),
-                              const SizedBox(height: AppSpace.sm),
-                            ],
-                          ]),
+                ]),
+        ),
+        if (!teacherOnboardingOff())
+          AppExpandCard(
+            key: const ValueKey('quran.hub.card_details'),
+            header: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: AppTouch.min),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
+                child: Row(children: [
+                  AppIconBox(icon: Icons.tune_rounded, tone: context.colors.kit.primaryTone),
+                  const SizedBox(width: AppSpace.sm),
+                  Expanded(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                      Text(t('تفاصيل القرآن في بطاقتك', 'Quran details on your card'), style: AppType.tileTitle(context)),
+                      Text(t('الإجازة والأهداف ونوع الحصص والدولة: يصفّي بها الطلاب في تبويب القرآن',
+                              'Ijazah, goals, class types and country: students filter by them in the Quran tab'),
+                          style: AppType.meta(context)),
+                    ]),
                   ),
-                  if (!teacherOnboardingOff()) ...[
-                    const SizedBox(height: AppSpace.md),
-                    AppExpandCard(
-                      key: const ValueKey('quran.hub.card_details'),
-                      header: ConstrainedBox(
-                        constraints: const BoxConstraints(minHeight: AppTouch.min),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
-                          child: Row(children: [
-                            Icon(Icons.tune_rounded, size: AppIconSize.md, color: context.colors.primary),
-                            const SizedBox(width: AppSpace.sm),
-                            Expanded(
-                              child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                                Text(t('تفاصيل القرآن في بطاقتك', 'Quran details on your card'),
-                                    style: AppType.row(context).copyWith(color: context.colors.textDark)),
-                                Text(t('الإجازة والأهداف ونوع الجلسات والدولة: يصفّي بها الطلاب في تبويب القرآن',
-                                        'Ijazah, goals, session types and country: students filter by them in the Quran tab'),
-                                    style: AppType.meta(context).copyWith(color: context.colors.textMedium)),
-                              ]),
-                            ),
-                          ]),
-                        ),
-                      ),
-                      child: Padding(padding: const EdgeInsets.all(AppSpace.md), child: form),
-                    ),
-                  ],
-                  const SizedBox(height: AppSpace.lg),
                 ]),
               ),
+            ),
+            child: Padding(padding: const EdgeInsets.all(AppSpace.md), child: form),
+          ),
+      ];
+    }
+    return T2HeroPage(
+      title: t('تعليم القرآن', 'My Quran teaching'),
+      width: AppWidth.reading,
+      onRefresh: _load,
+      hero: AppHero(
+        title: t('برامج التحفيظ والتسميع', 'Memorisation and recitation programs'),
+        actions: [
+          if (canRecord)
+            AppButton.hot(
+              key: const ValueKey('quran.hub.record'),
+              label: t('سجّل تسميع', 'Log a recitation'),
+              icon: Icons.mic_none_rounded,
+              onPressed: _record,
+            ),
+        ],
+        stats: c == null || c.courses.isEmpty
+            ? const []
+            : [AppHeroStat(value: '${c.courses.length}', label: t('برامج', 'Programs'))],
       ),
+      children: body,
     );
   }
 }

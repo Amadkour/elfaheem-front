@@ -45,6 +45,22 @@ enum ProviderState { idle, loading, success, error }
   bool get isLoading => _state == ProviderState.loading;
   bool get hasError  => _state == ProviderState.error;
   bool get isSuccess => _state == ProviderState.success;
+
+  // A [run] that is still waiting when its page closes must not notify a disposed provider (an infinite-scroll
+  // page that leaves mid-load).
+  bool _baseDisposed = false;
+
+  @override
+  void dispose() {
+    _baseDisposed = true;
+    super.dispose();
+  }
+
+  @override
+  void notifyListeners() {
+    if (!_baseDisposed) super.notifyListeners();
+  }
+
   void makeLoading(){
     _state=ProviderState.loading;
     notifyListeners();

@@ -151,7 +151,7 @@ class WsAlertRow extends StatelessWidget {
                           bottom: -AppSpace.xxs / 2,
                           end: -AppSpace.xxs / 2,
                           child: Container(
-                            padding: const EdgeInsets.all(AppSpace.xxs / 2),
+                            padding: const EdgeInsets.all(_hairPad),
                             decoration: BoxDecoration(color: c.cardBg, shape: BoxShape.circle),
                             child: Icon(_severityIcon(alert.severity), size: AppIconSize.xs, color: appInk(context, tone)),
                           ),
@@ -749,3 +749,6 @@ class _WsAlertsTabState extends State<WsAlertsTab> {
     );
   }
 }
+
+/// Half the smallest step: the padding of a dense badge.
+const double _hairPad = AppSpace.xxs / 2;

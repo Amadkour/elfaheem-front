@@ -8,6 +8,7 @@ import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_area.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
@@ -61,8 +62,11 @@ class _StudentExamDetailScreenState extends State<StudentExamDetailScreen> {
   // Platform / organization timezone and 12h/24h (the server sends UTC).
   String _fmtDate(DateTime d) => AppTime.dateTime(d);
 
+  // the exam area (redesign S-C): the kit hero, the forward button and the area accent
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => AppAreaScope(area: AppArea.exam, child: Builder(builder: _buildPage));
+
+  Widget _buildPage(BuildContext context) {
     final exam = widget.exam;
     if (exam.isFrozen && !exam.isSubmitted) {
       return StudentExamFrozenScreen(

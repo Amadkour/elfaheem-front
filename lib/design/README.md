@@ -275,3 +275,30 @@ Stack(children: [list, Align(alignment: Alignment.bottomCenter, child: AppSlideI
 AspectRatio(aspectRatio: 16 / 9, child: AppParallaxImage(image: Image.network(url, fit: BoxFit.cover)))
 AppOdometer('$points', memoryKey: 'home.points', style: AppType.figureLarge(context))
 ```
+
+## 7. The redesign kit (phase 1, D-1811, `docs/redesign/KIT_SPEC.md`)
+
+- **Colours.** `context.colors.kit` (`KitColors`, `lib/config/theme/kit_palette.dart`) carries the roles the old theme
+  lacks: `area(AppArea.x)` / `role(AppRoleAccent.x)` (a `KitSet`: hero stops, button stops and ink, tint, ink),
+  `accent(AppAccent.x)`, `subject(key)` (`subjectColors(context, serverSubject)`, `app_subject_colors.dart`), `live`,
+  `ok`, `warn`, `error`, `lock`, `well`, `track`, `line`, `fieldEdge`. The values come from the theme response's
+  `colors.kit`, else `kKitPaletteDefaults` (copied from `tool/redesign/kit_palette.json`). Old getters keep their
+  meaning; never search-and-replace `c.primary` with `c.kit.primary`.
+- **Scope.** A page (or shell tab) sets ONE `AppAreaScope(area: …)` (student) or `AppAreaScope.role(role: …)`; the hero,
+  buttons, selected states, empty plates and the motion budget read `AppAreaScope.of(context)`. `AppShell` sets the
+  role scope from the signed-in role.
+- **Components.** `AppHero` (+ `AppHeroStat`, `AppHeroSurface`, `AppHeroOverlap`), `AppCard(variant:)`,
+  `AppButton.hot` (the forward button, one per student screen), `AppTile` / `AppIconBox` / `AppRules`,
+  `AppProgressRing`, `AppCountdown`, `AppChip`, `AppSuccess`, `AppLiveTag`, `AppLiveBanner`.
+- **Motion M1–M16** (`lib/design/motion/`, exported through `app_motion_kit.dart`): `AppFlipIn`, `AppInkPath` /
+  `AppInkRing` / `AppInkCheck`, `AppPop`, `AppSlap`, `AppDeal`, `AppWipe` / `AppWipeSwitcher`, `AppSquiggle`,
+  `AppBreathe`, `AppJelly`, `AppOdometer` (M10), `AppBurst.fire`, `AppWobble`, `AppMorphPill`, `appPeekSheetStyle`,
+  `AppFeedback`, `AppDriftShapes`, and the `.mFlip(i)`-style shorthands. Each one-shot move plays once per route,
+  asks the screen's `AppMotionBudget` (one hero-move kind, 12 / 24 entries, 1.2 s window, 3 loops) and draws its end
+  state under Reduce motion; the playful moves only run under a student area scope.
+- **Gallery.** `/kit_gallery` (super admin / developer; every role in debug builds; kill switch `admin.kit_gallery`)
+  shows every role, component and move under switchable area, role, dark, direction, Reduce motion, text scale and
+  width.
+- **Gate.** `test/ui/kit_rules_test.dart` also counts colour literals in `lib/design/**` against
+  `test/ui/kit_hex_baseline.json` (only down; zero in a new file). Hex lives in `kit_palette_defaults.dart` and
+  `app_theme.dart` only.

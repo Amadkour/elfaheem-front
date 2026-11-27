@@ -12,7 +12,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -26,6 +25,7 @@ import 'package:flutter_education_app/features/exams/hub/result/exam_get_result_
 import 'package:flutter_education_app/features/exams/exam_autograde_widgets.dart' show AnswerMemorySheet;
 import 'package:flutter_education_app/features/exams/hub/grade/essay_run.dart';
 import 'package:flutter_education_app/features/exams/hub/grade/essay_run_widgets.dart';
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart';
 
 /// Setup, then the run; returns when the teacher is back on the caller's page.
 Future<void> openEssayRunFlow(BuildContext context, {required int courseId, required String courseTitle, int? orgId, EssayRunApi? api}) async {
@@ -116,9 +116,10 @@ class _EssaySetupScreenState extends State<EssaySetupScreen> {
   @override
   Widget build(BuildContext context) {
     final total = _qs.fold<double>(0, (s, q) => s + (q.mark ?? 0));
-    return BasePage(
+    return T2Scope(
+      child: BasePage(
       key: const ValueKey(kEssayRunFeature),
-      appBar: ScreenAppBar(title: t('تصحيح أوراق مكتوبة', 'Grade written papers')),
+      appBar: AppHeader(title: t('تصحيح أوراق مكتوبة', 'Grade written papers')),
       child: ListView(padding: const EdgeInsets.all(AppSpace.md), children: [
         Center(
           child: ConstrainedBox(
@@ -160,6 +161,7 @@ class _EssaySetupScreenState extends State<EssaySetupScreen> {
           ),
         ),
       ]),
+    ),
     );
   }
 }
@@ -365,7 +367,7 @@ class _EssayRunScreenState extends State<EssayRunScreen> {
         ),
       ]);
     }
-    return BasePage(key: const ValueKey(kEssayRunFeature), appBar: ScreenAppBar(title: t('تصحيح أوراق مكتوبة', 'Grade written papers')), child: body);
+    return T2Scope(child: BasePage(key: const ValueKey(kEssayRunFeature), appBar: AppHeader(title: t('تصحيح أوراق مكتوبة', 'Grade written papers')), child: body));
   }
 }
 
@@ -517,6 +519,6 @@ class _EssayStudentScreenState extends State<EssayStudentScreen> {
         ),
       ]);
     }
-    return BasePage(key: const ValueKey(kEssayRunFeature), appBar: ScreenAppBar(title: st?.name ?? t('ورقة الطالب', 'Student\'s paper')), child: body);
+    return T2Scope(child: BasePage(key: const ValueKey(kEssayRunFeature), appBar: AppHeader(title: st?.name ?? t('ورقة الطالب', 'Student\'s paper')), child: body));
   }
 }

@@ -19,8 +19,8 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 
 import '../admin_common.dart' show t;
-import '../admin_page.dart';
 import 'edu_admin_api.dart';
+import '../sup/sup_kit.dart';
 
 enum EduKind { stage, grade, subject, area }
 
@@ -525,14 +525,13 @@ class _AdminEduLevelsPageState extends State<AdminEduLevelsPage> implements EduA
 
   @override
   Widget build(BuildContext context) {
-    return AdminPage(
-      width: AppWidth.content,
-      title: t('المراحل الدراسية', 'Education levels'),
-      subtitle: t('المراحل والصفوف والمواد والمناطق لكل دولة.', 'Stages, grades, subjects and areas for each country.'),
-      icon: Icons.school_rounded,
-      helpPageId: 'admin.edu_levels',
-      onRefresh: _load,
-      body: _failed
+    return SupPage(
+        kicker: 'a2_platform_kicker'.tr, headline: 'a2_levels_head'.tr, line: 'a2_levels_line'.tr,
+        width: AppWidth.content,
+        title: t('المراحل الدراسية', 'Education levels'),
+        helpPageId: 'admin.edu_levels',
+        onRefresh: _load,
+        body: _failed
           ? AppEmpty(
               icon: Icons.cloud_off_rounded,
               title: t('تعذّر التحميل', 'Could not load'),
@@ -547,7 +546,7 @@ class _AdminEduLevelsPageState extends State<AdminEduLevelsPage> implements EduA
                 EduLevelsBody(countries: _countries, country: _country, tree: _tree, actions: this),
               ]),
             ),
-    );
+      );
   }
 }
 

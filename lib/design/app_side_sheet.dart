@@ -21,21 +21,34 @@
 // A sheet opens on the nearest Navigator, as showModalBottomSheet did, so providers scoped to a shell tab stay
 // readable from inside it. Close it with `Navigator.pop(ctx, value)`.
 //
-// Motion (D-621): the phone sheet rises in 280 ms on the iOS sheet curve and leaves in 200 ms (`AppEase.sheet`); a
-// drag follows the finger, can catch the sheet while it is still moving, settles on the same curve from where it was
-// let go, and a fast fling down (or a drop past half) dismisses it. The side panel slides in 280 ms on `AppEase.out`
-// and leaves in about 200 ms; the dialog fades and grows from 96 % in 220 ms. Reduce motion: no slide or growth
-// (the drag itself still follows the finger).
+// Motion (KIT_SPEC §5.8, M14): the phone sheet rises in 500 ms, overshoots by 1.6 % of its height and settles
+// (`appPeekSheetStyle`; a filler in the sheet's colour hides the gap under it), and leaves in 200 ms; on native phones
+// the page behind blurs a little (sigma 3) as the sheet comes in. A drag follows the finger, can catch the sheet while
+// it is still moving, and a fast fling down (or a drop past half) dismisses it. The side panel is the full-height
+// drawer of the design, flush to the end edge, 520 wide; it slides in 450 ms. The dialog fades and grows from 96 % in
+// 220 ms (D-710). Reduce motion: no slide, growth or blur (the drag itself still follows the finger).
 library;
 
+import 'dart:ui' show ImageFilter;
+
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
-import 'app_motion_kit.dart' show AppEase;
+import 'app_motion_kit.dart' show AppEase, AppMotionSpec, appPeekSheetStyle;
 import 'app_responsive.dart';
 import 'app_tokens.dart';
+
+/// Tests: forces the web (true) or native (false) answer of the phone sheet's backdrop blur; null = `kIsWeb`.
+@visibleForTesting
+bool? debugAppSheetForceWeb;
+
+bool get _onWeb => debugAppSheetForceWeb ?? kIsWeb;
+
+/// The blur behind a phone sheet on native phones (none on the web: its cost on the web renderer).
+const double _sheetBlur = 3;
 
 /// Whether a sheet at this window width is a side panel.
 bool appSheetIsSide(BuildContext context) => MediaQuery.sizeOf(context).width >= Breakpoints.mobile;
@@ -121,10 +134,10 @@ Future<T?> showAppSideSheet<T>(
     transitionDuration: motion.off ? Duration.zero : _sideIn,
     pageBuilder: (ctx, _, _) => AppSideSheetFrame(width: width ?? 520, withCloseBar: withCloseBar, builder: builder),
     transitionBuilder: (ctx, anim, _, child) {
-      final curved = CurvedAnimation(parent: anim, curve: AppEase.out, reverseCurve: _sideOut);
+      final curved = CurvedAnimation(parent: anim, curve: AppMotionSpec.drawerCurve, reverseCurve: _sideOut);
       return SlideTransition(
-        position: Tween<Offset>(begin: Offset(rtl ? -0.6 : 0.6, 0), end: Offset.zero).animate(curved),
-        child: FadeTransition(opacity: curved, child: child),
+        position: Tween<Offset>(begin: Offset(rtl ? -1 : 1, 0), end: Offset.zero).animate(curved),
+        child: child,
       );
     },
   );
@@ -224,10 +237,10 @@ class _SheetBody extends StatelessWidget {
       );
 }
 
-/// The side panel's entrance. A dialog route has one duration both ways, so the exit is made faster by its curve:
-/// it reaches the closed place after the first 200 ms of the 280 and rests there.
-const Duration _sideIn = Duration(milliseconds: 280);
-const Curve _sideOut = Interval(1 - 200 / 280, 1, curve: AppEase.outReversed);
+/// The side panel's entrance (450 ms, KIT_SPEC §5.8). A dialog route has one duration both ways, so the exit is made
+/// faster by its curve: it reaches the closed place after the first 200 ms of the 450 and rests there.
+const Duration _sideIn = AppMotionSpec.drawer;
+const Curve _sideOut = Interval(1 - 200 / 450, 1, curve: AppEase.outReversed);
 
 /// The floating panel. Public so a layout test can pump it on its own.
 class AppSideSheetFrame extends StatelessWidget {
@@ -240,28 +253,31 @@ class AppSideSheetFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final radius = BorderRadius.circular(AppRadius.sheet);
+    // the design's drawer: flush to the end edge, full height, the sheet radius on its inner (start) side only
+    const radius = BorderRadiusDirectional.horizontal(start: Radius.circular(AppRadius.sheet));
     final insets = MediaQuery.viewInsetsOf(context).bottom;
     return _SheetScope(
       child: LayoutBuilder(builder: (context, box) {
         return Align(
           alignment: AlignmentDirectional.centerEnd,
           child: Padding(
-            padding: EdgeInsets.fromLTRB(AppSpace.sm, AppSpace.sm, AppSpace.sm, AppSpace.sm + insets),
+            padding: EdgeInsets.only(bottom: insets),
             child: SizedBox(
               key: const ValueKey('app.side_sheet.panel'),
-              width: appSideSheetWidth(box.maxWidth - AppSpace.lg, preferred: width),
+              width: appSideSheetWidth(box.maxWidth, preferred: width),
+              height: double.infinity,
               child: DecoratedBox(
                 decoration: BoxDecoration(borderRadius: radius, boxShadow: AppElevation.of(context, 4)),
                 child: Material(
                   color: c.cardBg,
                   surfaceTintColor: Colors.transparent,
                   clipBehavior: Clip.antiAlias,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: radius,
-                    side: BorderSide(color: c.divider, width: AppBorder.hairline),
+                  shape: const RoundedRectangleBorder(borderRadius: radius),
+                  child: SafeArea(
+                    left: false,
+                    right: false,
+                    child: _SheetBody(withCloseBar: withCloseBar, builder: builder, fill: true),
                   ),
-                  child: _SheetBody(withCloseBar: withCloseBar, builder: builder, fill: true),
                 ),
               ),
             ),
@@ -336,7 +352,8 @@ Future<T?> _showPhoneSheet<T>(
     barrierColor: appScrimColor(context),
     backgroundColor: Colors.transparent,
     elevation: 0,
-    builder: (ctx) => Padding(
+    builder: (ctx) => AppSheetBackdrop(
+      child: Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
       // The height left ABOVE the keyboard (not the screen height): with the keyboard open a
       // `size.height * 0.92` box was taller than the space and the sheet overflowed.
@@ -348,7 +365,9 @@ Future<T?> _showPhoneSheet<T>(
                 : MediaQuery.sizeOf(ctx).height * 0.92,
           ),
           // A Material (not a coloured Container): ListTiles inside paint their tileColor / ink on the nearest Material.
-          child: Material(
+          child: AppSheetPeekFiller(
+            color: ctx.colors.cardBg,
+            child: Material(
             color: ctx.colors.cardBg,
             surfaceTintColor: Colors.transparent,
             clipBehavior: Clip.antiAlias,
@@ -370,15 +389,71 @@ Future<T?> _showPhoneSheet<T>(
               ),
             ]),
           ),
+          ),
         ),
       ),
+    ),
     ),
   );
 }
 
-/// The phone sheet's motion (D-621): [AppEase.sheet], or none under Reduce motion.
-AnimationStyle appSheetAnimationStyle(BuildContext context) =>
-    AppMotion.of(context).off ? AnimationStyle.noAnimation : AppEase.sheet;
+/// The M14 overshoot lifts a sheet a few pixels above the bottom edge for a moment: a strip in the sheet's [color]
+/// under it keeps the scrim from showing there.
+class AppSheetPeekFiller extends StatelessWidget {
+  const AppSheetPeekFiller({super.key, required this.color, required this.child});
+
+  final Color color;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Stack(clipBehavior: Clip.none, children: [
+        child,
+        PositionedDirectional(
+          key: const ValueKey('app.sheet.peek_filler'),
+          start: 0,
+          end: 0,
+          bottom: -AppSpace.lg,
+          height: AppSpace.lg,
+          child: IgnorePointer(child: ColoredBox(color: color)),
+        ),
+      ]);
+}
+
+/// The page behind a phone sheet blurs a little (sigma 3) as the sheet comes in, on native phones only (none on the
+/// web, none under Reduce motion).
+class AppSheetBackdrop extends StatelessWidget {
+  const AppSheetBackdrop({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final anim = ModalRoute.of(context)?.animation;
+    if (_onWeb || anim == null || AppMotion.of(context).off) return child;
+    return Stack(children: [
+      Positioned.fill(
+        child: IgnorePointer(
+          child: AnimatedBuilder(
+            animation: anim,
+            builder: (context, _) {
+              final sigma = _sheetBlur * anim.value.clamp(0.0, 1.0);
+              if (sigma <= 0) return const SizedBox.shrink();
+              return BackdropFilter(
+                key: const ValueKey('app.sheet.blur'),
+                filter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+                child: const SizedBox.expand(),
+              );
+            },
+          ),
+        ),
+      ),
+      child,
+    ]);
+  }
+}
+
+/// The phone sheet's motion: M14 ([appPeekSheetStyle]), or none under Reduce motion.
+AnimationStyle appSheetAnimationStyle(BuildContext context) => appPeekSheetStyle(context);
 
 /// [showModalBottomSheet]'s arguments, drawn as the app's sheet. On phones it IS a modal bottom sheet (the builder's
 /// own look is kept; the sheet's corners, scrim and motion are the kit's unless the caller passes its own), on wide
@@ -414,7 +489,9 @@ Future<T?> showAppModalSheet<T>({
   }
   return showModalBottomSheet<T>(
     context: context,
-    builder: builder,
+    builder: (ctx) => AppSheetBackdrop(
+      child: AppSheetPeekFiller(color: backgroundColor ?? ctx.colors.cardBg, child: builder(ctx)),
+    ),
     isDismissible: isDismissible,
     enableDrag: enableDrag,
     isScrollControlled: isScrollControlled,

@@ -6049,3 +6049,28 @@ Source: `docs/games-v4/PLAN.md` §8–§10 and the owner's choices. The backend 
 - **D-1807 Break reminders stay in the app.** Local notifications from the device only: no server push, no quiet-hours logic on the server.
 - **D-1808 Challenges need joining.** A challenge round without joining answers `challenge_not_joined` (bilingual text in `apiErrorText`); a challenge link opens from a cold start.
 - **D-1809 Screen readers drive lanes.** Car Race and Space Rocket expose one button per lane ("Lane 2 of 3: answer") over the canvas; activating it moves the car and commits that lane.
+- **D-1810 The redesign is built here and shared (owner, 2026-11-26).** The approved redesign (`docs/redesign/`, reference HTML outside the repository in `D:/platform/redesign-ref/`) is implemented in NextBrain as shared code on `feature/redesign` and synced to the downstream product. Every existing feature of both products stays. Each product's palette is theme data: NextBrain's is derived from its logo (green `#186848` and gold `#C08838`, `docs/redesign/BRANDS.md`), written in the app's theme defaults and the backend theme seed. Market rules (country, currency, gateway, grades, weekend) are per-country server data, with Egypt as NextBrain's platform default. Pages the design does not draw get a design of ours in the same language.
+
+## D-1811 — The redesign kit (phase 1): palette from the logo, kit theme field, tokens, motion M1–M16 · 2026-11-26 · accepted
+
+The kit of `docs/redesign/KIT_SPEC.md` is built in `lib/design/` and `lib/config/theme/` (front) and as the
+`kit_default` preset with a `colors.kit` map in the theme response (back, migration `0135_redesign_kit_theme`).
+
+- **Palette (P1–P15).** Role names `ink`, `deep`, `primary`, `partner`, `warm`, `hot` (never a hue name). Primary =
+  the logo green `#186848`; `partner` `#2FA26C` only as a gradient partner and the focus ring; the forward button is
+  gold `hot_a → hot_b` with the deep green text (white on the logo gold is 3.08:1); mint moved to hue 174 (`#19C2B1`)
+  so it does not read as the brand green; lime kept; shared accents, subjects and status keep the design's values;
+  hero middle stops computed (accent darkened to 6:1 for white, 30 % toward `ink`, 12 % for the yellows); a button's
+  text is white only where both stops pass 4.6:1, else `deep`; count badges on `live_fill`; error text on a tint
+  uses `error_ink`; the hero kicker is `warm_on_dark`; dark mode keeps the theme's grey surfaces (tints at 18 %);
+  the old `danger` / `warning` / `purple` / `success` keep their values.
+- **Deviation from the spec table:** `textLight` / `secondText` are `#576C64`, not `#5B7168` (4.25:1 on the
+  `accent3` block); the back preset uses the same.
+- **Deviations from the reference (KIT_SPEC §9):** breakpoints 700 / 1000; 48 px hit areas; web sheets are dialogs
+  (drawers for editors, D-710); no blur on bars (blur only behind a native phone sheet); per-area button text; w600
+  and the editorial face; no script font; gutter 24; flush chrome replaces the floating D-648 cards; digits Latin by
+  default (`platform_settings.digits`, `lib/core/app_digits.dart`); the student tab order and theme editor's kit
+  section are later phases.
+- **Motion:** `AppPop` runs its keyframes on linear time with eased segments (the spec's overshooting cubic on top of
+  overshooting keyframes reached the end state at a third of the run).
+- **Gallery** `/kit_gallery` behind `admin.kit_gallery`; a colour-literal gate for `lib/design/**`.

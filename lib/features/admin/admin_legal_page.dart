@@ -17,6 +17,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart' show Trans;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/plural.dart' show countText;
@@ -25,6 +26,7 @@ import 'package:flutter_education_app/features/profile/about/about_and_terms_scr
 
 import 'admin_common.dart' as admin show t, asMap;
 import 'admin_page.dart';
+import 'sup/sup_kit.dart';
 
 String _t(String ar, String en) => admin.t(ar, en);
 
@@ -410,13 +412,11 @@ class _AdminLegalEditorPageState extends State<AdminLegalEditorPage> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final privacy = widget.doc == 'privacy';
-    return AdminPage(
-      title: privacy ? _t('تعديل سياسة الخصوصية', 'Edit the privacy policy') : _t('تعديل شروط الاستخدام', 'Edit the terms of service'),
-      subtitle: _t('النص بالعربية والإنجليزية؛ يُحفظ المستند كاملًا', 'Arabic and English; the whole document is saved at once'),
-      icon: privacy ? Icons.privacy_tip_rounded : Icons.gavel_rounded,
-      dirty: _dirty,
-      primaryAction: AppButton.primary(label: _t('حفظ', 'Save'), icon: Icons.check_rounded, busy: _saving, onPressed: _saving ? null : _save),
-      body: ListView(
+    return SupPage(
+        kicker: 'a2_legal_kicker'.tr, headline: 'a2_legal_edit_head'.tr,
+        title: privacy ? _t('تعديل سياسة الخصوصية', 'Edit the privacy policy') : _t('تعديل شروط الاستخدام', 'Edit the terms of service'),
+        dirty: _dirty,
+        body: ListView(
         padding: AdminPage.bodyPadding(context),
         children: [
           AppCard(
@@ -527,6 +527,7 @@ class _AdminLegalEditorPageState extends State<AdminLegalEditorPage> {
           ),
         ],
       ),
-    );
+        actions: [AppButton.primary(label: _t('حفظ', 'Save'), icon: Icons.check_rounded, busy: _saving, onPressed: _saving ? null : _save)],
+      );
   }
 }

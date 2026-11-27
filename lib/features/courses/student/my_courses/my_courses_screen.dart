@@ -17,7 +17,10 @@ import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/features/org/org_member_pages.dart' show OrgCoursesScreen;
 import 'package:flutter_education_app/features/courses/course_scope.dart';
 import 'package:flutter_education_app/features/courses/course_scope_bar.dart';
-import 'package:flutter_education_app/design/app_tokens.dart' show AppSpace, AppWidth;
+import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppEase;
+import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
+import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/core/entities/entity_models.dart';
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
 import 'package:flutter_education_app/design/master_detail/entity_detail_view.dart' show EntityPanelAction;
@@ -93,16 +96,19 @@ class _MyCoursesScreenState extends State<MyCoursesScreen> {
     // a desktop window: the wide page, the grid takes as many columns as fit and the panel opens beside it
     return BasePage(
       key: const ValueKey('my_courses'),
-      appBar: ScreenAppBar(title: 'courses'.tr, showBack: !kIsWeb),
+      appBar: ScreenAppBar(title: 'sv_courses'.tr, showBack: !kIsWeb),
       useWebCard: true,
       width: AppWidth.wide,
       child: SafeArea(
-        child: MasterDetailScaffold(
-          controller: _panel,
-          rootLabel: 'courses'.tr,
-          deepLinks: true,
-          actions: (ref, s) => _actions(context, ref, s),
-          list: MyCoursesBody(controller: _search, panel: _panel),
+        child: AppAreaScope(
+          area: AppArea.learn,
+          child: MasterDetailScaffold(
+            controller: _panel,
+            rootLabel: 'sv_courses'.tr,
+            deepLinks: true,
+            actions: (ref, s) => _actions(context, ref, s),
+            list: MyCoursesBody(controller: _search, panel: _panel, onContinue: (c) => _openPage(context, c)),
+          ),
         ),
       ),
     );
@@ -110,23 +116,148 @@ class _MyCoursesScreenState extends State<MyCoursesScreen> {
 }
 
 /// The page under the app bar (also what the visual renders pump with a seeded provider).
-class MyCoursesBody extends StatelessWidget {
-  const MyCoursesBody({super.key, required this.controller, this.panel});
+class MyCoursesBody extends StatefulWidget {
+  const MyCoursesBody({super.key, required this.controller, this.panel, this.onContinue});
 
   final TextEditingController controller;
 
   /// The screen's panel (a card opens it, Previous / Next walk the cards).
   final EntityPanelController? panel;
 
+  /// The continue card's button: the course page.
+  final ValueChanged<CourseModel>? onContinue;
+
+  @override
+  State<MyCoursesBody> createState() => _MyCoursesBodyState();
+}
+
+/// Redesign (Stu1Discover?screen=mycourses): the learn hero ("You have 4 courses going") and the course to pick up
+/// lead the page; they fold away once the list scrolls, so the cards get the whole height.
+class _MyCoursesBodyState extends State<MyCoursesBody> {
+  bool _folded = false;
+
+  bool _onScroll(ScrollNotification n) {
+    if (n.metrics.axis != Axis.vertical || n.depth > 1) return false;
+    final fold = n.metrics.pixels > AppSpace.xl;
+    if (fold != _folded) setState(() => _folded = fold);
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        AnimatedSize(
+          duration: AppMotion.of(context).base,
+          curve: AppEase.out,
+          alignment: Alignment.topCenter,
+          child: _folded
+              ? const SizedBox(width: double.infinity)
+              : MyCoursesHead(
+                  onContinue: widget.onContinue,
+                  // the card itself opens the course's panel, like a card of the list
+                  onOpen: (c) => EntityNavigator.open(context,
+                      EntityRef(EntityKind.course, int.tryParse('${c.id}') ?? 0, label: c.titleAr, labelEn: c.titleEn, imageUrl: c.imageUrl)),
+                ),
+        ),
         const _ScopeBar(),
-        _Toolbar(controller: controller),
-        Expanded(child: _CourseList(controller: controller, panel: panel)),
+        _Toolbar(controller: widget.controller),
+        Expanded(
+          child: NotificationListener<ScrollNotification>(
+            onNotification: _onScroll,
+            child: _CourseList(controller: widget.controller, panel: widget.panel),
+          ),
+        ),
       ],
+    );
+  }
+}
+
+/// The head of My courses: the learn hero with how many courses are going, and the course to pick up (the most
+/// advanced one not finished) on a card riding over the hero with ONE forward button. Nothing while loading.
+class MyCoursesHead extends StatelessWidget {
+  const MyCoursesHead({super.key, this.onContinue, this.onOpen});
+
+  final ValueChanged<CourseModel>? onContinue;
+  final ValueChanged<CourseModel>? onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.watch<MyCoursesProvider>();
+    if (p.allCourses.isEmpty) return const SizedBox(width: double.infinity);
+    final going = p.inProgressCount;
+    final ip = [...p.allCourses.where((c) => c.progress < 100)]..sort((a, b) => b.progress.compareTo(a.progress));
+    final pick = ip.firstOrNull;
+    final title = going == 0
+        ? 'sa_my_hero_none'.tr
+        : countText(going,
+            ar1: 'عندك دورة شغّالة',
+            ar2: 'عندك دورتين شغّالة',
+            arFew: 'عندك {n} دورات شغّالة',
+            arMany: 'عندك {n} دورة شغّالة',
+            en1: 'You have 1 course going',
+            en: 'You have {n} courses going');
+    final hero = AppHero(kicker: 'sa_my_kicker'.tr, title: title);
+    if (pick == null) return hero;
+    return AppHeroOverlap(
+      hero: hero,
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+        child: MyCoursesContinueCard(
+          course: pick,
+          onContinue: onContinue == null ? null : () => onContinue!(pick),
+          onTap: onOpen == null ? null : () => onOpen!(pick),
+        ),
+      ),
+    );
+  }
+}
+
+/// "Pick up where you stopped": the subject glyph, the course and how far it is, and the forward button.
+class MyCoursesContinueCard extends StatelessWidget {
+  const MyCoursesContinueCard({super.key, required this.course, this.onContinue, this.onTap});
+
+  final CourseModel course;
+  final VoidCallback? onContinue;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final ar = AppConfig.lang == 'ar';
+    final title = (ar ? course.titleAr ?? course.titleEn : course.titleEn ?? course.titleAr) ?? '';
+    final key = courseSubjectKeyOf(title);
+    final s = c.kit.subject(key);
+    return AppCard(
+      variant: AppCardVariant.tint,
+      tone: s.tone,
+      onTap: onTap,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+        Row(children: [
+          AppIconBox(icon: courseSubjectIcon(key), tone: s.tone, solid: true, size: AppDashSize.avatarSm),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              Text('sa_home_cont_card'.tr,
+                  style: AppType.label(context).copyWith(color: s.tone.ink, fontWeight: FontWeight.w600)),
+              const SizedBox(height: AppSpace.xxs),
+              Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.tileTitle(context)),
+              const SizedBox(height: AppSpace.xxs),
+              Text('sa_my_progress_line'.tr.replaceAll('{n}', '${course.progress}'),
+                  style: AppType.meta(context).copyWith(color: c.textMedium)),
+            ]),
+          ),
+        ]),
+        if (onContinue != null) ...[
+          const SizedBox(height: AppSpace.md),
+          AppButton.hot(
+            expand: true,
+            label: 'sa_my_continue'.tr,
+            onPressed: onContinue,
+          ),
+        ],
+      ]),
     );
   }
 }
@@ -274,7 +405,7 @@ class _CourseList extends StatelessWidget {
     if (controller.text.trim().isNotEmpty || provider.activeFilter != CourseStatus.all) {
       return CourseListEmpty(
         icon: Icons.search_off_rounded,
-        message: 'course_list_not_found'.tr,
+        message: 'sv_course_list_not_found'.tr,
         actionLabel: 'course_list_clear_search'.tr,
         onAction: () {
           controller.clear();
@@ -286,15 +417,15 @@ class _CourseList extends StatelessWidget {
     if (scope.isOrg) {
       return CourseListEmpty(
         icon: Icons.apartment_rounded,
-        message: 'course_scope_org_empty_student'.tr,
-        actionLabel: 'course_scope_browse_org'.tr,
+        message: 'sv_course_scope_org_empty_student'.tr,
+        actionLabel: 'sv_course_scope_browse_org'.tr,
         onAction: () => _browseOrg(context, scope.orgId!),
       );
     }
     return CourseListEmpty(
       icon: Icons.menu_book_rounded,
-      message: 'course_list_empty'.tr,
-      actionLabel: 'course_list_browse'.tr,
+      message: 'sv_course_list_empty'.tr,
+      actionLabel: 'sv_course_list_browse'.tr,
       onAction: () => Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => CoursesListScreen(homeCourses: context.read<HomeProvider>().otherCourses, forMyCourses: false),
       )),

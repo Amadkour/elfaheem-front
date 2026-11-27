@@ -24,6 +24,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'admin_common.dart' show t;
 import 'admin_labels.dart';
 import 'admin_page.dart';
+import 'adm_kit.dart' show AdmPage;
 
 class AdminParentLinkSettingsPage extends StatelessWidget {
   const AdminParentLinkSettingsPage({super.key});
@@ -458,7 +459,8 @@ class _FormState extends State<ParentLinkSettingsForm> {
               ]),
             ]);
     if (h != null) return body;
-    return AdminPage(
+    return AdmPage(
+      kicker: 'admin_group_people'.tr,
       width: AppWidth.reading,
       title: 'pl_settings_title'.tr,
       subtitle: 'svc_pl_settings_d'.tr,

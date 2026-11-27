@@ -70,11 +70,11 @@ void main() {
 
   test('findings read as sentences, with plural forms, in both languages', () {
     final p = ParentPulse.tryParse(pulseJson())!;
-    expect(parentInsightText(p.insights[0], 'Ahmed Ali'), allOf(contains('Ahmed'), contains('2 sessions'), isNot(contains('{'))));
+    expect(parentInsightText(p.insights[0], 'Ahmed Ali'), allOf(contains('Ahmed'), contains('2 classes'), isNot(contains('{'))));
     expect(parentInsightText(p.insights[1], 'Ahmed'), contains('1 homework'));
     expect(parentInsightText(p.insights[2], 'Ahmed'), allOf(contains('Maths'), contains('50%')));
     AppConfig.lang = 'ar';
-    expect(parentInsightText(p.insights[0], 'أحمد علي'), allOf(contains('أحمد'), contains('جلستان'), isNot(contains('{'))));
+    expect(parentInsightText(p.insights[0], 'أحمد علي'), allOf(contains('أحمد'), contains('حصتين'), isNot(contains('{'))));
     expect(parentInsightText(p.insights[2], 'أحمد'), contains('رياضيات'));
     expect(parentInsightText(const PulseInsight(code: 'from_the_future'), 'x'), 'from_the_future');
   });

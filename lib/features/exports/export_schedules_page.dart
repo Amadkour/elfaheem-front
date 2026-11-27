@@ -24,8 +24,8 @@ import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/export/export_studio_api.dart';
 import 'package:flutter_education_app/design/export/export_studio_model.dart';
 import 'package:flutter_education_app/design/export/table_export_model.dart' show tx;
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:flutter_education_app/features/admin/adm_kit.dart' show admRoleAny;
+import 'package:flutter_education_app/features/admin/sup/sup_kit.dart';
 
 import 'package:flutter_education_app/features/data_lab/data_lab_saver_io.dart' if (dart.library.html) 'package:flutter_education_app/features/data_lab/data_lab_saver_web.dart' as saver;
 import 'package:flutter_education_app/features/exports/export_links_page.dart' show exportContextOrg;
@@ -298,9 +298,14 @@ class _ExportSchedulesPageState extends State<ExportSchedulesPage> {
   @override
   Widget build(BuildContext context) {
     final items = _items;
-    return BasePage(
-      key: const ValueKey(kExportSchedulesKey),
-      appBar: ScreenAppBar(title: exportSchedulesTitle(), actions: [AppRefreshAction(onRefresh: _load)]),
+    // redesign A1 (AdmData exports): the signed-in role's hero; the kill switch stays on the page key
+    return SupPage(
+      pageKey: const ValueKey(kExportSchedulesKey),
+      role: admRoleAny(context),
+      title: exportSchedulesTitle(),
+      kicker: exportsCenterTitle(),
+      headline: tx('a1_exs_sched_head', 'Files prepared for you on a timetable', 'ملفات تتجهّز لك في مواعيد ثابتة'),
+      width: AppWidth.full,
       floatingActionButton: _missing || items == null
           ? null
           : FloatingActionButton.extended(
@@ -308,7 +313,7 @@ class _ExportSchedulesPageState extends State<ExportSchedulesPage> {
               icon: const Icon(Icons.add_rounded),
               label: Text(tx('exs_sched_new', 'New schedule', 'جدولة جديدة')),
             ),
-      child: LayoutBuilder(
+      body: LayoutBuilder(
         builder: (context, box) => AppRefresh(
           onRefresh: _load,
           child: ListView(

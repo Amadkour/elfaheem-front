@@ -5,6 +5,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_model.dart';
+import 'package:flutter_education_app/config/theme/kit_palette_defaults.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_contrast.dart';
@@ -106,21 +107,21 @@ void main() {
     }
   });
 
-  test('the editorial default is the system.md palette: sage and peach as given, the forest hero, dark blocks tinted', () {
+  test('the default blocks are the kit palette (D-1811): green and warm tints as given, the forest hero, dark blocks tinted', () {
     final p = ThemeConfigProvider(api: ApiClient());
-    expect(p.accent3, const Color(0xFFE4ECE3));
-    expect(p.blockPeach, const Color(0xFFFBE2D3));
-    expect(p.blockSky, const Color(0xFFE4ECE3));
+    expect(p.accent3, kKitPaletteDefaults.brand.primaryTint);
+    expect(p.blockPeach, kKitPaletteDefaults.brand.warmTint);
+    expect(p.blockSky, kKitPaletteDefaults.brand.primaryTint);
     expect(AppBlockTone.sage, AppBlockTone.sky);
     final forest = HSLColor.fromColor(p.blockForest);
-    expect(forest.hue, closeTo(162, 6), reason: 'about #0E3B2E');
+    expect(forest.hue, closeTo(HSLColor.fromColor(kKitPaletteDefaults.brand.ink).hue, 6), reason: 'Alfaheem A-008: the hue of the kit ink');
     expect(forest.lightness, lessThanOrEqualTo(0.15));
     p.isDark = true;
     // a dark surface with the block's hue, a step above the dark card (#1E2021)
     expect(relativeLuminance(p.blockPeach), greaterThan(relativeLuminance(p.cardBg)));
     final sage = HSLColor.fromColor(p.blockSky);
     expect(sage.saturation, lessThanOrEqualTo(0.17), reason: 'a quiet grey-green, about #1E2A23');
-    expect(sage.hue, inInclusiveRange(90, 150));
+    expect(sage.hue, closeTo(HSLColor.fromColor(kKitPaletteDefaults.brand.primaryTint).hue, 15)); // Alfaheem A-008: the kit primary tint's hue
     p.dispose();
   });
 

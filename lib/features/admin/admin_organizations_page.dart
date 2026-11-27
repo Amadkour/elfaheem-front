@@ -24,11 +24,11 @@ import 'package:flutter_education_app/features/rag/rag_quota_admin.dart' show sh
 import 'admin_bulk.dart';
 import 'admin_common.dart';
 import 'admin_list.dart';
-import 'admin_page.dart';
 import 'admin_table_export.dart' show adminOrganizationsExport;
 import 'package:flutter_education_app/utils/widget/phone_field.dart';
 import 'package:flutter_education_app/design/app_inputs.dart';
 import 'package:flutter_education_app/design/app_username.dart';
+import 'sup/sup_kit.dart';
 
 const _base = '/api/v1/admin/orgs';
 
@@ -183,23 +183,14 @@ class _AdminOrganizationsPageState extends State<AdminOrganizationsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return AdminPage(
-      width: AppWidth.wide,
-      title: t('المؤسسات', 'Organizations'),
-      subtitle: t('اعتماد المؤسسات وإدارتها وتغيير مديريها', 'Approve, edit and manage organizations and their admins'),
-      icon: Icons.domain_rounded,
-      onRefresh: _reload,
-      helpPageId: 'admin.organizations',
-      updatedAt: _at,
-      primaryAction: AppButton.primary(
-        label: t('حساب مدير مؤسسة', 'Org-admin account'),
-        icon: Icons.person_add_alt_1_rounded,
-        onPressed: () => _createOrgAdmin(context),
-      ),
-      actions: [
-        AppButton.secondary(label: t('مديرو المؤسسات', 'Organization admins'), icon: Icons.manage_accounts_rounded, onPressed: _openAdmins),
-      ],
-      body: ListenableBuilder(
+    return SupPage(
+        kicker: 'a2_platform_kicker'.tr, headline: t('المؤسسات', 'Organizations'),
+        width: AppWidth.wide,
+        title: t('المؤسسات', 'Organizations'),
+        onRefresh: _reload,
+        updatedAt: _at,
+        helpPageId: 'admin.organizations',
+        body: ListenableBuilder(
         listenable: _p,
         builder: (context, _) {
           final g = AppSpace.gutter(MediaQuery.sizeOf(context).width);
@@ -317,7 +308,14 @@ class _AdminOrganizationsPageState extends State<AdminOrganizationsPage> {
           ]);
         },
       ),
-    );
+        actions: [AppButton.primary(
+        label: t('حساب مدير مؤسسة', 'Org-admin account'),
+        icon: Icons.person_add_alt_1_rounded,
+        onPressed: () => _createOrgAdmin(context),
+      ), ...[
+        AppButton.secondary(label: t('مديرو المؤسسات', 'Organization admins'), icon: Icons.manage_accounts_rounded, onPressed: _openAdmins),
+      ]],
+      );
   }
 }
 

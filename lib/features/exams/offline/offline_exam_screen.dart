@@ -8,9 +8,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/design/app_motion_kit.dart' show AppReveal;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppBreathe, AppInkCheck, AppReveal;
+import 'package:flutter_education_app/features/exams/legacy/student/sc_exam_widgets.dart' show ScExamCard, ScFootTone;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/core/screen_security.dart';
 import 'package:flutter_education_app/core/live_focus.dart';
 import 'package:share_plus/share_plus.dart';
@@ -79,7 +81,12 @@ Future<void> openOfflineExam(BuildContext context, OfflinePackage p) async {
   if (!context.mounted) return;
   if (key == null) {
     final now = DateTime.now();
-    return appToast(offlineCodeText(p.startsAt != null && now.isBefore(p.startsAt!) ? 'not_started' : 'no_key'), error: true);
+    if (p.startsAt != null && now.isBefore(p.startsAt!)) {
+      await Navigator.push(context, MaterialPageRoute(builder: (_) => OfflineExamReadyScreen(
+          title: p.title, opensAt: p.startsAt!, questions: p.questions, durationMinutes: p.durationMinutes)));
+      return;
+    }
+    return appToast(offlineCodeText('no_key'), error: true);
   }
   if (p.endsAt != null && !DateTime.now().isBefore(p.endsAt!)) return appToast(offlineCodeText('exam_ended'), error: true);
   final go = await appConfirm(context,
@@ -158,7 +165,8 @@ Future<NearbyExam?> _fetchNearby(BuildContext context, {int? examId, String? exp
 
 // ═══════════════════════════════════════════ the list ════════════════════════════════════════════════════════
 
-/// Plain-values card of one exam kept on the phone (under the layout harness).
+/// Plain-values card of one exam kept on the phone (under the layout harness): the list's exam card, its stage in
+/// words on the deadline line.
 class OfflineExamCard extends StatelessWidget {
   const OfflineExamCard({super.key, required this.title, required this.stage, required this.hasKey, required this.questions,
       this.durationMinutes, this.startsAt, this.onTap});
@@ -173,42 +181,33 @@ class OfflineExamCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tone = switch (stage) {
-      OfflineStage.submitted => AppTone.success,
-      OfflineStage.rejected => AppTone.danger,
-      OfflineStage.waitingToSync => AppTone.warning,
-      _ => AppTone.brand,
+      OfflineStage.submitted => ScFootTone.ok,
+      OfflineStage.rejected => ScFootTone.live,
+      OfflineStage.waitingToSync => ScFootTone.warn,
+      _ => ScFootTone.muted,
     };
-    final color = appToneColor(context, tone);
-    final tint = appTintOn(context, color);
-    final meta = AppType.meta(context);
-    return AppCard(
+    return ScExamCard(
+      title: title,
+      icon: switch (stage) {
+        OfflineStage.submitted => Icons.cloud_done_outlined,
+        OfflineStage.rejected => Icons.error_outline_rounded,
+        OfflineStage.waitingToSync => Icons.cloud_upload_outlined,
+        _ => Icons.phone_android_rounded,
+      },
+      subtitle: startsAt == null ? null : Text(AppTime.dateTime(startsAt!)),
+      facts: [
+        countText(questions,
+            ar1: 'سؤال واحد', ar2: 'سؤالان', arFew: '{n} أسئلة', arMany: '{n} سؤالًا', en1: '1 question', en: '{n} questions'),
+        if (durationMinutes != null)
+          countText(durationMinutes!,
+              ar1: 'دقيقة واحدة', ar2: 'دقيقتان', arFew: '{n} دقائق', arMany: '{n} دقيقة', en1: '1 min', en: '{n} min'),
+        t('ينحل بدون نت', 'Solved offline'),
+      ],
+      foot: offlineStageText(stage, hasKey: hasKey),
+      footTone: tone,
+      actionLabel: t('التفاصيل', 'Details'),
+      onAction: onTap,
       onTap: onTap,
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Container(
-          width: AppTouch.min, height: AppTouch.min, alignment: Alignment.center,
-          decoration: BoxDecoration(color: tint, borderRadius: AppRadius.controlAll),
-          child: Icon(switch (stage) {
-            OfflineStage.submitted => Icons.cloud_done_rounded,
-            OfflineStage.rejected => Icons.error_outline_rounded,
-            OfflineStage.waitingToSync => Icons.cloud_upload_rounded,
-            _ => Icons.offline_pin_rounded,
-          }, size: AppIconSize.lg, color: appInkOn(context, color, tint)),
-        ),
-        const SizedBox(width: AppSpace.sm),
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: AppType.section(context), maxLines: 2, overflow: TextOverflow.ellipsis),
-            const SizedBox(height: AppSpace.xxs),
-            Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xxs, children: [
-              Text(t('$questions سؤال', '$questions questions'), style: meta),
-              if (durationMinutes != null) Text(t('$durationMinutes دقيقة', '$durationMinutes min'), style: meta),
-              if (startsAt != null) Text(AppTime.dateTime(startsAt!), style: meta),
-            ]),
-            const SizedBox(height: AppSpace.sm),
-            Align(alignment: AlignmentDirectional.centerStart, child: AppStatusBadge(label: offlineStageText(stage, hasKey: hasKey), tone: tone)),
-          ]),
-        ),
-      ]),
     );
   }
 }
@@ -269,8 +268,8 @@ class _OfflineExamsListState extends State<OfflineExamsList> {
     final rows = _rows;
     if (rows == null) return const AppListSkeleton(items: 2);
     final children = [
-      AppSectionTitle(t('اختبارات دون اتصال', 'Offline exams'),
-          subtitle: t('تُحل دون إنترنت وتُرسل عند الاتصال', 'Solved without internet, sent when online')),
+      AppSectionTitle(t('اختبارات بدون نت', 'Offline exams'),
+          subtitle: t('تنحل بدون نت وتنرسل لما يرجع', 'Solved without internet, sent when it is back')),
       if (rows.isEmpty)
         Padding(
           padding: const EdgeInsets.only(bottom: AppSpace.sm),
@@ -291,7 +290,7 @@ class _OfflineExamsListState extends State<OfflineExamsList> {
       AppButton.secondary(
         onPressed: _nearby,
         expand: true,
-        icon: Icons.bluetooth_searching_rounded,
+        icon: Icons.phonelink_ring_rounded,
         label: t('استلام اختبار من جهاز قريب', 'Get an exam from a nearby phone'),
       ),
     ];
@@ -449,7 +448,7 @@ class _OfflineExamTakingScreenState extends State<OfflineExamTakingScreen> {
                 'Your answers are saved on this phone. The timer keeps running while you are away. Leave now?'));
         if (leave && context.mounted) Navigator.of(context).pop();
       },
-      child: BasePage(
+      child: AppAreaScope(area: AppArea.exam, child: BasePage(
         key: const ValueKey('exam.offline'),
         appBar: AppHeader(
           title: widget.package.title,
@@ -497,61 +496,71 @@ class _OfflineExamTakingScreenState extends State<OfflineExamTakingScreen> {
                   onSubmit: _submit,
                 ),
               ]),
-      ),
+      )),
     );
   }
 }
 
 // ═══════════════════════════════════════════ status after finishing ══════════════════════════════════════════
 
-/// The five steps as the student sees them (plain values; under the layout harness).
+/// The three steps as the student sees them (redesign S-C, Stu2Exams?screen=offline; plain values, under the layout
+/// harness): on your phone · opens (and solves without internet) · we send your answers. Done steps are mint with a
+/// check, the current one wears the area colour in a soft halo, the next one waits in grey. No system words.
 class OfflineStepsView extends StatelessWidget {
-  const OfflineStepsView({super.key, required this.stage, this.code});
+  const OfflineStepsView({super.key, required this.stage, this.code, this.downloadedAt, this.opensAt});
   final OfflineStage stage;
   final String? code;
+  final DateTime? downloadedAt;
+  final DateTime? opensAt;
 
+  /// The step the sitting is on: 0 on the phone, 1 solving, 2 sending, 3 all done.
   static int reached(OfflineStage s) => switch (s) {
-        OfflineStage.downloaded => 0,
-        OfflineStage.inProgress => 2,
-        OfflineStage.waitingToSync || OfflineStage.rejected => 3,
-        OfflineStage.submitted => 4,
+        OfflineStage.downloaded || OfflineStage.inProgress => 1,
+        OfflineStage.waitingToSync || OfflineStage.rejected => 2,
+        OfflineStage.submitted => 3,
       };
+
+  static const double _box = AppDashSize.disc;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final labels = [
-      t('تم التنزيل', 'Downloaded'),
-      t('قيد الحل', 'In progress'),
-      t('محفوظ على الجهاز', 'Saved on this phone'),
-      t('بانتظار الإرسال', 'Waiting to sync'),
-      t('تم التسليم', 'Submitted'),
-    ];
+    final k = c.kit;
+    final set = AppAreaScope.of(context);
     final at = reached(stage);
     final rejected = stage == OfflineStage.rejected;
+    final steps = <(IconData, String, String?)>[
+      (Icons.download_rounded, t('نزّلناه على جوالك', 'It is on your phone'), downloadedAt == null ? null : AppTime.date(downloadedAt!)),
+      (Icons.lock_open_rounded, opensAt == null ? t('تحلّه ولو ما فيه نت', 'You solve it without internet') : t('يفتح ${AppTime.dateTime(opensAt!)}', 'Opens ${AppTime.dateTime(opensAt!)}'),
+          opensAt == null ? null : t('تحلّه ولو ما فيه نت', 'You solve it without internet')),
+      (Icons.send_rounded, t('نرسل إجاباتك', 'We send your answers'), t('أول ما يرجع النت', 'As soon as the internet is back')),
+    ];
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      for (var i = 0; i < labels.length; i++)
+      for (var i = 0; i < steps.length; i++)
         IntrinsicHeight(
           child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            // the rail: a disc per step, joined by a line that is solid where the sitting has already been
             SizedBox(
-              width: _disc,
+              width: _box,
               child: Column(children: [
-                _StepDisc(done: i < at || (i == at && stage == OfflineStage.submitted), current: i == at, failed: rejected && i == at),
-                if (i < labels.length - 1)
+                _StepDisc(icon: steps[i].$1, done: i < at, current: i == at, failed: rejected && i == at),
+                if (i < steps.length - 1)
                   Expanded(
                     child: Center(
-                      child: Container(width: AppBorder.strong, constraints: const BoxConstraints(minHeight: AppSpace.sm), color: i < at ? c.success : c.divider),
+                      child: Container(
+                          width: AppSpace.xxs, constraints: const BoxConstraints(minHeight: AppSpace.sm), color: i < at ? k.ok.color : k.track),
                     ),
                   ),
               ]),
             ),
-            const SizedBox(width: AppSpace.sm),
+            const SizedBox(width: AppSpace.md),
             Expanded(
               child: Padding(
-                padding: EdgeInsets.only(top: AppSpace.xxs, bottom: i < labels.length - 1 ? AppSpace.md : 0),
-                child: Text(labels[i],
-                    style: (i == at ? AppType.bodyStrong(context) : AppType.body(context)).copyWith(color: i <= at ? c.textDark : c.textLight)),
+                padding: EdgeInsets.only(top: AppSpace.sm, bottom: i < steps.length - 1 ? AppSpace.md : 0),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(steps[i].$2,
+                      style: AppType.tileTitle(context).copyWith(color: i == at ? set.ink : (i < at ? c.textDark : c.textMedium))),
+                  if (steps[i].$3 != null) Text(steps[i].$3!, style: AppType.meta(context)),
+                ]),
               ),
             ),
           ]),
@@ -559,19 +568,18 @@ class OfflineStepsView extends StatelessWidget {
       if (code != null && code!.isNotEmpty && stage != OfflineStage.submitted)
         Padding(
           padding: const EdgeInsets.only(top: AppSpace.sm),
-          child: AppBanner(icon: stage == OfflineStage.rejected ? Icons.error_outline_rounded : Icons.info_outline_rounded,
-              color: stage == OfflineStage.rejected ? c.danger : c.warning, text: offlineCodeText(code)),
+          child: AppBanner(icon: rejected ? Icons.error_outline_rounded : Icons.info_outline_rounded,
+              color: rejected ? c.danger : c.warning, text: offlineCodeText(code)),
         ),
     ]);
   }
-
-  static const double _disc = AppSpace.lg + AppSpace.xxs;
 }
 
-/// One step's disc: a check on the success tint once passed, a ring on the current one (a cross on the danger tint
-/// when the server refused it), a hairline circle ahead.
+/// One step's box: mint with a check badge once passed, the area colour in a breathing halo on the current one (a
+/// cross on the error tone when the server refused it), grey ahead.
 class _StepDisc extends StatelessWidget {
-  const _StepDisc({required this.done, required this.current, required this.failed});
+  const _StepDisc({required this.icon, required this.done, required this.current, required this.failed});
+  final IconData icon;
   final bool done;
   final bool current;
   final bool failed;
@@ -579,21 +587,119 @@ class _StepDisc extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final col = failed ? c.danger : c.success;
-    final tint = appTintOn(context, col);
-    final filled = done || failed;
-    return Container(
-      width: OfflineStepsView._disc,
-      height: OfflineStepsView._disc,
+    final k = c.kit;
+    final set = AppAreaScope.of(context);
+    final fill = failed ? k.error.color : (done ? k.ok.color : (current ? set.a : k.track));
+    final ink = done || current || failed ? c.onHero : c.textMedium;
+    final box = Container(
+      width: OfflineStepsView._box,
+      height: OfflineStepsView._box,
       alignment: Alignment.center,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: filled ? tint : c.cardBg,
-        border: Border.all(color: filled ? tint : (current ? c.textDark : c.divider), width: current && !filled ? AppBorder.focus : AppBorder.hairline),
+      decoration: BoxDecoration(color: fill, borderRadius: BorderRadius.circular(AppRadius.tile)),
+      child: Icon(failed ? Icons.close_rounded : icon, size: AppIconSize.lg, color: ink),
+    );
+    return Stack(clipBehavior: Clip.none, children: [
+      if (current && !failed) AppBreathe(color: set.a, borderRadius: BorderRadius.circular(AppRadius.tile), child: box) else box,
+      if (done)
+        PositionedDirectional(
+          bottom: -AppSpace.xxs,
+          end: -AppSpace.xxs,
+          child: Container(
+            padding: const EdgeInsets.all(AppSpace.xxs),
+            decoration: BoxDecoration(color: c.cardBg, shape: BoxShape.circle),
+            child: Icon(Icons.check_rounded, size: AppIconSize.sm, color: k.ok.ink),
+          ),
+        ),
+    ]);
+  }
+}
+
+/// The shared page of an offline exam (hero + the steps card + the next step), for the waiting, sent and ready states.
+class _OfflinePage extends StatelessWidget {
+  const _OfflinePage({required this.title, required this.examTitle, required this.steps, required this.panel, this.below = const []});
+  final String title;
+  final String examTitle;
+  final Widget steps;
+  final Widget panel;
+  final List<Widget> below;
+
+  @override
+  Widget build(BuildContext context) {
+    final set = AppAreaScope.of(context);
+    final hero = AppHero(
+      wipe: false,
+      title: title,
+      subtitle: examTitle,
+      kicker: t('اختبار بدون نت', 'Offline exam'),
+    );
+    return ExamPageWidth(
+      width: AppWidth.form,
+      builder: (side) => ListView(padding: const EdgeInsets.only(bottom: AppSpace.xl), children: [
+        AppHeroOverlap(
+          hero: hero,
+          body: Padding(
+            padding: EdgeInsets.symmetric(horizontal: side),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              AppCard(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  steps,
+                  AppSpace.gapMd,
+                  Container(
+                    padding: const EdgeInsets.all(AppSpace.md),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [set.tint, context.colors.cardBg]),
+                      borderRadius: BorderRadius.circular(AppRadius.cardWide),
+                    ),
+                    child: panel,
+                  ),
+                ]),
+              ),
+              for (final w in below) ...[AppSpace.gapMd, w],
+            ]),
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
+/// An offline exam on the phone that has not opened yet (redesign "ready"): the steps, the countdown and what to do
+/// before the time.
+class OfflineExamReadyScreen extends StatelessWidget {
+  const OfflineExamReadyScreen({super.key, required this.title, required this.opensAt, this.questions, this.durationMinutes});
+  final String title;
+  final DateTime opensAt;
+  final int? questions;
+  final int? durationMinutes;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppAreaScope(
+      area: AppArea.exam,
+      child: BasePage(
+        key: const ValueKey('exam.offline.ready'),
+        appBar: AppHeader(title: t('اختبار بدون نت', 'Offline exam')),
+        child: _OfflinePage(
+          title: t('اختبارك نازل على جوالك', 'Your exam is on your phone'),
+          examTitle: title,
+          steps: OfflineStepsView(stage: OfflineStage.downloaded, opensAt: opensAt),
+          panel: Column(children: [
+            Text(t('يفتح بعد', 'Opens in'), style: AppType.section(context)),
+            AppSpace.gapSm,
+            AppCountdown(until: opensAt),
+          ]),
+          below: [
+            AppCard(
+              title: t('قبل الموعد', 'Before the time'),
+              child: AppRules(items: [
+                (icon: Icons.battery_charging_full_rounded, text: t('اشحن جوالك', 'Charge your phone')),
+                (icon: Icons.wifi_rounded, text: t('افتح التطبيق مرة بالنت', 'Open the app once online')),
+                (icon: Icons.delete_outline_rounded, text: t('لا تحذف التطبيق', "Don't delete the app")),
+              ]),
+            ),
+          ],
+        ),
       ),
-      child: filled
-          ? Icon(failed ? Icons.close_rounded : Icons.check_rounded, size: AppIconSize.sm, color: appInkOn(context, col, tint))
-          : (current ? Container(width: AppSpace.xs, height: AppSpace.xs, decoration: BoxDecoration(color: c.textDark, shape: BoxShape.circle)) : null),
     );
   }
 }
@@ -648,50 +754,51 @@ class _OfflineExamStatusScreenState extends State<OfflineExamStatusScreen> {
   @override
   Widget build(BuildContext context) {
     final stage = _s.stage;
-    // the page's one block: where the answers are now — emerald once handed in, peach while they wait on this phone
-    final tone = stage == OfflineStage.submitted ? AppBlockTone.emerald : AppBlockTone.peach;
-    final b = AppBlockColors.of(context, tone);
-    final glyph = switch (stage) {
-      OfflineStage.submitted => Icons.cloud_done_rounded,
-      OfflineStage.rejected => Icons.error_outline_rounded,
-      _ => Icons.offline_pin_rounded,
+    final title = switch (stage) {
+      OfflineStage.submitted => t('وصلت للمعلم', 'It reached the teacher'),
+      OfflineStage.waitingToSync => t('خلّصت! ننتظر النت بس', 'Done! Just waiting for the internet'),
+      _ => offlineStageText(stage),
     };
-    return BasePage(
-      key: const ValueKey('exam.offline.status'),
-      appBar: AppHeader(title: widget.title),
-      child: ExamPageWidth(
-        width: AppWidth.form,
-        builder: (side) => ListView(padding: EdgeInsets.fromLTRB(side, AppSpace.md, side, AppSpace.xl), children: [
-          AppBlock(
-            tone: tone,
-            hero: true,
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Icon(glyph, size: AppIconSize.xl, color: stage == OfflineStage.rejected ? b.accentInk(context.colors.danger) : b.ink),
-              const SizedBox(height: AppSpace.md),
-              Text(offlineStageText(stage), style: AppType.headline(context).copyWith(color: b.ink)),
-              const SizedBox(height: AppSpace.xxs),
-              Text(widget.title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: b.muted)),
-            ]),
-          ),
+    final Widget panel = switch (stage) {
+      OfflineStage.submitted => Column(children: [
+          AppInkCheck(size: AppDashSize.disc, color: context.colors.kit.ok.color),
+          AppSpace.gapSm,
+          Text(t('إجاباتك وصلت للمعلم', 'Your answers reached the teacher'), textAlign: TextAlign.center, style: AppType.section(context)),
+          if (_s.finishedAt != null) Text(AppTime.dateTime(_s.finishedAt!), style: AppType.meta(context)),
           AppSpace.gapMd,
-          AppCard(padding: const EdgeInsets.all(AppSpace.lg), child: OfflineStepsView(stage: stage, code: _s.code)),
-          AppSpace.gapLg,
-          if (stage == OfflineStage.waitingToSync) ...[
-            AppButton.primary(label: t('إرسال الآن', 'Send now'), icon: Icons.send_rounded, size: AppButtonSize.lg, expand: true,
-                busy: _busy == 'send', onPressed: _busy == null ? _send : null),
-            const SizedBox(height: AppSpace.xs),
-            Text(t('يُرسل تلقائياً عند عودة الإنترنت، أو عبر جهاز قريب متصل.', 'Sent automatically when the internet is back, or through a nearby phone that is online.'),
-                style: AppType.meta(context), textAlign: TextAlign.center),
-            AppSpace.gapMd,
-          ],
-          if (_s.bundle != null && stage != OfflineStage.submitted)
-            AppButton.secondary(
-              onPressed: _share,
-              expand: true,
-              icon: Icons.ios_share_rounded,
-              label: t('مشاركة ملف الإجابات مع المعلم', 'Share the answers file with the teacher'),
-            ),
+          AppButton.primary(label: t('ارجع لاختباراتي', 'Back to my exams'), onPressed: () => Navigator.maybePop(context)),
         ]),
+      OfflineStage.waitingToSync => Column(children: [
+          Text(t('إجاباتك محفوظة على جوالك', 'Your answers are saved on your phone'), textAlign: TextAlign.center, style: AppType.section(context)),
+          AppSpace.gapXs,
+          Text(t('أول ما يرجع النت نرسلها لحالها', 'We send them by themselves as soon as the internet is back'),
+              textAlign: TextAlign.center, style: AppType.meta(context)),
+          AppSpace.gapMd,
+          AppButton.primary(label: t('جرّب ترسلها الحين', 'Try sending them now'), icon: Icons.refresh_rounded,
+              busy: _busy == 'send', onPressed: _busy == null ? _send : null),
+        ]),
+      _ => Text(offlineStageText(stage), textAlign: TextAlign.center, style: AppType.section(context)),
+    };
+    return AppAreaScope(
+      area: AppArea.exam,
+      child: BasePage(
+        key: const ValueKey('exam.offline.status'),
+        appBar: AppHeader(title: t('اختبار بدون نت', 'Offline exam')),
+        child: _OfflinePage(
+          title: title,
+          examTitle: widget.title,
+          steps: OfflineStepsView(stage: stage, code: _s.code),
+          panel: panel,
+          below: [
+            if (_s.bundle != null && stage != OfflineStage.submitted)
+              AppButton.ghost(
+                onPressed: _share,
+                expand: true,
+                icon: Icons.ios_share_rounded,
+                label: t('شارك ملف إجاباتك مع المعلم', 'Share your answers file with the teacher'),
+              ),
+          ],
+        ),
       ),
     );
   }

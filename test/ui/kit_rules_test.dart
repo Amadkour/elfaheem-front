@@ -50,6 +50,17 @@ void main() {
         reason: 'use showAppNotice, AppSwitch / AppSwitchTile and AppDropdown / AppPicker (lib/design)');
   });
 
+  test('colour literals in lib/design never go up; none in a new file (KIT_SPEC 7.2)', () {
+    final base = jsonDecode(File(hexBaselinePath).readAsStringSync()) as Map<String, dynamic>;
+    final allowed = (base['files'] as Map<String, dynamic>).map((k, v) => MapEntry(k, v as int));
+    final worse = [
+      for (final e in scanDesignHex().entries)
+        if (e.value > (allowed[e.key] ?? 0)) '${e.key}: ${e.value} (baseline ${allowed[e.key] ?? 0})',
+    ];
+    expect(worse, isEmpty, reason: 'colours come from context.colors / context.colors.kit, never a literal');
+    expect(countColorLiterals("const a = Color(0xFF000000); // Color(0xFF111111)\nfinal b = '#A1B2C3';"), 2);
+  });
+
   test('the counter sees through comments and strings and skips nested calls', () {
     String strip(String s) => stripCommentsAndStrings(s);
     expect(countRawNumbers(strip('EdgeInsets.all(8)')), 1);

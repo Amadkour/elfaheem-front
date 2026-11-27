@@ -16,3 +16,18 @@ Moved verbatim from the root `CLAUDE.md` (which keeps a short summary and the ru
 - **Charts:** `lib/design/app_charts.dart` (`AppTrendTile`, `AppBarChart`, `AppDonut`, `AppSparkline`, `AppLegend`, `appCompactNumber`), pure CustomPaint with the theme-derived palette (D-063) — no chart package.
 - **More / settings pages:** `AppSettingsPage` + `AppSettingsGroup` / `AppSettingsTile` / `AppSettingsHeader` (`app_settings.dart`): grouped cards, a search field once a page holds more than 8 tiles, `featureKey:` per tile; the admin and parent More pages use it, the old `SettingsGroup` / `SettingsTile` still work elsewhere.
 - **Keyboard (web / desktop):** `AppKeyboardSupport` (`lib/design/app_keyboard.dart`, D-012) gives every text field Enter → next field / the form's primary button, Ctrl+Enter, Esc and Ctrl+K or "/" → search: nothing to wire on a new screen; `EnterSubmits(onSubmit:)` / `EnterSubmits.none` where the guess would be wrong. Details: `docs/guides/keyboard.md`.
+
+## The redesign kit (D-1811)
+
+The phase 1 kit (`docs/redesign/KIT_SPEC.md`, summary in `lib/design/README.md` §7) adds these rules:
+
+- No hex and no product name in a widget: kit colours come from `context.colors.kit` (areas, role accents, accents,
+  subjects, status, button and hero stops, `well`, `track`). The hex lives in `lib/config/theme/kit_palette_defaults.dart`
+  and `app_theme.dart` (front) and `features/platform/theme_kit_defaults.py` / `theme_presets.py` (back); the gate in
+  `test/ui/kit_rules_test.dart` counts colour literals in `lib/design/**`.
+- One `AppAreaScope` per page; student pages set `area:`, the shell sets the role accent.
+- One filled button above the fold on a student phone screen; `AppButton.hot` only for the step that moves the student
+  forward. `AppButton.accent` is deprecated and draws like `hot`.
+- Entrances come from the motion library and respect its budget: one hero-move kind per screen (flip, deal, wipe or
+  wobble; a page whose list moves passes `AppHero(wipe: false)`), staggered by the item index.
+- Count badges use `kit.liveFill` (white on it is AA); `kit.live` is for dots, halos and gradients only.

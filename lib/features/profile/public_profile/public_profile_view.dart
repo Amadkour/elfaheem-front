@@ -237,7 +237,7 @@ class _ProfileHero extends StatelessWidget {
     final key = 'pp.${p.id}';
     if (p.isTeacher) {
       final st = p.stats;
-      final students = st?.studentsTaught ?? p.courses.fold<int>(0, (s, x) => s + x.studentsCount);
+      final students = st?.studentsTaught ?? p.courses.fold<int>(0, (s, x) => s + (x.studentsCount ?? 0));
       final isNew = st?.isNew ?? false;
       return [
         if (students > 0)

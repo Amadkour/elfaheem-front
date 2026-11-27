@@ -5,6 +5,8 @@ import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
+import 'package:flutter_education_app/design/app_area.dart' show AppArea;
 import 'package:flutter_education_app/core/api_client.dart' show ApiException;
 import 'package:flutter_education_app/features/profile/profile_provider.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -24,6 +26,7 @@ import 'package:flutter_education_app/features/auth/teacher_document_model.dart'
 import 'package:flutter_education_app/features/auth/teacher_document_provider.dart';
 import 'package:flutter_education_app/features/auth/username.dart';
 import 'package:flutter_education_app/features/auth/username_field.dart';
+import 'package:flutter_education_app/features/auth/world_phone_field.dart';
 import 'package:flutter_education_app/utils/widget/parent_component.dart';
 import 'package:flutter_education_app/features/courses/student/details/components/app_responsive.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
@@ -31,6 +34,11 @@ import 'package:flutter_education_app/design/app_kit.dart'
     show AppBlock, AppBlockTone, AppButton, AppButtonSize, AppCard, AppSettingsTile, AppSkeletonBox, AppStatusBadge, AppTabItem,
         AppTabs, AppTone, AppType, appInkOn, appTintOn;
 import 'package:flutter_education_app/core/display/app_fonts.dart';
+import 'package:flutter_education_app/design/app_kit.dart' as kit show AppHero, AppWidth;
+import 'package:flutter_education_app/design/app_header.dart' show AppHeader;
+import 'package:flutter_education_app/features/help/help_info_button.dart' show HelpInfoButton;
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart' show T2Scope, T2HeroScroll;
+import 'package:flutter_education_app/features/profile/teacher/t2b_parts.dart';
 import 'package:flutter_education_app/design/app_back_button.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/app_number_field.dart';
@@ -280,10 +288,43 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
   @override
   Widget build(BuildContext context) {
     final p = context.watch<ProfileProvider>();
+    // a teacher's page (redesign T2b, Tea2Account edit): the hero with Personal info / Documents as its pills, the
+    // photo card and the form (or the documents) riding up over its edge
+    if (widget.isTeacher) {
+      return T2Scope(
+        child: BasePage(
+          enableFooterWidget: false,
+          appBar: AppHeader(title: 'update_account'.tr, actions: const [HelpInfoButton(pageId: 'account.edit')]),
+          child: SafeArea(
+            child: T2HeroScroll(
+              width: kit.AppWidth.form,
+              hero: kit.AppHero(
+                title: 'update_account'.tr,
+                subtitle: 't2_edit_sub'.tr,
+                wipe: false,
+                bottom: T2bHeroPills(
+                  index: _tab,
+                  onChanged: (i) => setState(() => _tab = i),
+                  items: [
+                    T2bPill('tab_personal_info'.tr, icon: Icons.person_outline_rounded, key: 'edit.tab.personal'),
+                    T2bPill('tab_documents'.tr, icon: Icons.description_outlined, key: 'edit.tab.documents'),
+                  ],
+                ),
+              ),
+              children: [
+                if (_tab == 0) _hero(p, context.colors, showBack: false, card: true),
+                ..._formArea(p, context.colors, switcher: false),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     final c = context.colors;
     final isWide = context.showSidebar;
 
-    return BasePage(
+    return SdArea(area: AppArea.me, child: BasePage(
       useWebCard: true,
       width: AppWidth.content,
       appBar: isWide ? ScreenAppBar(helpPageId: 'account.edit', title: 'update_account'.tr) : null,
@@ -309,7 +350,7 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
           ]);
         }),
       ),
-    );
+    ));
   }
 
   /// The hero column's width beside the form on a wide page.
@@ -357,8 +398,8 @@ class _EditAccountScreenState extends State<EditAccountScreen> {
     );
   }
 
-  List<Widget> _formArea(ProfileProvider p, ThemeConfigProvider c) => [
-          if (widget.isTeacher)
+  List<Widget> _formArea(ProfileProvider p, ThemeConfigProvider c, {bool switcher = true}) => [
+          if (widget.isTeacher && switcher)
             Padding(
               padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, 0),
               child: _PremiumTabSwitcher(
@@ -682,14 +723,8 @@ class _FormCard extends StatelessWidget {
           ),
           ?usernameField,
           const SizedBox(height: AppSpace.md),
-          _Labeled(
-            label: 'phone_label'.tr,
-            child: MyTextField(
-              controller: phoneCtrl,
-              label: 'phone_label'.tr,
-              keyboard: TextInputType.phone,
-            ),
-          ),
+          // any country (RULES §3): the country-code picker builds the E.164 number
+          WorldPhoneField(controller: phoneCtrl, label: 'phone_label'.tr),
           const SizedBox(height: AppSpace.md),
           _Labeled(label: 'dob_label'.tr, child: MyTextField(controller: dobCtrl, label: 'dob_label'.tr)),
 

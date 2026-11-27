@@ -1,6 +1,6 @@
 # Backend feature inventory (read-only)
 
-Generated from `D:\platform\elfaheem\_wt\redesign\back` by a script, not typed by hand.
+Generated from `D:\platform\nextbrain\_wt\rd-back` by a script, not typed by hand.
 Sources: `data/app_features_guide.json` (guide, version 1) and `features/platform/feature_catalog.py` (`FEATURE_CATALOG`).
 
 ## Counts
@@ -127,7 +127,7 @@ Columns: id/key | group | roles | Arabic name | English name | place (where in t
 | certificate_template_colours | teaching | teacher, org_admin | ألوان خلفية قوالب الشهادات | Background colours of certificate templates | Certificate studio › Templates, then Page in the properties panel | profile.certificate_designs, certificates.engine |
 | certificate_preambles | teaching | teacher, org_admin | صيغ جاهزة لنص الشهادة | Ready wordings for the certificate text | Certificate studio › Wordings | profile.certificate_designs, certificates.engine |
 | certificate_issue_standalone | teaching | teacher, org_admin, org_staff | إصدار شهادات بدون كورس | Issue certificates without a course | Profile › My certificate designs › Issue certificates on a design; Saved lists and Issued history at the top | certificates.standalone |
-| certificate_history_verify | teaching | teacher, org_admin, org_staff | سجل الشهادات الصادرة والتحقق منها | Issued certificates history and verification | Profile › My certificate designs › Issued history; verification page: alfheemacademy.com/verify/… | certificates.standalone |
+| certificate_history_verify | teaching | teacher, org_admin, org_staff | سجل الشهادات الصادرة والتحقق منها | Issued certificates history and verification | Profile › My certificate designs › Issued history; verification page: nextbrain.site/verify/… | certificates.standalone |
 | teacher_analytics_hub | teaching | teacher | تحليلات المعلم | Teacher analytics | The Analysis tab | teacher_tab_analysis |
 | data_lab | teaching | teacher, student | معمل البيانات | Data Lab | Analysis › Data Lab; students: Analysis › My analytics | data_lab.entry |
 | device_switch_approve | teaching | teacher | الموافقة على طلبات تغيير الجهاز | Approve device switch requests | Profile › Account › Device Switch Requests | profile.device_requests, device_requests |
@@ -233,7 +233,7 @@ Columns: id/key | group | roles | Arabic name | English name | place (where in t
 | admin_home | administration | super_admin, admin | الصفحة الرئيسية لمدير المنصة (نظرة عامة) | Platform admin home (Overview) | Admin dashboard › Overview tab |  |
 | assistant_chat_sessions | assistant | everyone | محادثات المساعد: محادثة جديدة وسجل المحادثات | Assistant chats: New chat and chat history | The top of the floating assistant or of the assistant screen: the New chat and Chats buttons | rag.app_assistant, rag.assistant |
 | assistant_answer_feedback | assistant | everyone | تقييم إجابات المساعد | Rate the assistant's answers | Under every answer in the floating assistant or the assistant screen | rag.app_assistant, rag.assistant |
-| profile_link | account | teacher, student, everyone | ملفي الشخصي ورابطه العام (alfheemacademy.com/@اسمك) | My profile and its public link (alfheemacademy.com/@yourname) | Profile › My profile (and Share in the header) | profile.public_link, auth.username, profile.public_stats, profile.my_profile |
+| profile_link | account | teacher, student, everyone | ملفي الشخصي ورابطه العام (nextbrain.site/@اسمك) | My profile and its public link (nextbrain.site/@yourname) | Profile › My profile (and Share in the header) | profile.public_link, auth.username, profile.public_stats, profile.my_profile |
 | home_live_now | live | student, teacher, org_member | «مباشر الآن» على الصفحة الرئيسية | "Live now" on the home screen | The top of the home screen (student, instructor, organization member) | live_sessions |
 | home_fold_sections | account | student, teacher, org_member | طيّ أقسام الصفحة الرئيسية | Fold the sections of your home | The home screen — any section's title |  |
 | courses_by_side | learning | student, teacher | كورسات حسابك الشخصي منفصلة عن كورسات المؤسسة | Your personal courses apart from your organization's | The My courses page (students and teachers) |  |
@@ -372,7 +372,7 @@ Columns: id/key | group | roles | Arabic name | English name | place (where in t
 | quran_teacher_review | administration | super_admin | توثيق ومراجعة معلمي القرآن | Verify and review Quran teachers | Admin > Quran teachers, or Module settings > Quran memorization > Verify and review Quran teachers | admin.modules, student_tab_quran |
 | nahw_content | administration | super_admin | تحرير محتوى النحو | Editing the grammar (nahw) content | Admin > Grammar content | admin.nahw |
 | offline_sync | learning | student | العمل دون اتصال ومزامنة التقدّم | Work offline, synced later | The badge at the top of the page (shown only while offline or with changes waiting) | sync.offline |
-| downloads_page | account | everyone | صفحة التنزيلات | The Downloads page | The Alfaheem website › Downloads |  |
+| downloads_page | account | everyone | صفحة التنزيلات | The Downloads page | The the app website › Downloads |  |
 | org_students_list | organizations | org_admin, org_member | الطلاب: قائمة الطلاب | Students: the student list | Organization dashboard > People > Students | org.students |
 | org_student_file | organizations | org_admin, org_member | الطلاب: ملف الطالب الموحد | Students: the unified student file | Organization dashboard > People > Students > pick a student | org.students |
 | org_student_status | organizations | org_admin, org_member | الطلاب: تغيير حالة الطالب | Students: change a student's status | Organization dashboard > People > Students > pick a student > Status | org.students.status |

@@ -14,6 +14,8 @@ import 'package:flutter_education_app/design/app_motion_kit.dart' show AppEase, 
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/features/courses/course_list_card.dart' show CourseCoverArt, coursePrimaryInk;
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
+import 'package:flutter_education_app/design/app_hero.dart' show AppHero;
 import 'package:flutter/services.dart';
 import 'package:flutter_education_app/features/payments/enrollment/saved_cards/saved_payment_models.dart';
 import 'package:provider/provider.dart';
@@ -28,6 +30,7 @@ import 'package:flutter_education_app/features/payments/enrollment/enrollment_pr
 import 'package:flutter_education_app/features/payments/enrollment/enrollment_widgets.dart';
 import 'package:flutter_education_app/features/rewards/coupon_field.dart';
 import 'package:flutter_education_app/features/rewards/rewards_models.dart' show CouponTarget;
+import 'package:flutter_education_app/core/app_digits.dart';
 
 
 class EnrollmentScreen extends StatelessWidget {
@@ -159,11 +162,14 @@ class _MethodStep extends StatelessWidget {
                 : 'complete_payment_title'.tr,
           ),
           Expanded(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(AppSpace.xs, AppSpace.xs, AppSpace.xs, AppSpace.lg),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+            // redesign S-D (Stu2Money `screen=enroll`): "تشترك الحين في" + the course on the money hero, the review
+            // card riding up over it
+            child: SdHeroList(
+              hero: AppHero(
+                kicker: 'sd_enroll_kicker'.tr,
+                title: (AppConfig.lang == 'ar' ? enroll.course.titleAr : enroll.course.titleEn) ?? '',
+                icon: Icons.menu_book_outlined,
+              ),
                 children: [
                   _CourseSummaryCard(
                     course: enroll.course,
@@ -199,7 +205,6 @@ class _MethodStep extends StatelessWidget {
                     ),
                   ],
                 ],
-              ),
             ),
           ),
           EnrollConfirmBar(
@@ -216,7 +221,7 @@ class _MethodStep extends StatelessWidget {
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
 String _fmtMoney(double v, String symbol) =>
-    '${v.toStringAsFixed(v.truncateToDouble() == v ? 0 : 2)} $symbol';
+    appDigits('${v.toStringAsFixed(v.truncateToDouble() == v ? 0 : 2)} $symbol'); // platform_settings.digits
 
 /// A section of the checkout: an editorial heading beside a quiet glyph, with the editorial rhythm (32 above it,
 /// 12 under it — the space above comes from [AppSpace.sectionHead]).
@@ -705,8 +710,9 @@ class _PaymentMethodPicker extends StatelessWidget {
               selected: newCardSelected,
               icon: Icons.add_card_rounded,
               iconColor: context.colors.primary,
-              title: 'new_card_title'.tr,
-              subtitle: 'new_card_subtitle'.tr,
+              // "مدى" only where the payer's country has it (RULES §3)
+              title: (g.madaOffered ? 'new_card_title' : 'intl_new_card_title').tr,
+              subtitle: (g.madaOffered ? 'new_card_subtitle' : 'intl_new_card_subtitle').tr,
               customBadge: const _SecureBadge(),
               onTap: enroll.selectNewCard,
             ),

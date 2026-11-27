@@ -10,14 +10,12 @@
 // so existing imports keep working.
 library;
 
-import 'package:flutter_education_app/design/app_kit.dart' show AppListSkeleton;
 import 'package:flutter_education_app/design/app_refresh.dart';
 import 'package:flutter_education_app/core/api_error_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
 import 'package:flutter_education_app/features/data_lab/data_lab_api.dart';
@@ -27,10 +25,10 @@ import 'package:flutter_education_app/features/analytics/student/flags/student_f
 import 'package:flutter_education_app/features/analytics/student/student_analytics_provider.dart';
 import 'package:flutter_education_app/features/analytics/student/student_analytics_widgets.dart';
 import 'package:flutter_education_app/core/home/me_home.dart';
-import 'package:flutter_education_app/features/analytics/analytics_summary.dart' show anCoursesCount, anSessionsWord;
+import 'package:flutter_education_app/features/analytics/analytics_summary.dart' show anSessionsWord;
 import 'package:flutter_education_app/features/analytics/student/student_analytics_api.dart';
 import 'package:flutter_education_app/features/analytics/student/student_course_analytics_screen.dart';
-import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
+import 'package:flutter_education_app/design/app_kit.dart';
 
 class StudentAnalyticsProfileScreen extends StatefulWidget {
   const StudentAnalyticsProfileScreen._({this.studentId, this.studentName, this.courseId, required this.teacherMode});
@@ -124,49 +122,39 @@ class _State extends State<StudentAnalyticsProfileScreen> {
           : anProfileProgress(blocks, _live, overall: _scope == null ? p.progress : null);
       final att = single ? blocks.first.attendance : p.attendance;
       final ex = single ? blocks.first.examAvg : p.examAvg;
+      final scopes = <Widget>[
+        if (widget.teacherMode && widget.courseId != null) ...[
+          AppChip(label: 'dl_scope_this_course'.tr, onHero: true, selected: !_allMine, onTap: () {
+            if (_allMine) {
+              _allMine = false;
+              _scope = widget.courseId;
+              _load();
+            }
+          }),
+          AppChip(label: 'dl_scope_all_mine'.tr, onHero: true, selected: _allMine, onTap: () {
+            if (!_allMine) {
+              _allMine = true;
+              _scope = null;
+              _load();
+            }
+          }),
+        ],
+        if (p.courses.length > 1) ...[
+          for (final b in p.courses) AppChip(label: b.title, onHero: true, selected: _scope == b.courseId, onTap: () => _setScope(b.courseId)),
+          AppChip(label: 'dl_scope_all'.tr, onHero: true, selected: _scope == null, onTap: () => _setScope(null)),
+        ],
+      ];
       body = AppRefresh(
         onRefresh: _load,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(14, 8, 14, 40),
+          padding: const EdgeInsets.only(bottom: AppSpace.xl),
           children: [
-            _hero(p, prog, att, ex),
-            const SizedBox(height: 12),
-            if (widget.teacherMode && widget.courseId != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Wrap(spacing: 8, children: [
-                  _ScopeChip(label: 'dl_scope_this_course'.tr, selected: !_allMine, onTap: () {
-                    if (_allMine) {
-                      _allMine = false;
-                      _scope = widget.courseId;
-                      _load();
-                    }
-                  }),
-                  _ScopeChip(label: 'dl_scope_all_mine'.tr, selected: _allMine, onTap: () {
-                    if (!_allMine) {
-                      _allMine = true;
-                      _scope = null;
-                      _load();
-                    }
-                  }),
-                ]),
-              ),
-            if (p.courses.length > 1)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(children: [
-                    _ScopeChip(label: 'dl_scope_all'.tr, selected: _scope == null, onTap: () => _setScope(null)),
-                    for (final b in p.courses)
-                      Padding(
-                        padding: const EdgeInsetsDirectional.only(start: 8),
-                        child: _ScopeChip(label: b.title, selected: _scope == b.courseId, onTap: () => _setScope(b.courseId)),
-                      ),
-                  ]),
-                ),
-              ),
+            AppHeroOverlap(
+              hero: _hero(p, prog, att, ex, scopes),
+              body: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             AnCard(
               padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8),
               child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
@@ -175,84 +163,49 @@ class _State extends State<StudentAnalyticsProfileScreen> {
                 AnRing(value: ex, label: 'dl_exams'.tr),
               ]),
             ),
-            const SizedBox(height: 12),
             if (single)
               _CourseDetail(block: blocks.first, progress: prog, teacherMode: widget.teacherMode)
             else
               for (final b in blocks)
                 _CourseCompact(block: b, progress: anBlockProgress(b, _live), onTap: () => _setScope(b.courseId)),
             Padding(
-              padding: const EdgeInsets.only(top: 14),
+              padding: const EdgeInsets.only(top: AppSpace.sm),
               child: Text(widget.teacherMode ? 'dl_profile_teacher_note'.tr : 'dl_profile_student_note'.tr,
-                  textAlign: TextAlign.center, style: anText(11, c: c.textLight, h: 1.5)),
+                  textAlign: TextAlign.center, style: AppType.meta(context).copyWith(color: c.textLight)),
+            ),
+                ]),
+              ),
             ),
           ],
         ),
       );
     }
-    return BasePage(
+    final page = BasePage(
       key: const ValueKey('dl_profile'),
-      useWebCard: true,
       width: AppWidth.content,
-      appBar: ScreenAppBar(title: 'dl_profile_title'.tr),
+      appBar: AppHeader(title: widget.teacherMode ? 'dl_profile_title'.tr : 'sc_an_profile_title'.tr),
       child: body,
     );
+    // the student's own file is the "me" area; a teacher looking at a student keeps the teacher's accent
+    return widget.teacherMode ? AppAreaScope.role(role: AppRoleAccent.teacher, child: page) : AppAreaScope(area: AppArea.me, child: page);
   }
 
-  Widget _hero(DlProfile p, double? prog, double? att, double? ex) {
+  Widget _hero(DlProfile p, double? prog, double? att, double? ex, List<Widget> scopes) {
     final name = p.name.isEmpty ? (widget.studentName ?? '') : p.name;
     final overall = anOverall(progress: prog, attendance: att, exams: ex);
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: anHeroDecoration(context, roundAll: true),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Container(
-            padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(shape: BoxShape.circle, color: context.colors.heroGlassBorder),
-            child: DlAvatar(name: name, url: p.imageUrl, size: 58),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: anText(19, w: FontWeight.w800, c: context.colors.onHero)),
-              const SizedBox(height: 4),
-              Text(anInsightSentence(prog, att, ex, mine: !widget.teacherMode), style: anText(12.5, c: context.colors.onHeroMuted, h: 1.5)),
-            ]),
-          ),
-        ]),
-        const SizedBox(height: 14),
-        Wrap(spacing: 8, runSpacing: 8, children: [
-          if (overall != null) AnGlassPill(icon: Icons.auto_awesome_rounded, label: '${anLevel(overall)} · ${anPct(overall)}'),
-          AnGlassPill(icon: Icons.menu_book_rounded, label: anCoursesCount(p.courses.length)),
-          if (p.reviewFlags + p.readFlags > 0)
-            AnGlassPill(icon: Icons.bookmarks_rounded, label: '${p.reviewFlags + p.readFlags} ${anTr('an_saved_flags', 'saved flags')}'),
-        ]),
-      ]),
-    );
-  }
-}
-
-class _ScopeChip extends StatelessWidget {
-  const _ScopeChip({required this.label, required this.selected, required this.onTap});
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return ChoiceChip(
-      selected: selected,
-      showCheckmark: false,
-      label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-          style: anText(12.5, w: FontWeight.w700, c: selected ? c.onHero : c.textDark)),
-      selectedColor: c.primary,
-      backgroundColor: c.cardBg,
-      side: BorderSide(color: selected ? c.primary : c.divider),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      onSelected: (_) => onTap(),
+    return AppHero(
+      wipe: false,
+      leading: DlAvatar(name: name, url: p.imageUrl, size: AppDashSize.avatarSm),
+      title: name,
+      subtitle: overall == null ? anInsightSentence(prog, att, ex, mine: !widget.teacherMode) : '${anLevel(overall)}${(AppConfig.lang == 'ar' ? '، ' : ', ')}${anPct(overall)}',
+      bottom: scopes.isEmpty
+          ? null
+          : SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(children: [
+                for (var i = 0; i < scopes.length; i++) ...[if (i > 0) const SizedBox(width: AppSpace.xs), scopes[i]],
+              ]),
+            ),
     );
   }
 }

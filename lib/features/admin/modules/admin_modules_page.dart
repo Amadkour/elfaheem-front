@@ -14,6 +14,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart' show Trans;
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/features/self_learning/admin/sl_admin_page.dart' show SlAdminPage;
@@ -22,6 +23,7 @@ import '../admin_common.dart' show ErrorRetry, t;
 import '../admin_page.dart';
 import 'module_settings_api.dart';
 import 'package:flutter_education_app/features/quran/admin/quran_admin_page.dart' show QuranAdminPage;
+import '../sup/sup_kit.dart';
 
 // ── texts ────────────────────────────────────────────────────────────────────
 
@@ -458,24 +460,24 @@ class _AdminModulesPageState extends State<AdminModulesPage> {
         }
       }
     }
-    return AdminPage(
-      width: AppWidth.reading,
-      title: t('مفاتيح الوحدات', 'Module switches'),
-      subtitle: t('قواعد المتجر والألعاب والقرآن والتعلّم الذاتي · $_scopeLabel', 'Store, games, Quran and self-learning rules · $_scopeLabel'),
-      icon: Icons.tune_rounded,
-      onRefresh: _saving ? null : _load,
-      updatedAt: _loadedAt,
-      dirty: _dirty,
-      primaryAction: !_ready
-          ? null
-          : AppButton.primary(
+    return SupPage(
+        kicker: '${'a2_modules_kicker'.tr} · $_scopeLabel', headline: 'a2_modules_head'.tr, line: 'a2_modules_line'.tr,
+        width: AppWidth.reading,
+        title: t('مفاتيح الوحدات', 'Module switches'),
+        onRefresh: _saving ? null : _load,
+        updatedAt: _loadedAt,
+        dirty: _dirty,
+        body: ListView(padding: AdminPage.bodyPadding(context), children: children),
+        actions: [
+          if (_ready)
+            AppButton.primary(
               key: const ValueKey('modules.save'),
               label: t('حفظ', 'Save'),
               busy: _saving,
               onPressed: _dirty && !_saving ? _save : null,
             ),
-      body: ListView(padding: AdminPage.bodyPadding(context), children: children),
-    );
+        ],
+      );
   }
 }
 

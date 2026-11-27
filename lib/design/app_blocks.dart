@@ -205,6 +205,11 @@ class AppBlock extends StatelessWidget {
   /// What a screen reader says for a tappable block (else it reads the content).
   final String? semanticLabel;
 
+  /// [child] reads [tone]'s colours through [colorsOf] without a block being drawn (a surface that paints its own
+  /// background, e.g. a hero on AppHeroSurface, with the forest tone's on-hero inks).
+  static Widget inkScope(BuildContext context, {required AppBlockTone tone, required Widget child}) =>
+      _AppBlockScope(colors: AppBlockColors.of(context, tone), child: child);
+
   /// The colours of the nearest enclosing block (or of a peach block when there is none).
   static AppBlockColors colorsOf(BuildContext context) =>
       context.dependOnInheritedWidgetOfExactType<_AppBlockScope>()?.colors ??

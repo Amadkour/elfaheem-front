@@ -14,11 +14,12 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/share/external_link.dart';
-import 'package:flutter_education_app/design/app_icons.dart' show DirIcons;
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppJelly, AppSlap;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
@@ -26,6 +27,7 @@ import '../admin/admin_common.dart' show asMap, asMapList, t;
 import '../org/org_creation_fee.dart' show money, showFeeTransferSheet;
 import '../org/org_v3.dart' show OrgCall, orgCall, orgErrorText;
 import 'auth_provider.dart';
+import 'auth_shell.dart';
 
 const accountFeePath = '/api/v1/account-fee';
 
@@ -138,41 +140,40 @@ class _AccountFeePageState extends State<AccountFeePage> with WidgetsBindingObse
     return PopScope(
       canPop: false,
       child: BasePage(
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.lg),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: AppWidth.form.max),
-                child: _s == null
-                    ? (_error != null
-                        ? AppCard(
-                            child: AppErrorState(
-                                title: t('تعذّر تحميل رسوم الحساب', 'Could not load the account fee'),
-                                message: _error,
-                                onRetry: _load,
-                                compact: true))
-                        : const AppListSkeleton(items: 2))
-                    : AccountFeeView(
-                        status: _s!,
-                        method: _method,
-                        busy: _busy,
-                        onMethod: (m) => setState(() => _method = m),
-                        onPayCard: _payCard,
-                        onPayTransfer: _payTransfer,
-                        onCheck: _load,
-                        onSignOut: _signOut,
-                      ),
-              ),
-            ),
-          ),
+        child: AuthLayout(
+          showBack: false,
+          kicker: 'sa_fee_kicker'.tr,
+          heroTitle: 'sa_fee_hero'.tr,
+          squiggle: 'sa_fee_squiggle'.tr,
+          title: 'sa_fee_title'.tr,
+          subtitle: 'sa_fee_sub'.tr,
+          actions: (onHero) => AuthSwitches(onHero: onHero),
+          body: (context, wide) => _s == null
+              ? (_error != null
+                  ? AppErrorState(
+                      title: t('تعذّر تحميل رسوم الحساب', 'Could not load the account fee'),
+                      message: _error,
+                      onRetry: _load,
+                      compact: true)
+                  : const AppListSkeleton(items: 2))
+              : AccountFeeView(
+                  status: _s!,
+                  method: _method,
+                  busy: _busy,
+                  onMethod: (m) => setState(() => _method = m),
+                  onPayCard: _payCard,
+                  onPayTransfer: _payTransfer,
+                  onCheck: _load,
+                  onSignOut: _signOut,
+                ),
         ),
       ),
     );
   }
 }
 
-/// The page's content from plain values (what the layout harness tests).
+/// The page's content from plain values (what the layout harness tests): the price on the area's dark card with
+/// its "one time" tag, the payment methods as tiles, ONE forward button and two quiet links. It sits in the auth card.
 class AccountFeeView extends StatelessWidget {
   final Map<String, dynamic> status;
   final String? method;
@@ -195,109 +196,160 @@ class AccountFeeView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final parent = status['role'] == 'parent';
     final price = money(status['amount'], '${status['currency'] ?? ''}');
     final p = asMap(status['payment']);
     final st = '${p['status'] ?? ''}';
     final methods = asMapList(status['methods']);
     final isCard = methods.any((m) => m['id'] == method && m['kind'] == 'card');
+    final ink = AppAreaScope.of(context).ink;
+    Widget link(String key, String label, VoidCallback onTap, Color color) => TextButton(
+          key: ValueKey(key),
+          onPressed: onTap,
+          style: TextButton.styleFrom(minimumSize: const Size(AppTouch.min, AppTouch.min), foregroundColor: color),
+          child: Text(label, style: AppType.bodyStrong(context).copyWith(color: color)),
+        );
 
-    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+      // the price on the area's dark card, the "one time" tag slapped on it
       AppCard(
-        highlight: true,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: [
-            Container(
-              padding: const EdgeInsets.all(AppSpace.sm),
-              decoration: BoxDecoration(color: c.primaryTint, borderRadius: AppRadius.controlAll),
-              child: Icon(parent ? Icons.family_restroom_rounded : Icons.cast_for_education_rounded,
-                  color: c.primary, size: AppIconSize.lg),
-            ),
-            const SizedBox(width: AppSpace.sm),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(t('فعّل حسابك', 'Activate your account'), style: AppType.section(context)),
-                const SizedBox(height: AppSpace.xxs),
-                Text(
-                    parent
-                        ? t('رسوم لمرة واحدة لفتح حساب ولي الأمر ومتابعة أبنائك.', 'A one-time fee to open your parent account and follow your children.')
-                        : t('رسوم لمرة واحدة لفتح حساب المعلم ونشر كورساتك.', 'A one-time fee to open your teacher account and publish your courses.'),
-                    style: AppType.meta(context)),
-              ]),
-            ),
-          ]),
-          AppSpace.gapMd,
-          Center(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(price, key: const ValueKey('account_fee.price'), style: AppType.display(context).copyWith(color: c.primary)),
-            ),
-          ),
-          Center(child: Text(t('تُدفع مرة واحدة فقط', 'Paid once only'), style: AppType.meta(context))),
-          AppSpace.gapMd,
-          if (st == 'review')
-            AppBanner(
-                icon: Icons.hourglass_top_rounded,
-                color: c.warning,
-                text: t('استلمنا إيصال التحويل وهو قيد المراجعة. سيفتح حسابك فور اعتماده.',
-                    'We received your receipt and it is being reviewed. Your account opens once it is approved.'))
-          else ...[
-            if (st == 'rejected' || st == 'failed')
-              Padding(
-                padding: const EdgeInsets.only(bottom: AppSpace.sm),
-                child: AppBanner(
-                    icon: Icons.info_outline_rounded,
-                    color: c.danger,
-                    text: st == 'rejected'
-                        ? t('لم يُقبل الإيصال السابق${p['review_note'] != null ? ': ${p['review_note']}' : ''} — جرّب مرة أخرى.',
-                            'The previous receipt was not accepted${p['review_note'] != null ? ': ${p['review_note']}' : ''} — please try again.')
-                        : t('لم تكتمل عملية الدفع السابقة — جرّب مرة أخرى.', 'The previous payment did not go through — please try again.')),
-              ),
-            if (methods.isEmpty)
-              AppBanner(
-                  icon: Icons.info_outline_rounded,
-                  text: t('لا توجد طريقة دفع متاحة الآن — تواصل مع إدارة المنصة.',
-                      'No payment method is available right now — please contact the platform team.'))
-            else ...[
-              Text(t('اختر طريقة الدفع', 'Choose how to pay'), style: AppType.label(context)),
+        variant: AppCardVariant.dark,
+        child: Row(children: [
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              Text('sa_fee_label'.tr, style: AppType.label(context).copyWith(color: c.onHeroMuted)),
               const SizedBox(height: AppSpace.xs),
-              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-                for (final m in methods)
-                  AppChoiceChip(
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerStart,
+                child: Text(price,
+                    key: const ValueKey('account_fee.price'), style: AppType.display(context).copyWith(color: c.onHero)),
+              ),
+            ]),
+          ),
+          const SizedBox(width: AppSpace.sm),
+          AppSlap(child: AppStatusBadge(label: 'sa_fee_once'.tr, accent: AppAccent.sun)),
+        ]),
+      ),
+      AppSpace.gapMd,
+      if (st == 'review')
+        AppBanner(
+            icon: Icons.hourglass_top_rounded,
+            color: c.warning,
+            text: t('استلمنا إيصال التحويل وهو قيد المراجعة. سيفتح حسابك فور اعتماده.',
+                'We received your receipt and it is being reviewed. Your account opens once it is approved.'))
+      else ...[
+        if (st == 'rejected' || st == 'failed')
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpace.sm),
+            child: AppBanner(
+                icon: Icons.info_outline_rounded,
+                color: c.danger,
+                text: st == 'rejected'
+                    ? t('لم يُقبل الإيصال السابق${p['review_note'] != null ? ': ${p['review_note']}' : ''} — جرّب مرة أخرى.',
+                        'The previous receipt was not accepted${p['review_note'] != null ? ': ${p['review_note']}' : ''} — please try again.')
+                    : t('لم تكتمل عملية الدفع السابقة — جرّب مرة أخرى.', 'The previous payment did not go through — please try again.')),
+          ),
+        if (methods.isEmpty)
+          AppBanner(
+              icon: Icons.info_outline_rounded,
+              text: t('لا توجد طريقة دفع متاحة الآن — تواصل مع إدارة المنصة.',
+                  'No payment method is available right now — please contact the platform team.'))
+        else ...[
+          // the methods the server offers for this country, as tiles (the chosen one ticked)
+          LayoutBuilder(builder: (context, box) {
+            final cols = box.maxWidth >= 360 ? 3 : 2;
+            final w = (box.maxWidth - AppSpace.xs * (cols - 1)) / cols;
+            return Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+              for (final m in methods)
+                SizedBox(
+                  width: w,
+                  child: _MethodTile(
                     key: ValueKey('account_fee.method.${m['id']}'),
                     label: t('${m['label_ar']}', '${m['label_en']}'),
-                    icon: m['kind'] == 'card' ? Icons.credit_card_rounded : Icons.account_balance_rounded,
                     selected: method == m['id'],
                     onTap: () => onMethod('${m['id']}'),
                   ),
-              ]),
-              AppSpace.gapSm,
-              AppPrimaryButton(
-                key: const ValueKey('account_fee.pay'),
-                label: isCard ? t('ادفع $price', 'Pay $price') : t('أرسل إيصال التحويل', 'Send the transfer receipt'),
-                icon: isCard ? Icons.lock_rounded : Icons.upload_rounded,
-                busy: busy,
-                onPressed: busy || method == null ? null : (isCard ? onPayCard : onPayTransfer),
-              ),
-            ],
-          ],
-        ]),
-      ),
-      AppSpace.gapSm,
-      Wrap(alignment: WrapAlignment.center, spacing: AppSpace.sm, runSpacing: AppSpace.xxs, children: [
-        TextButton.icon(
-          key: const ValueKey('account_fee.check'),
-          onPressed: onCheck,
-          icon: const Icon(Icons.refresh_rounded, size: AppIconSize.md),
-          label: Text(t('دفعت؟ تحقّق الآن', 'Paid? Check now')),
-        ),
-        TextButton.icon(
-          key: const ValueKey('account_fee.sign_out'),
-          onPressed: onSignOut,
-          icon: Icon(DirIcons.logout, size: AppIconSize.md),
-          label: Text(t('تسجيل الخروج', 'Sign out')),
-        ),
+                ),
+            ]);
+          }),
+          AppSpace.gapLg,
+          AppButton.hot(
+            key: const ValueKey('account_fee.pay'),
+            expand: true,
+            size: AppButtonSize.lg,
+            label: isCard ? 'sa_fee_pay'.tr.replaceAll('{price}', price) : t('أرسل إيصال التحويل', 'Send the transfer receipt'),
+            busy: busy,
+            onPressed: busy || method == null ? null : (isCard ? onPayCard : onPayTransfer),
+          ),
+        ],
+      ],
+      AppSpace.gapXs,
+      Wrap(alignment: WrapAlignment.center, crossAxisAlignment: WrapCrossAlignment.center, children: [
+        link('account_fee.check', 'sa_fee_check'.tr, onCheck, ink),
+        ExcludeSemantics(child: Text('•', style: AppType.meta(context).copyWith(color: c.textLight))),
+        link('account_fee.sign_out', 'sa_appr_sign_out'.tr, onSignOut, c.kit.error.ink),
       ]),
     ]);
+  }
+}
+
+/// One payment method: a tile with a radio mark on top and the method's name; the chosen one is ticked on the
+/// area's tint with its edge.
+class _MethodTile extends StatelessWidget {
+  const _MethodTile({super.key, required this.label, required this.selected, required this.onTap});
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final set = AppAreaScope.of(context);
+    final radius = BorderRadius.circular(AppRadius.tile);
+    return Semantics(
+      selected: selected,
+      button: true,
+      child: AppJelly(
+        wide: true,
+        child: Material(
+          color: c.cardBg,
+          shape: RoundedRectangleBorder(
+            borderRadius: radius,
+            side: BorderSide(color: selected ? set.a : c.kit.line, width: selected ? AppBorder.focus : AppBorder.strong),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: Ink(
+              decoration: selected
+                  ? BoxDecoration(gradient: LinearGradient(colors: [c.cardBg, set.tint]))
+                  : null,
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs, vertical: AppSpace.sm),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                ExcludeSemantics(
+                  child: Container(
+                    width: AppIconSize.lg,
+                    height: AppIconSize.lg,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: selected ? set.ink : null,
+                      border: selected ? null : Border.all(color: c.kit.fieldEdge, width: AppBorder.strong),
+                    ),
+                    child: selected ? Icon(Icons.check_rounded, size: AppIconSize.sm, color: c.cardBg) : null,
+                  ),
+                ),
+                const SizedBox(height: AppSpace.xs),
+                Text(label,
+                    maxLines: 2,
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppType.label(context).copyWith(fontWeight: FontWeight.w600, color: c.textDark)),
+              ]),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

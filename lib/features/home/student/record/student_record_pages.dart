@@ -10,6 +10,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/profile/sd_area.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/entities/entities_api.dart';
 import 'package:flutter_education_app/core/entities/entity_models.dart';
@@ -41,7 +42,7 @@ EntityListConfig<GradeRow> studentGradesList(int studentId) => EntityListConfig<
       load: (q) => _rows<GradeRow>(studentId, 'grades', q),
       idOf: (r) => '${r.source}:${r.id}',
       refOf: (r) => r.course?.ref,
-      searchHint: 'md_p7_search_grades'.tr,
+      searchHint: 'sv_md_p7_search_grades'.tr,
       sorts: const ['newest', 'oldest', 'score_desc', 'score_asc'],
       empty: EntityListEmpty(Icons.grading_rounded, 'md_p7_empty_grades'.tr),
       columns: [
@@ -70,7 +71,7 @@ EntityListConfig<PaymentRow> studentPaymentsList(int studentId) => EntityListCon
       load: (q) => _rows<PaymentRow>(studentId, 'payments', q),
       idOf: (r) => r.id,
       refOf: (r) => r.course?.ref,
-      searchHint: 'md_p7_search_payments'.tr,
+      searchHint: 'sv_md_p7_search_payments'.tr,
       sorts: const ['newest', 'oldest', 'amount_desc'],
       empty: EntityListEmpty(Icons.payments_outlined, 'md_empty_section'.tr),
       columns: [
@@ -113,14 +114,14 @@ EntityListConfig<SubscriptionRow> studentSubscriptionsList(int studentId) => Ent
 /// The courses the student left (My courses shows the active ones): the date and the reason on each.
 EntityListConfig<EnrollmentRow> studentLeftCoursesList(int studentId) => EntityListConfig<EnrollmentRow>(
       id: 'student_left_courses',
-      title: 'courses'.tr,
+      title: 'sv_courses'.tr,
       rowKind: EntityKind.course,
       load: (q) => _rows<EnrollmentRow>(studentId, 'courses', q),
       idOf: (r) => r.subject.id,
       refOf: (r) => r.subject,
       fixedFilter: const {'state': 'withdrawn'},
       searchable: false,
-      empty: EntityListEmpty(Icons.sentiment_satisfied_alt_rounded, 'md_p7_empty_left'.tr),
+      empty: EntityListEmpty(Icons.sentiment_satisfied_alt_rounded, 'sv_md_p7_empty_left'.tr),
       columns: [
         AppTableColumn(key: 'course', label: 'md_kind_course'.tr, primary: true, flex: 3, cell: (context, r) => EntityChip(r.subject)),
         AppTableColumn(
@@ -160,12 +161,12 @@ class _TwoListsPageState extends State<_TwoListsPage> {
   @override
   Widget build(BuildContext context) {
     final me = context.select<MyAuthProvider, int?>((a) => a.currentUser?.id);
-    return BasePage(
+    return SdArea(area: AppArea.me, child: BasePage(
       key: ValueKey(widget.pageKey),
       useWebCard: true,
       width: AppWidth.wide,
       appBar: ScreenAppBar(title: widget.title),
-      child: SafeArea(
+      child: SdHeroColumn(title: widget.title, subtitle: widget.pageKey.contains('money') ? 'sd_h_payments_d'.tr : 'sd_h_grades_d'.tr, icon: Icons.workspace_premium_outlined, child: SafeArea(
         bottom: false,
         child: me == null
             ? const SizedBox.shrink()
@@ -176,8 +177,8 @@ class _TwoListsPageState extends State<_TwoListsPage> {
                 ),
                 Expanded(child: KeyedSubtree(key: ValueKey('${widget.pageKey}.$_tab'), child: widget.builder(context, _tab, me))),
               ]),
-      ),
-    );
+      )),
+    ));
   }
 }
 

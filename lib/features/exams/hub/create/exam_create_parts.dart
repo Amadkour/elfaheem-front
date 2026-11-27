@@ -8,6 +8,7 @@ import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart' show T2HeroScroll;
 import 'package:flutter_education_app/features/exams/exam_all.dart' show NewExamPlace;
 import 'package:flutter_education_app/features/exams/paper/exam_setup.dart' show OmrTemplateItem, versionsBubbleText;
 import 'package:flutter_education_app/features/exams/paper/exam_setup_wizard.dart' show SetupChoiceTile, SetupProgress;
@@ -109,22 +110,18 @@ class ExamCreateShell extends StatelessWidget {
           duration: motion.base,
           switchInCurve: AppMotion.curve,
           layoutBuilder: (current, previous) => Stack(alignment: Alignment.topCenter, children: [...previous, ?current]),
-          child: SingleChildScrollView(
+          // the redesign (Tea2Exams wizard): the step's question on the teacher's hero, the step riding up over it
+          child: KeyedSubtree(
             key: ValueKey(stepKey),
-            padding: EdgeInsets.symmetric(horizontal: wide ? AppSpace.xl : AppSpace.md, vertical: wide ? AppSpace.xl : AppSpace.md),
-            child: column(Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Text(title, style: wide ? AppType.headline(context) : AppType.pageTitle(context)),
-              if (subtitle != null) ...[
-                const SizedBox(height: AppSpace.xxs),
-                Text(subtitle!, style: AppType.body(context).copyWith(height: 1.45)),
+            child: T2HeroScroll(
+              width: AppWidth.reading,
+              hero: AppHero(kicker: stepLabel, title: title, subtitle: subtitle, wipe: false),
+              children: [
+                if (error != null)
+                  AppBanner(key: const ValueKey('create.error'), icon: Icons.error_outline_rounded, color: c.danger, text: error!),
+                AppCard(child: body),
               ],
-              SizedBox(height: wide ? AppSpace.lg : AppSpace.md),
-              if (error != null) ...[
-                AppBanner(key: const ValueKey('create.error'), icon: Icons.error_outline_rounded, color: c.danger, text: error!),
-                const SizedBox(height: AppSpace.md),
-              ],
-              body,
-            ])),
+            ),
           ),
         ),
       ),

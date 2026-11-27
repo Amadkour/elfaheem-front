@@ -81,6 +81,8 @@ class CpStaffActions extends StatelessWidget {
         if (!merged)
           TeacherAttendanceCourseEntry(
           padding: EdgeInsets.zero,
+          courseId: p.id,
+          courseTitle: p.name(AppConfig.lang == 'ar'),
           target: target == null ? null : LauncherSession(id: target.id, number: 0, name: target.name),
           sessions: [for (var i = 0; i < sessions.length; i++) LauncherSession(id: sessions[i].id, number: i + 1, name: sessions[i].name, date: sessions[i].scheduledAt)],
         ),

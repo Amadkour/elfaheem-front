@@ -39,6 +39,7 @@ import 'package:flutter_education_app/features/exams/paper/scan/scan_files.dart'
 import 'package:flutter_education_app/features/exams/paper/scan/scan_prepare.dart';
 import 'package:flutter_education_app/features/exams/paper/scan/scan_sources.dart';
 import 'package:flutter_education_app/features/exams/paper/scan/scan_upload_view.dart';
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart';
 
 /// Picks ONE replacement page. Tests hand their own; the app opens the source sheet (gallery / files).
 typedef OmrFilePicker = Future<List<(String, Uint8List)>> Function({bool many});
@@ -536,14 +537,16 @@ class _OmrScanProgressScreenState extends State<OmrScanProgressScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return BasePage(
-      key: const ValueKey('exam.omr.progress'),
-      appBar: AppHeader(title: widget.camera ? t('الأوراق المصوّرة', 'Captured papers') : t('معالجة الأوراق', 'Processing papers')),
-      child: Align(
-        alignment: Alignment.topCenter,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 760),
-          child: ListView(padding: const EdgeInsets.all(AppSpace.md), children: [_body()]),
+    final title = widget.camera ? t('الأوراق المصوّرة', 'Captured papers') : t('معالجة الأوراق', 'Processing papers');
+    // the redesign (Tea2Exams papers): the exam on the teacher's hero, the progress riding up over it
+    return T2Scope(
+      child: BasePage(
+        key: const ValueKey('exam.omr.progress'),
+        appBar: AppHeader(title: title),
+        child: T2HeroScroll(
+          width: AppWidth.reading,
+          hero: AppHero(kicker: t('تصحيح أوراق', 'Grade papers'), title: widget.examTitle),
+          children: [AppCard(child: _body())],
         ),
       ),
     );
@@ -559,7 +562,8 @@ class _PickFirst extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BasePage(
+    return T2Scope(
+      child: BasePage(
       key: const ValueKey('exam.omr.pick'),
       appBar: AppHeader(title: t('رفع الأوراق', 'Upload papers')),
       child: Center(
@@ -576,6 +580,7 @@ class _PickFirst extends StatelessWidget {
           ),
         ),
       ),
+    ),
     );
   }
 }

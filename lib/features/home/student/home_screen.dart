@@ -63,6 +63,8 @@ import 'package:flutter_education_app/features/courses/roadmap/journey_page.dart
 import 'package:flutter_education_app/features/courses/roadmap/recommendations.dart' show showInterestsSheet;
 import 'package:flutter_education_app/features/home/student/home_continue.dart';
 import 'package:flutter_education_app/features/home/student/home_event_rows.dart';
+import 'package:flutter_education_app/features/home/student/home_hero.dart';
+import 'package:flutter_education_app/features/courses/category/subject_tiles.dart' show SubjectsCard;
 import 'package:flutter_education_app/features/home/student/home_journey.dart';
 import 'package:flutter_education_app/features/games/champions/champions_models.dart' show HomeChampion, championsOff;
 import 'package:flutter_education_app/features/games/champions/champions_page.dart' show HallOfChampionsPage;
@@ -241,8 +243,119 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
 
+    // the shell's icons (phone: in the top band; a wide window's shell top bar carries its own)
+    List<Widget> phoneIcons(UserModel? user) => [
+          if (!guest) const ContextSwitcher(),
+          if (!guest && !SyncStatus.instance.value.quiet) const SyncStatusChip(),
+          if (!guest) const QuickMeetingIcon(),
+          if (!guest) const CalendarIcon(),
+          if (!guest) const ChatEntryIcon(),
+          if (!guest) const NotificationIcon(unreadCount: 0, withTodos: false),
+          const HelpInfoButton(pageId: 'home.student'),
+          if (user != null && !guest) UserChipButton(user: user, showLabel: false),
+          if (guest) StudentGuestSignIn(onTap: GuestGuard.goToLogin),
+        ];
+
+    Widget personal(BuildContext context) => Selector<MyAuthProvider, UserModel?>(
+          selector: (_, p) => p.currentUser,
+          builder: (context, user, _) => ListenableBuilder(
+            listenable: Listenable.merge([MeHomeService.instance, AppTime.version, SyncStatus.instance]),
+            builder: (context, _) {
+              final svc = MeHomeService.instance;
+              final ctl = AppModeController.instance;
+              final home = svc.home;
+              final phone = !HomeHeader.shellTopBar(context);
+              final featured =
+                  guest || home == null ? null : homeContinueCourse(home.coursesProgress, events: [...home.today, ...home.upcoming]);
+              final hero = ParentComponent(
+                key: const ValueKey('student_home.top_bar'),
+                child: StudentHomeHero(
+                  name: guest ? 'guest_name'.tr : _firstOr(user?.name, 'sir'.tr),
+                  guest: guest,
+                  home: home,
+                  line: studentHeroLine(live: svc.liveNow, featured: featured, guest: guest),
+                  daySummary: guest
+                      ? null
+                      : studentDaySummary(home, svc.liveNow.length, null, contextSwitchVisible(ctl) ? ctl.pendingTotal : 0),
+                  onTab: _tab,
+                ),
+              );
+              final body = StudentHomeBody(
+                data: StudentHomeData(
+                  home: home,
+                  loading: svc.loading && home == null,
+                  error: svc.failed ? svc.error!.message : null,
+                  guest: guest,
+                  orgWaiting: contextSwitchVisible(ctl) ? ctl.pendingTotal : 0,
+                  liveNow: svc.liveNow,
+                ),
+                onTab: _tab,
+                onRetry: svc.refresh,
+                onOpenCourse: (id) => AppNavigator.openCourse(id),
+                onOpenJourney: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    settings: const RouteSettings(name: '/journey'),
+                    builder: (_) => JourneyPage(initial: homeJourney(svc.home?.journey)),
+                  ),
+                ),
+                // the interests sheet; a save can give the student a journey → the home reloads
+                onPickInterests: () => showInterestsSheet(context).then((saved) {
+                  if (saved == true) svc.refresh();
+                }),
+                onOpenEvent: (e) => openHomeEvent(context, e),
+                // what was answered there leaves the counts: the home reloads when the inbox closes
+                onOpenInbox: () => Navigator.of(context)
+                    .push(MaterialPageRoute(builder: (_) => const InboxScreen()))
+                    .then((_) => svc.refresh()),
+                onOpenNotifications: () => Navigator.of(context).pushNamed('/notifications'),
+                onOpenTodo: () => showAttentionItems(context, AttentionTabs.home),
+                onOpenOrgs: () => showContextSwitcherSheet(context),
+                onOpenApplication: (x) => openHomeApplication(context, x, onClosed: svc.refresh),
+                // an ask of an organization (D-1400) → my ask page; the answer leaves the card on return
+                onOpenAsk: (x) => AppNavigator.openModule('student_ask', targetId: x.id, orgId: x.orgId).then((_) => svc.refresh()),
+                // the study card (D-793): the page, then a reload (a saved profile drops the card);
+                // "Not now" hides it at once and for 30 days on the server
+                onCompleteStudy: _studyHidden
+                    ? null
+                    : () => Navigator.of(context)
+                        .push(MaterialPageRoute(builder: (_) => const StudyProfilePage()))
+                        .then((_) => svc.refresh()),
+                onDismissStudy: _studyHidden ? null : _dismissStudy,
+                // the search leads the discovery part below the day (the design's Explore carries it too)
+                feeds: KeyedSubtree(
+                  key: _feedsKey,
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    const SizedBox(height: AppSpace.md),
+                    search(padding: const EdgeInsets.symmetric(horizontal: kStudentHomeInset)),
+                    // a guest's subjects (Stu1Public?screen=guesthome): the same tiles as Explore, from the catalogue
+                    if (guest)
+                      Consumer<CategoriesProvider>(
+                        builder: (context, cats, _) => Padding(
+                          padding: const EdgeInsets.fromLTRB(kStudentHomeInset, AppSpace.md, kStudentHomeInset, 0),
+                          child: SubjectsCard(
+                            categories: cats.categories,
+                            max: 6,
+                            onOpen: (cat) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CategoriesScreen(selectedId: cat.id))),
+                            onAll: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CategoriesScreen())),
+                          ),
+                        ),
+                      ),
+                    const _Feeds(),
+                  ]),
+                ),
+              );
+              return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                if (phone) StudentHomeTopBar(actions: phoneIcons(user)),
+                AppHeroOverlap(hero: hero, body: body),
+              ]);
+            },
+          ),
+        );
+
     // a desktop window: one wide calm card over the page's pattern (homeCardWidth), the dashboard inside it
-    return LayoutBuilder(
+    return AppAreaScope(
+      area: AppArea.home,
+      child: LayoutBuilder(
       builder: (context, area) => BasePage(
       key: const ValueKey('student_home'),
       useWebCard: true,
@@ -256,73 +369,28 @@ class _HomeScreenState extends State<HomeScreen> {
               child: CustomScrollView(
                 physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
                 slivers: [
-                  SliverToBoxAdapter(child: header),
-                  // the desktop header carries the search at its end
-                  SliverToBoxAdapter(child: HomeNarrowOnly(child: Padding(padding: const EdgeInsets.only(bottom: AppSpace.md), child: search()))),
-                  const SliverToBoxAdapter(child: SizedBox(height: AppSpace.xs)),
                   SliverToBoxAdapter(
                     child: ListenableBuilder(
                       listenable: Listenable.merge([homeTabs, AppModeController.instance]),
                       builder: (context, _) => AppModeController.instance.isOrg
-                          ? deferredOrgMemberHome(showPickerInHero: false)
-                          : ListenableBuilder(
-                              listenable: MeHomeService.instance,
-                              builder: (context, _) {
-                                final svc = MeHomeService.instance;
-                                final ctl = AppModeController.instance;
-                                return StudentHomeBody(
-                                  data: StudentHomeData(
-                                    home: svc.home,
-                                    loading: svc.loading && svc.home == null,
-                                    error: svc.failed ? svc.error!.message : null,
-                                    guest: guest,
-                                    orgWaiting: contextSwitchVisible(ctl) ? ctl.pendingTotal : 0,
-                                    liveNow: svc.liveNow,
-                                  ),
-                                  onTab: _tab,
-                                  onRetry: svc.refresh,
-                                  onOpenCourse: (id) => AppNavigator.openCourse(id),
-                                  onOpenJourney: () => Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      settings: const RouteSettings(name: '/journey'),
-                                      builder: (_) => JourneyPage(initial: homeJourney(svc.home?.journey)),
-                                    ),
-                                  ),
-                                  // the interests sheet; a save can give the student a journey → the home reloads
-                                  onPickInterests: () => showInterestsSheet(context).then((saved) {
-                                    if (saved == true) svc.refresh();
-                                  }),
-                                  onOpenEvent: (e) => openHomeEvent(context, e),
-                                  // what was answered there leaves the counts: the home reloads when the inbox closes
-                                  onOpenInbox: () => Navigator.of(context)
-                                      .push(MaterialPageRoute(builder: (_) => const InboxScreen()))
-                                      .then((_) => svc.refresh()),
-                                  onOpenNotifications: () => Navigator.of(context).pushNamed('/notifications'),
-                                  onOpenTodo: () => showAttentionItems(context, AttentionTabs.home),
-                                  onOpenOrgs: () => showContextSwitcherSheet(context),
-                                  onOpenApplication: (x) => openHomeApplication(context, x, onClosed: svc.refresh),
-                                  // an ask of an organization (D-1400) → my ask page; the answer leaves the card on return
-                                  onOpenAsk: (x) => AppNavigator.openModule('student_ask', targetId: x.id, orgId: x.orgId).then((_) => svc.refresh()),
-                                  // the study card (D-793): the page, then a reload (a saved profile drops the card);
-                                  // "Not now" hides it at once and for 30 days on the server
-                                  onCompleteStudy: _studyHidden
-                                      ? null
-                                      : () => Navigator.of(context)
-                                          .push(MaterialPageRoute(builder: (_) => const StudyProfilePage()))
-                                          .then((_) => svc.refresh()),
-                                  onDismissStudy: _studyHidden ? null : _dismissStudy,
-                                  feeds: KeyedSubtree(key: _feedsKey, child: const _Feeds()),
-                                );
-                              },
-                            ),
+                          // Organization mode keeps its greeting row and the organization's home (not redesigned)
+                          ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                              header,
+                              HomeNarrowOnly(child: Padding(padding: const EdgeInsets.only(bottom: AppSpace.md), child: search())),
+                              const SizedBox(height: AppSpace.xs),
+                              deferredOrgMemberHome(showPickerInHero: false),
+                            ])
+                          : personal(context),
                     ),
                   ),
+                  const SliverToBoxAdapter(child: SizedBox(height: AppSpace.xl)),
                 ],
               ),
             ),
           ),
         ),
       ),
+    ),
     ),
     );
   }
@@ -491,7 +559,13 @@ class StudentHomeBody extends StatelessWidget {
   Widget build(BuildContext context) {
     if (data.guest) {
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        const HomeEntrance(index: 1, child: ParentComponent(key: ValueKey('student_home.upcoming_banner'), child: GuestPromoCard())),
+        const HomeEntrance(
+          index: 1,
+          child: ParentComponent(
+            key: ValueKey('student_home.upcoming_banner'),
+            child: Padding(padding: EdgeInsets.symmetric(horizontal: kStudentHomeInset), child: GuestPromoCard()),
+          ),
+        ),
         AppSpace.gapMd,
         ?feeds,
       ]);
@@ -573,14 +647,15 @@ class _Sections extends StatelessWidget {
 
     // ── D-1100: the shared A2 skeleton — the four counts · [what waits (queue) | today, the inbox] · the course to
     //    pick up, my courses, the journey (full width). Every count once.
-    final featured = homeContinueCourse(home.coursesProgress, events: events);
-    final cont = featured == null
+    // redesign (StuHome): ONE "pick up where you left off" card with up to three courses and the small figures
+    final nextOf = homeCourseNextEvents(events), lastOf = homeCourseLastEvents(events);
+    final cont = home.coursesProgress.isEmpty
         ? null
-        : StudentContinueBlock(
-            course: featured,
-            line: homeNextLectureLine(featured,
-                event: homeCourseNextEvents(events)[featured.courseId], last: homeCourseLastEvents(events)[featured.courseId]),
-            onOpen: body.onOpenCourse == null ? null : () => body.onOpenCourse!(featured.courseId),
+        : StudentContinueCard(
+            courses: home.coursesProgress,
+            lineFor: (x) => homeNextLectureLine(x, event: nextOf[x.courseId], last: lastOf[x.courseId]),
+            onOpen: body.onOpenCourse,
+            onShowAll: _studentTabOn('my_courses') ? () => body.onTab('my_courses') : null,
           );
 
     // ── the queue: what waits for me (to do · unread · the organizations), or "You're all caught up" + the next class
@@ -626,37 +701,23 @@ class _Sections extends StatelessWidget {
     final inbox = !entryShown ? null : InboxEntry(counts: inboxCounts, unread: home.notificationsUnread, onTap: body.onOpenInbox, padding: EdgeInsets.zero);
 
     // ── my courses (the full cards live on the courses tab) with the journey and the study card under them
-    final others = featured == null ? home.coursesProgress.length : home.coursesProgress.length - 1;
-    final courses = home.coursesProgress.isNotEmpty && others == 0
+    final courses = home.coursesProgress.isNotEmpty
         ? null
         : HomeSideCard(
-            title: 'my_courses'.tr,
+            title: 'sv_my_courses'.tr,
             icon: Icons.auto_stories_rounded,
             count: home.coursesProgress.length,
-            actionLabel: home.coursesProgress.isEmpty ? 'home_s_browse'.tr : 'show_all'.tr,
+            actionLabel: home.coursesProgress.isEmpty ? 'sv_home_s_browse'.tr : 'show_all'.tr,
             onAction: () => body.onTab('my_courses'),
             child: home.coursesProgress.isEmpty
                 ? AppEmpty(
                     icon: Icons.auto_stories_rounded,
-                    title: 'home_s_no_courses'.tr,
-                    message: 'home_s_no_courses_hint'.tr,
-                    actionLabel: 'home_s_browse'.tr,
+                    title: 'sv_home_s_no_courses'.tr,
+                    message: 'sv_home_s_no_courses_hint'.tr,
+                    actionLabel: 'sv_home_s_browse'.tr,
                     onAction: () => body.onTab('my_courses'),
                   )
-                : wide
-                    ? StudentCourseSummary(
-                        courses: home.coursesProgress,
-                        events: events,
-                        featuredId: featured?.courseId,
-                        onOpen: body.onOpenCourse,
-                        onShowAll: () => body.onTab('my_courses'),
-                      )
-                    : StudentCourseTiles(
-                        courses: home.coursesProgress,
-                        events: events,
-                        featuredId: featured?.courseId,
-                        onOpen: body.onOpenCourse,
-                      ),
+                : const SizedBox.shrink(),
           );
     final j = homeJourney(home.journey);
     final invite = j == null && body.onPickInterests != null && homeJourneyInvite(home.journeyHint);
@@ -677,11 +738,13 @@ class _Sections extends StatelessWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       HomeA2Layout(
         greeting: null,
-        stats: studentHomeStatCards(home, body.onTab),
+        // the four figures live in the hero (glass stats on a wide window; none on a phone: the 5-second rules)
+        stats: const [],
         banners: [
           // live now: a room I'm invited to is on air → one tap into it (the only strong accent of the page)
           if (live.isNotEmpty)
             HelpTourTarget(pageId: 'home.student', id: 'live_card', child: HomeLiveNow(rooms: live, now: data.now, padding: EdgeInsets.zero)),
+          ?cont,
           if (home.onboarding.isNotEmpty && homeApplicationNeedsAction(home.onboarding))
             HomeApplicationCard(items: home.onboarding, onOpen: body.onOpenApplication),
           // what an organization asks me (D-1400): it waits for MY answer, so it sits with the banners
@@ -690,7 +753,6 @@ class _Sections extends StatelessWidget {
         queue: HomeEntrance(index: 1, child: queue),
         side: [HomeEntrance(index: 2, child: today), ?inbox, ?champion],
         below: [
-          ?cont,
           ?courses,
           if (j != null)
             HomeJourneyCard(
@@ -748,7 +810,7 @@ List<Widget> studentHomeStatCards(MeHome home, ValueChanged<String> onTab) {
         AppStatCard(
           icon: Icons.auto_stories_rounded,
           value: '${cp.length}',
-          label: 'my_courses'.tr,
+          label: 'sv_my_courses'.tr,
           tone: AppBlockTone.emerald,
           onTap: () => onTab('my_courses'),
         ),
@@ -772,7 +834,7 @@ List<Widget> studentHomeStatCards(MeHome home, ValueChanged<String> onTab) {
         AppStatCard(
           icon: Icons.emoji_events_rounded,
           value: '$done',
-          label: 'home_s_done_courses'.tr,
+          label: 'sv_home_s_done_courses'.tr,
           tone: AppBlockTone.gold,
           onTap: () => onTab('my_courses'),
         ),
@@ -824,7 +886,7 @@ class _MarketingFeeds extends StatelessWidget {
         ParentComponent(
           featureKey: 'student_home.courses',
           child: HomeSectionTitle(
-            'my_courses'.tr,
+            'sv_my_courses'.tr,
             actionLabel: 'show_more'.tr,
             onAction: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CoursesListScreen(homeCourses: provider.myCourses, forMyCourses: true))),
           ),

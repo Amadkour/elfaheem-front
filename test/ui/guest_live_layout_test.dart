@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_buttons.dart';
 import 'package:flutter_education_app/features/guest/guest_live_api.dart';
 import 'package:flutter_education_app/features/guest/guest_live_page.dart';
+import 'package:flutter_education_app/features/live/live_room.dart' show LiveRoomKind;
 import 'package:flutter_education_app/features/sessions/teacher/components/guest_link_sheet.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -95,7 +96,6 @@ const _info = GuestLiveInfo(
   isLive: true,
   canPublish: false,
   recordingEnabled: true,
-  guestsJoined: 3,
   maxGuests: 10,
 );
 
@@ -129,7 +129,7 @@ Widget _page({
     );
 
 GuestLiveInfo _copy(GuestLiveInfo i,
-        {bool? isLive, bool? canPublish, bool? recording, int? joined, int? max, bool clearMax = false, bool? requiresPin}) =>
+        {bool? isLive, bool? canPublish, bool? recording, bool? full, int? max, bool clearMax = false, bool? requiresPin}) =>
     GuestLiveInfo(
       sessionId: i.sessionId,
       sessionName: i.sessionName,
@@ -138,8 +138,8 @@ GuestLiveInfo _copy(GuestLiveInfo i,
       isLive: isLive ?? i.isLive,
       canPublish: canPublish ?? i.canPublish,
       recordingEnabled: recording ?? i.recordingEnabled,
-      guestsJoined: joined ?? i.guestsJoined,
       maxGuests: clearMax ? null : (max ?? i.maxGuests),
+      full: full ?? i.full,
       requiresPin: requiresPin ?? i.requiresPin,
     );
 
@@ -336,7 +336,7 @@ void main() {
       );
       await expectNoLayoutErrors(
         tester,
-        () => _page(info: _copy(_info, joined: 10, max: 10)),
+        () => _page(info: _copy(_info, full: true)),
         act: (t) async => expect(find.byKey(const ValueKey('guest_live.full')), findsOneWidget),
       );
     });
@@ -358,6 +358,40 @@ void main() {
         tester,
         () => _page(error: 'The server could not be reached.'),
         act: (t) async => expect(find.byKey(const ValueKey('guest_live.retry')), findsOneWidget),
+      );
+    });
+
+    testWidgets('back from the room: the sign-up card alone; signed out: "Join with your account" (S-A2)', (tester) async {
+      await expectNoLayoutErrors(
+        tester,
+        () => GuestLiveContent(
+          loading: false,
+          info: _info,
+          error: null,
+          joining: false,
+          nameController: TextEditingController(),
+          onJoin: () {},
+          onRetry: () {},
+          afterRoom: GuestLiveAfterCard(kind: LiveRoomKind.meeting, onRegister: () {}, onSignIn: () {}, onLater: () {}),
+        ),
+        act: (t) async {
+          expect(find.byKey(const ValueKey('guest_live.after')), findsOneWidget);
+          expect(find.byKey(const ValueKey('guest_live.live')), findsNothing);
+        },
+      );
+      await expectNoLayoutErrors(
+        tester,
+        () => GuestLiveContent(
+          loading: false,
+          info: _info,
+          error: null,
+          joining: false,
+          nameController: TextEditingController(),
+          onJoin: () {},
+          onRetry: () {},
+          onSignIn: () {},
+        ),
+        act: (t) async => expect(find.byKey(const ValueKey('guest_live.sign_in')), findsOneWidget),
       );
     });
   });

@@ -75,8 +75,10 @@ void main() {
           if (y <= 0.6 * 860) expect(k.onCream, isFalse, reason: 'the green part keeps the on-hero ink at $y');
           expect(k.onCream, isFalse, reason: 'the all-green panel keeps the on-hero ink at $y (D-863)');
         }
-        // the open tab's ink stays the cream (accent1) itself
-        expect(l.sideActiveInk, t.accent.withValues(alpha: 1));
+        // the open tab's ink is the cream (accent1), lifted only as far as AA on the glass over the redesign's radial
+        // panel needs (KIT_SPEC §6.2: its light end is kit primary; was "the cream itself" under D-650)
+        expect(HSLColor.fromColor(l.sideActiveInk).lightness,
+            greaterThanOrEqualTo(HSLColor.fromColor(t.accent.withValues(alpha: 1)).lightness - 1e-9));
 
         // the primary button at rest, hovered and pressed: solid primary under the label (white at AA); the third
         // stop is the cream the label never touches
@@ -85,10 +87,10 @@ void main() {
         for (final g in [l.button, l.buttonHover, l.buttonPressed]) {
           aa(l.buttonInk, BrandLayer.gradientSamples(g[0], g[1], 9), 'white under the label');
         }
-        expect(HSLColor.fromColor(l.button.first).hue, inInclusiveRange(140, 180), reason: 'the green stop');
+        expect(HSLColor.fromColor(l.button.first).hue, inInclusiveRange(name == 'built-in' ? 180 : 140, name == 'built-in' ? 230 : 180), reason: 'Alfaheem A-008: the built-in stop is blue (primary hue 206), a green server palette stays green');
         // D-863: the end is a lift of the same green (no cream)
         expect(l.button.last, isNot(t.accent.withValues(alpha: 1)), reason: 'no cream stop');
-        expect(HSLColor.fromColor(l.button.last).hue, inInclusiveRange(140, 180), reason: 'the end stays green');
+        expect(HSLColor.fromColor(l.button.last).hue, inInclusiveRange(name == 'built-in' ? 180 : 140, name == 'built-in' ? 230 : 180), reason: 'Alfaheem A-008: the end stays on the palette hue (built-in: partner 194)');
 
         // the gold CTA: a DARK ink (white on gold fails)
         aa(l.goldInk, [...l.gold, ...l.goldHover, ...l.goldPressed], 'gold label');
@@ -171,7 +173,9 @@ void main() {
             expect(low, greaterThanOrEqualTo(kWcagAaText), reason: 'white along "$label"');
             // a short label leaves about the last third or more to the cream
             if (label.length < 6) expect(stops[1], lessThan(0.66));
-          });
+            // KIT_SPEC §5.4: AppButton.primary is the area set's button gradient now (no AppBrandFill); the
+            // ink-on-stops contrast it checked is kit_palette_contrast_test's btn_fg on btn_a / btn_b
+          }, skip: true);
         }
       }
     }

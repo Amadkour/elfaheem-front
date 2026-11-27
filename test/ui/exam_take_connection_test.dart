@@ -93,7 +93,8 @@ void main() {
     // 2 · submit while saves still fail: refused, nothing sent to submit
     await tester.tap(find.byKey(const ValueKey('exam.submit')));
     await tester.pump(const Duration(milliseconds: 400));
-    await tester.tap(find.text('Submit').last);                    // the confirm dialog
+    await tester.pump(const Duration(milliseconds: 600));                // the hand-in sheet rises (M14)
+    await tester.tap(find.byKey(const ValueKey('exam.submit.confirm')));   // the hand-in sheet
     await tester.pump(const Duration(seconds: 1));
     expect(submits, 0, reason: 'never finalise with unsaved answers');
     expect(find.byType(ExamTakingScreen), findsOneWidget);
@@ -105,7 +106,8 @@ void main() {
     expect(prefs.getString('exam.pending.7'), isNull, reason: 'saved on the server: the device copy is cleared');
     await tester.tap(find.byKey(const ValueKey('exam.submit')));
     await tester.pump(const Duration(milliseconds: 400));
-    await tester.tap(find.text('Submit').last);
+    await tester.pump(const Duration(milliseconds: 600));                // the hand-in sheet rises (M14)
+    await tester.tap(find.byKey(const ValueKey('exam.submit.confirm')));
     await tester.pump(const Duration(seconds: 1));
     expect(submits, 1);
     expect(find.textContaining('The connection dropped before the exam was submitted'), findsOneWidget);
@@ -116,7 +118,8 @@ void main() {
     submitOnline = true;
     await tester.tap(find.byKey(const ValueKey('exam.submit')));
     await tester.pump(const Duration(milliseconds: 400));
-    await tester.tap(find.text('Submit').last);
+    await tester.pump(const Duration(milliseconds: 600));                // the hand-in sheet rises (M14)
+    await tester.tap(find.byKey(const ValueKey('exam.submit.confirm')));
     await tester.pump(const Duration(milliseconds: 5));
     final bar = find.byKey(const ValueKey('exam.submit'));
     if (bar.evaluate().isNotEmpty) await tester.tap(bar.last, warnIfMissed: false);

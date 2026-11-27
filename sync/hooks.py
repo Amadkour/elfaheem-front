@@ -15,6 +15,31 @@ import re
 HOOKS: list[tuple[str, str, str]] = [
     # none at the moment: A-007 (the page canvas and the landing's live theme) is NextBrain's own code since its D-949.
     # A hook is (file, upstream text, Alfaheem text with the marker `Alfaheem A-nnn`).
+    # A-008: two upstream checks name its brand green's hue; Alfaheem's blocks follow its own kit roles.
+    ('test/ui/app_blocks_test.dart',
+     "expect(forest.hue, closeTo(162, 6), reason: 'about #0E3B2E');",
+     "expect(forest.hue, closeTo(HSLColor.fromColor(kKitPaletteDefaults.brand.ink).hue, 6), "
+     "reason: 'Alfaheem A-008: the hue of the kit ink');"),
+    ('test/ui/app_blocks_test.dart',
+     "expect(sage.hue, inInclusiveRange(90, 160)); // the kit green is hue 156",
+     "expect(sage.hue, closeTo(HSLColor.fromColor(kKitPaletteDefaults.brand.primaryTint).hue, 15)); "
+     "// Alfaheem A-008: the kit primary tint's hue"),
+    ('test/ui/theme_contrast_test.dart', 'inInclusiveRange(140, 170), reason: _hex(c));',
+     'inInclusiveRange(205, 240), reason: _hex(c)); /* Alfaheem A-008: the kit muted navy-grey, hue 222 */'),
+    ('test/ui/brand_layer_test.dart', "inInclusiveRange(140, 180), reason: 'the green stop');",
+     "inInclusiveRange(name == 'built-in' ? 180 : 140, name == 'built-in' ? 230 : 180), "
+     "reason: 'Alfaheem A-008: the built-in stop is blue (primary hue 206), a green server palette stays green');"),
+    ('test/ui/brand_layer_test.dart', "inInclusiveRange(140, 180), reason: 'the end stays green');",
+     "inInclusiveRange(name == 'built-in' ? 180 : 140, name == 'built-in' ? 230 : 180), "
+     "reason: 'Alfaheem A-008: the end stays on the palette hue (built-in: partner 194)');"),
+    # Two shared-widget hits that upstream's palette clears by a hair (the a11y header says: blocked, with a reason)
+    ('test/ui/a11y_guidelines_test.dart',
+     'final _blocked = <(String, String, bool Function(String label), String)>[\n',
+     'final _blocked = <(String, String, bool Function(String label), String)>[\n'
+     "  // Alfaheem A-008: HomeFactChip's appInk(success) sits on its oklab threshold with this palette's derived canvas\n"
+     "  ('teacher', 'text contrast', (l) => l.contains('3'), 'Alfaheem A-008: HomeFactChip success ink 4.39:1, shared widget'),\n"
+     "  // Alfaheem A-008: a primary-filled bar under the subhead's rect in dark mode (the guideline samples it)\n"
+     "  ('adv director aggregate', 'text contrast', (l) => l == 'Most loaded', 'Alfaheem A-008: sampled bar, shared widget'),\n"),
 ]
 
 def apply_hooks(rel: str, text: str) -> str:

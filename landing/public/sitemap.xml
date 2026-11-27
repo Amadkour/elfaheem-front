@@ -48,4 +48,40 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://alfheemacademy.com/en/download/"/>
     <xhtml:link rel="alternate" hreflang="x-default" href="https://alfheemacademy.com/en/download/"/>
   </url>
+  <url>
+    <loc>https://alfheemacademy.com/ar/students/</loc>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://alfheemacademy.com/ar/students/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://alfheemacademy.com/en/students/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://alfheemacademy.com/ar/students/"/>
+  </url>
+  <url>
+    <loc>https://alfheemacademy.com/en/students/</loc>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://alfheemacademy.com/ar/students/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://alfheemacademy.com/en/students/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://alfheemacademy.com/ar/students/"/>
+  </url>
+  <url>
+    <loc>https://alfheemacademy.com/ar/parents/</loc>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://alfheemacademy.com/ar/parents/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://alfheemacademy.com/en/parents/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://alfheemacademy.com/ar/parents/"/>
+  </url>
+  <url>
+    <loc>https://alfheemacademy.com/en/parents/</loc>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://alfheemacademy.com/ar/parents/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://alfheemacademy.com/en/parents/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://alfheemacademy.com/ar/parents/"/>
+  </url>
+  <url>
+    <loc>https://alfheemacademy.com/ar/teachers/</loc>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://alfheemacademy.com/ar/teachers/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://alfheemacademy.com/en/teachers/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://alfheemacademy.com/ar/teachers/"/>
+  </url>
+  <url>
+    <loc>https://alfheemacademy.com/en/teachers/</loc>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://alfheemacademy.com/ar/teachers/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://alfheemacademy.com/en/teachers/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://alfheemacademy.com/ar/teachers/"/>
+  </url>
 </urlset>

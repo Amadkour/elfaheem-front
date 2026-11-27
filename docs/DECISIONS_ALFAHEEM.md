@@ -148,3 +148,12 @@ wears a palette derived from its logo (green and gold); Alfaheem keeps the refer
 this repository's theme defaults and the backend theme seed, re-applied by the identity step (`sync/keep_paths.txt`
 or a hook). Market defaults are data: Alfaheem = Saudi Arabia (Asia/Riyadh, SAR, Moyasar). This branch keeps the
 handoff, the phase 0 inventory and the reference screenshots; the build happens upstream.
+
+**Applied (2026-11-27, first sync of NextBrain `feature/redesign`).** The identity step writes the palette:
+`sync/kit_palette_alfaheem.py` builds it from `tool/redesign/kit_palette_ref.json` with the upstream rules and fixes
+only the pairs under the upstream contrast floors (listed in `docs/redesign/KIT_PALETTE_DOWNSTREAM.md`: buttons
+darkened or given the navy text, `hot` darkened, the kicker a lighter apricot, the home / me / admin heroes started
+one step deeper). `apply_identity.py` writes it into `tool/redesign/kit_palette.json`, `kit_palette_defaults.dart`
+and `app_theme.dart`; the backend takes the same map (`../back/sync/kit_identity.py`), and its `alfaheem_seed.py`
+stores the market defaults (SA, Asia/Riyadh, SAR, Moyasar, `platform.digits` = `arabic_indic`) where unset. The
+backend's theme response sends `platform_settings.digits` through a one-line hook (upstream does not send it yet).

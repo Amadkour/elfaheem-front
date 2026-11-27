@@ -1,4 +1,4 @@
-// The Super Admin hub tabs (AdminServicesHub): no hero, a search field that filters by label + description, a
+// The admin hub tabs (AdminServicesHub, redesign A1): the role's hero, then the hub card with a search field that filters by label + description, a
 // responsive grid, the label fixes, the new Grading-feedback tile, and a layout check on every size.
 import 'dart:convert';
 import 'dart:io';
@@ -8,6 +8,7 @@ import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/storage_service.dart';
 import 'package:flutter_education_app/design/app_kit.dart' show AppSearchField;
 import 'package:flutter_education_app/features/admin/admin_providers.dart' show AdminPendingPayoutsProvider;
+import 'package:flutter_education_app/features/admin/adm_kit.dart' show AdmServiceTile;
 import 'package:flutter_education_app/features/admin/admin_services_hub.dart';
 import 'package:flutter_education_app/features/payments/enrollment_request/teacher_transfers_provider.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
@@ -51,19 +52,19 @@ void main() {
     expect([for (final w in [320.0, 500.0, 800.0, 1100.0]) AdminServicesHub.columnsFor(w)], [1, 2, 3, 4]);
   });
 
-  testWidgets('a hub has a search field and NO hero; the search filters by label and description', (tester) async {
+  testWidgets('a hub has its hero and one search field; the search filters by label and description', (tester) async {
     await pumpHub(tester, 'finance');
     expect(find.byType(AppSearchField), findsOneWidget);
-    expect(find.byType(ServiceCard), findsWidgets);
-    final all = tester.widgetList(find.byType(ServiceCard)).length;
+    expect(find.byType(AdmServiceTile), findsWidgets);
+    final all = tester.widgetList(find.byType(AdmServiceTile)).length;
     await tester.enterText(find.byType(TextField), 'withdraw');
     await tester.pump(const Duration(milliseconds: 500));
-    final some = tester.widgetList(find.byType(ServiceCard)).length;
+    final some = tester.widgetList(find.byType(AdmServiceTile)).length;
     expect(some, lessThan(all));
     expect(some, greaterThan(0));
     await tester.enterText(find.byType(TextField), 'zzzzqqq');
     await tester.pump(const Duration(milliseconds: 500));
-    expect(find.byType(ServiceCard), findsNothing);
+    expect(find.byType(AdmServiceTile), findsNothing);
   });
 
   testWidgets('label fixes and the new feedback tile (config group)', (tester) async {
@@ -86,7 +87,7 @@ void main() {
   });
 
   testWidgets('every hub lays out at every size and language', (tester) async {
-    for (final g in ['people', 'finance', 'learning', 'support', 'config']) {
+    for (final g in ['people', 'approvals', 'finance', 'learning', 'support', 'config']) {
       await expectNoLayoutErrors(tester, () => withProviders(AdminServicesHub(groupId: g)));
     }
   });

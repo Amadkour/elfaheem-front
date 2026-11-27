@@ -2,10 +2,14 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/design/app_area.dart' show AppArea;
+import 'package:flutter_education_app/features/profile/sd_area.dart';
+import 'package:flutter_education_app/design/app_kit.dart' show AppAreaScope, AppCard, AppCardVariant, AppSuccess;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show BurstMoment;
 import 'package:flutter_education_app/design/app_badges.dart' show appInkOn, appTintOn;
 import 'package:flutter_education_app/design/app_buttons.dart';
 import 'package:flutter_education_app/design/app_depth.dart' show AppExpandCard;
-import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp, AppEase, appMotionOff;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp, AppEase;
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 
@@ -15,6 +19,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/app_loading_indicator.dart';
 import 'package:flutter_education_app/features/payments/enrollment/enrollment_models.dart';
+import 'package:flutter_education_app/core/app_digits.dart';
 
 bool isWideLayout(BuildContext context) =>
     MediaQuery.of(context).size.width > 600;
@@ -158,6 +163,7 @@ class _FeeBreakdownCardState extends State<FeeBreakdownCard> {
                       value: q.fmt(q.platformFee),
                       icon: Icons.store_rounded,
                     ),
+                    if (q.showVat)
                     _FeeRow(
                       label: 'VAT'.tr,
                       value: q.fmt(q.vatOnPlatform),
@@ -232,7 +238,7 @@ class _FeeRow extends StatelessWidget {
           ),
           const SizedBox(width: AppSpace.xs),
           Text(
-            value,
+            appDigits(value), // platform_settings.digits
             style: AppType.row(context).copyWith(
               fontWeight: FontWeight.w600,
               fontFeatures: const [FontFeature.tabularFigures()],
@@ -246,23 +252,31 @@ class _FeeRow extends StatelessWidget {
 
 // ── Result screens ────────────────────────────────────────────────────────────
 
+/// "نتأكد من الدفع" (Stu2Money `state=processing`): the area tint plate with a calm spinner, one line, nothing to
+/// press.
 class PaymentVerifyingView extends StatelessWidget {
   const PaymentVerifyingView({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final set = AppAreaScope.of(context);
     return Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpace.lg),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(width: AppSpace.xxxl, height: AppSpace.xxxl, child: AppLoadingIndicator()),
-            const SizedBox(height: AppSpace.lg),
-            Text('verifying_payment_title'.tr, style: AppType.headline(context), textAlign: TextAlign.center),
+        child: AppCard(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            Container(
+              width: AppTouch.primary + AppSpace.xl,
+              height: AppTouch.primary + AppSpace.xl,
+              padding: const EdgeInsets.all(AppSpace.lg),
+              decoration: BoxDecoration(color: set.tint, shape: BoxShape.circle),
+              child: const AppLoadingIndicator(),
+            ),
+            const SizedBox(height: AppSpace.md),
+            Text('verifying_payment_title'.tr, style: AppType.pageTitle(context), textAlign: TextAlign.center),
             const SizedBox(height: AppSpace.xs),
             Text('verifying_payment_subtitle'.tr, style: AppType.body(context), textAlign: TextAlign.center),
-          ],
+          ]),
         ),
       ),
     );
@@ -271,8 +285,11 @@ class PaymentVerifyingView extends StatelessWidget {
 
 enum ResultKind { success, pending, failed }
 
-/// One widget for success / pending / failed (replaces three near-identical screens).
-class PaymentResultView extends StatefulWidget {
+/// One widget for success / pending / failed (Stu2Money `state=ok / review / fail / rejected / refused`): success is
+/// the kit's [AppSuccess] (the tick draws itself, M2, and the bounded burst, M11 — a booking confirmed); waiting and
+/// failure are a card tinted in the warning / error tone with the mark, the title, one line, ONE filled button and
+/// an optional ghost.
+class PaymentResultView extends StatelessWidget {
   final ResultKind kind;
   final String title, message, primaryLabel;
   final VoidCallback onPrimary;
@@ -291,109 +308,50 @@ class PaymentResultView extends StatefulWidget {
   });
 
   @override
-  State<PaymentResultView> createState() => _PaymentResultViewState();
-}
-
-class _PaymentResultViewState extends State<PaymentResultView>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _ctrl;
-  late final Animation<double> _scale, _fade;
-
-  /// The mark's side.
-  static const double _mark = 112;
-
-  @override
-  void initState() {
-    super.initState();
-    // ONE entrance: the mark settles from 92 % while the page fades in (a strong ease-out, no bounce)
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 420),
-    )..forward();
-    _scale = Tween<double>(begin: 0.92, end: 1).animate(CurvedAnimation(parent: _ctrl, curve: AppEase.out));
-    _fade = CurvedAnimation(parent: _ctrl, curve: AppEase.out);
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (appMotionOff(context)) _ctrl.value = 1; // Reduce motion: already there
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final (Color tone, IconData icon) = switch (widget.kind) {
-      ResultKind.success => (c.success, Icons.check_rounded),
-      ResultKind.pending => (c.warning, Icons.hourglass_top_rounded),
-      ResultKind.failed => (c.danger, Icons.error_outline_rounded),
-    };
-    // a tinted disc with a solid core: the outcome in its own colour, no glow
-    final tint = appTintOn(context, tone, surface: c.background);
-
-    return FadeTransition(
-      opacity: _fade,
-      child: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg, vertical: AppSpace.xl),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: AppWidth.form.max),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                ScaleTransition(
-                  scale: _scale,
-                  child: Center(
-                    child: Container(
-                      width: _mark,
-                      height: _mark,
-                      decoration: BoxDecoration(shape: BoxShape.circle, color: tint),
-                      alignment: Alignment.center,
-                      child: Container(
-                        width: _mark / 2,
-                        height: _mark / 2,
-                        decoration: BoxDecoration(shape: BoxShape.circle, color: appInkOn(context, tone, tint)),
-                        child: Icon(icon, color: c.onHero, size: AppIconSize.xl),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: AppSpace.xl),
-                Text(widget.title, style: AppType.display(context), textAlign: TextAlign.center),
-                const SizedBox(height: AppSpace.sm),
-                Text(
-                  widget.message,
-                  style: AppType.body(context).copyWith(height: 1.8),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: AppSpace.xl),
-                AppButton.primary(
-                  label: widget.primaryLabel,
-                  onPressed: widget.onPrimary,
-                  size: AppButtonSize.lg,
-                  expand: true,
-                ),
-                if (widget.secondaryLabel != null &&
-                    widget.onSecondary != null) ...[
-                  const SizedBox(height: AppSpace.sm),
-                  SoftOutlineButton(
-                    label: widget.secondaryLabel!,
-                    onTap: widget.onSecondary!,
-                  ),
-                ],
-              ],
+    final secondary = secondaryLabel == null
+        ? null
+        : AppButton.ghost(label: secondaryLabel!, onPressed: onSecondary, expand: true);
+    final Widget body;
+    if (kind == ResultKind.success) {
+      body = AppSuccess(
+        title: title,
+        message: message,
+        actionLabel: primaryLabel,
+        onAction: onPrimary,
+        burst: BurstMoment.bookingConfirmed,
+        secondary: secondary,
+      );
+    } else {
+      final tone = kind == ResultKind.pending ? c.kit.warn : c.kit.error;
+      final icon = kind == ResultKind.pending ? Icons.hourglass_top_rounded : Icons.error_outline_rounded;
+      body = AppCard(
+        variant: AppCardVariant.tint,
+        tone: tone,
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Center(
+            child: Semantics(
+              liveRegion: true,
+              child: Container(
+                width: AppTouch.primary + AppSpace.lg,
+                height: AppTouch.primary + AppSpace.lg,
+                decoration: BoxDecoration(color: tone.color, shape: BoxShape.circle),
+                child: Icon(icon, color: c.onHero, size: AppIconSize.hero),
+              ),
             ),
           ),
-        ),
-      ),
-    );
+          const SizedBox(height: AppSpace.md),
+          Text(title, textAlign: TextAlign.center, style: AppType.pageTitle(context).copyWith(color: tone.ink)),
+          const SizedBox(height: AppSpace.xs),
+          Text(message, textAlign: TextAlign.center, style: AppType.body(context).copyWith(color: c.textMedium)),
+          const SizedBox(height: AppSpace.lg),
+          AppButton.primary(label: primaryLabel, onPressed: onPrimary, expand: true),
+          if (secondary != null) ...[const SizedBox(height: AppSpace.xs), secondary],
+        ]),
+      );
+    }
+    return Center(child: SingleChildScrollView(padding: const EdgeInsets.all(AppSpace.md), child: body));
   }
 }
 
@@ -567,7 +525,8 @@ class EnrollScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
+    // the money area of the redesign (S-D): the kit's buttons, states and success marks take its accent
+    return SdArea(area: AppArea.money, child: SafeArea(
       child: BasePage(
         useWebCard: true,
         width: AppWidth.reading,
@@ -589,7 +548,7 @@ class EnrollScaffold extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 

@@ -451,6 +451,13 @@ class LiveControlsApi {
 
   static String endForAllPath(LiveRoomRef r) => '/api/v1/live/${r.kindName}/${r.id}/end-for-all';
 
+  /// WP1 (D-1950): the host's roster, hidden people included (the LiveKit participant list no longer shows them).
+  static String peoplePath(LiveRoomRef r) => '/api/v1/live/${r.kindName}/${r.id}/people';
+
+  /// WP1: bring a hidden person on stage / take them off.
+  static String stagePath(LiveRoomRef r, String identity) =>
+      '/api/v1/live/${r.kindName}/${r.id}/participants/${Uri.encodeComponent(identity)}/stage';
+
   // ── Bodies ────────────────────────────────────────────────────────────────
 
   /// One track by sid, else every track of [source] (the server's default is the microphone).
@@ -467,6 +474,8 @@ class LiveControlsApi {
   static Map<String, dynamic> muteAllBody({bool allowUnmute = true}) => {'allow_unmute': allowUnmute};
 
   static Map<String, dynamic> lockBody(bool locked) => {'locked': locked};
+
+  static Map<String, dynamic> stageBody(bool on) => {'on': on};
 
   // ── Calls ─────────────────────────────────────────────────────────────────
 
@@ -496,6 +505,23 @@ class LiveControlsApi {
 
   Future<LiveLockState> setLock(bool locked) async =>
       LiveLockState.fromJson(_map(await _api.put(lockPath(ref), body: lockBody(locked))));
+
+  /// WP1: everyone in the room as the host sees them (`GET …/people`): raw rows, parsed by LivePeopleController.
+  Future<List<Map<String, dynamic>>> people() async {
+    final r = _map(await _api.get(peoplePath(ref)));
+    final items = r['items'];
+    return [
+      if (items is List)
+        for (final i in items)
+          if (i is Map) Map<String, dynamic>.from(i),
+    ];
+  }
+
+  /// WP1: on stage = visible with camera and microphone, off = hidden again. The identity's `on_stage` as applied.
+  Future<bool> stage(String identity, bool on) async {
+    final r = _map(await _api.post(stagePath(ref, identity), body: stageBody(on)));
+    return r['on_stage'] == true;
+  }
 
   /// Ends the room and disconnects everyone at once. Returns how many were removed.
   Future<int> endForAll() async {

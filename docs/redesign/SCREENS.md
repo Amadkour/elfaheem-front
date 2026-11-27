@@ -1,6 +1,6 @@
 # Screen map
 
-Every screen of the design, by role. Open a screen with the URL shown (serve `docs/redesign/design/` first, see START.md). Phone = open at 390 px wide, web = 1360 px wide. The same URL is used for both; the layout responds to the width.
+Every screen of the design, by role. Open a screen with the URL shown (serve `D:/platform/redesign-ref/design/` first, see START.md). Phone = open at 390 px wide, web = 1360 px wide. The same URL is used for both; the layout responds to the width.
 
 ## صفحات الهبوط (landing)
 
@@ -259,11 +259,11 @@ Every screen of the design, by role. Open a screen with the URL shown (serve `do
 | 180 | محفظتي: اشحن نقاط | `Stu2Money.dc.html?sheet=buy&screen=wallet` |
 | 181 | محفظتي: باقة الاجتماعات | `Stu2Money.dc.html?sheet=plan&screen=wallet` |
 | 182 | محفظتي: ينقصك نقاط | `Stu2Money.dc.html?sheet=plan&short=1&screen=wallet` |
-| 183 | اشتراك الفهيم: اختر خطتك | `Stu2Money.dc.html?state=choose&screen=subscribe` |
-| 184 | اشتراك الفهيم: نراجع طلبك | `Stu2Money.dc.html?state=review&screen=subscribe` |
-| 185 | اشتراك الفهيم: الطلب السابق ما انقبل | `Stu2Money.dc.html?state=rejected&screen=subscribe` |
-| 186 | اشتراك الفهيم: فعّال | `Stu2Money.dc.html?state=active&screen=subscribe` |
-| 187 | اشتراك الفهيم: الحساب ما انفتح | `Stu2Money.dc.html?state=notopen&screen=subscribe` |
+| 183 | اشتراك التطبيق: اختر خطتك | `Stu2Money.dc.html?state=choose&screen=subscribe` |
+| 184 | اشتراك التطبيق: نراجع طلبك | `Stu2Money.dc.html?state=review&screen=subscribe` |
+| 185 | اشتراك التطبيق: الطلب السابق ما انقبل | `Stu2Money.dc.html?state=rejected&screen=subscribe` |
+| 186 | اشتراك التطبيق: فعّال | `Stu2Money.dc.html?state=active&screen=subscribe` |
+| 187 | اشتراك التطبيق: الحساب ما انفتح | `Stu2Money.dc.html?state=notopen&screen=subscribe` |
 | 188 | مكافآتي | `Stu2Money.dc.html?screen=rewards` |
 | 189 | المدفوعات والاشتراكات | `Stu2Money.dc.html?screen=history` |
 | 190 | محفظتي: وش الفرق؟ | `Stu2Money.dc.html?sheet=help&screen=wallet` |
@@ -284,7 +284,7 @@ Every screen of the design, by role. Open a screen with the URL shown (serve `do
 | 205 | التحميلات: فاضية | `Stu2Profile.dc.html?state=empty&screen=downloads` |
 | 206 | تحقّق من شهادة: صحيحة | `Stu2Profile.dc.html?state=ok&screen=verify` |
 | 207 | تحقّق من شهادة: ملغاة | `Stu2Profile.dc.html?state=revoked&screen=verify` |
-| 208 | عن الفهيم | `Stu2Profile.dc.html?tab=about&screen=about` |
+| 208 | عن التطبيق | `Stu2Profile.dc.html?tab=about&screen=about` |
 | 209 | الشروط والأحكام | `Stu2Profile.dc.html?tab=terms&screen=about` |
 | 210 | سياسة الخصوصية | `Stu2Profile.dc.html?tab=privacy&screen=about` |
 | 211 | حسابي: إعدادات متقدمة | `Stu2Profile.dc.html?adv=1&screen=profile` |

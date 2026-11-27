@@ -4,8 +4,8 @@
 ///   [AttendanceCourseEntry]        student — an emerald block on the course profile
 ///   [TeacherAttendanceCourseEntry] teacher — a block on the teacher course profile
 ///
-/// Student: an emerald block with a breathing live dot while an attendance is open for the course; shows the
-/// Bluetooth icon when the phone is offline ("check in via classmate"). On the WEB it only
+/// Student: an emerald block with a breathing live dot while an attendance is open for the course (offline too: the
+/// way through a classmate is never named to the student, O-6). On the WEB it only
 /// appears when the teacher allowed web attendance for the open session.
 library;
 
@@ -26,6 +26,7 @@ import 'package:flutter_education_app/features/attendance/attendance_widgets.dar
 import 'package:flutter_education_app/features/attendance/teacher_attendance_controller.dart';
 import 'package:flutter_education_app/features/attendance/teacher_attendance_launcher.dart';
 import 'package:flutter_education_app/features/attendance/attendance_ui.dart';
+import 'package:flutter_education_app/features/attendance/student_ui/student_checkin_view.dart' show showStudentAttendCheckIn;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart' show AppPressScale;
 
@@ -170,18 +171,18 @@ class _AttendanceCourseEntryState extends State<AttendanceCourseEntry> {
       builder: (_, online, _) => _EntrySurface(
         live: true,
         onTap: () async {
-          await showStudentCheckInSheet(context, courseId: widget.courseId, title: widget.title);
+          await showStudentAttendCheckIn(context, courseId: widget.courseId, title: widget.title);
           if (mounted) _refresh();
         },
         child: Builder(builder: (context) {
           final b = AppBlock.colorsOf(context);
           return Row(children: [
-            AttIconWell(
-                icon: online ? Icons.how_to_reg_rounded : Icons.bluetooth_searching_rounded, color: c.primary, fill: true),
+            // O-6 (redesign S-B): the offline path through a classmate stays, but the student never sees it named
+            AttIconWell(icon: Icons.how_to_reg_rounded, color: c.primary, fill: true),
             AppSpace.gapSm,
             Expanded(
               child: _EntryText(
-                title: !online ? attT('att_btn_checkin_offline') : attT('att_btn_checkin_now'),
+                title: attT('att_btn_checkin_now'),
                 subtitle: _checked ? attT('att_entry_open') : null,
               ),
             ),
@@ -203,7 +204,7 @@ class _AttendanceCourseEntryState extends State<AttendanceCourseEntry> {
 /// counter and reopens the sheet; otherwise it opens [target] directly (the lesson happening now),
 /// or the lesson picker (newest first) when there is none.
 class TeacherAttendanceCourseEntry extends StatelessWidget {
-  const TeacherAttendanceCourseEntry({super.key, required this.sessions, this.target,
+  const TeacherAttendanceCourseEntry({super.key, required this.sessions, this.target, this.courseId, this.courseTitle,
       this.padding = const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.xxs, AppSpace.md, AppSpace.xs)});
 
   /// Course order 1…n (the picker shows them inverted).
@@ -211,6 +212,10 @@ class TeacherAttendanceCourseEntry extends StatelessWidget {
 
   /// The lesson one tap opens (server-picked: live now / nearest today). Null → the picker.
   final LauncherSession? target;
+
+  /// The course, so the picker also offers the manual register.
+  final int? courseId;
+  final String? courseTitle;
   final EdgeInsetsGeometry padding;
 
   @override
@@ -237,7 +242,7 @@ class TeacherAttendanceCourseEntry extends StatelessWidget {
               } else if (target != null) {
                 showTeacherAttendanceSheet(context, target!.id, title: target!.name);
               } else {
-                showSessionPickerSheet(context, sessions);
+                showSessionPickerSheet(context, sessions, courseId: courseId, courseTitle: courseTitle);
               }
             },
             child: Builder(builder: (context) {

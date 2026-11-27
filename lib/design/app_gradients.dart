@@ -208,6 +208,7 @@ class AppGradientText extends StatelessWidget {
 class BrandLayer {
   const BrandLayer._({
     required this.sidebar,
+    required this.sideRadial,
     required this.sideSurfaces,
     required this.sideSpots,
     required this.sideInk,
@@ -247,6 +248,12 @@ class BrandLayer {
 
   /// Where [sidebar]'s stops sit: the 60 / 40 rule.
   static const List<double> sideStops = [0, 0.6, 1];
+
+  /// The redesign's sidebar / rail / brand panel (KIT_SPEC §6.2): a radial gradient from the reading-start top corner,
+  /// kit primary → ink → deep at [sideRadialStops], [sideRadius] × the shortest side ([AppBrandLayer.sidebar]).
+  final List<Color> sideRadial;
+  static const List<double> sideRadialStops = [0, .45, 1];
+  static const double sideRadius = 1.4;
 
   /// The green part's colour: what the on-hero inks below are checked on (with the glass and the hover over it).
   final List<Color> sideSurfaces;
@@ -319,6 +326,7 @@ class BrandLayer {
     final key = Object.hashAll([
       c.primary, c.primaryDark, c.primaryLight, c.accent, c.accent2Base, c.onHero, c.heroInk, c.heroInkMuted,
       c.heroInkFaint, c.blockForest, c.textDark, c.isDark, c.heroGlass, c.cardBg, c.shadowTone,
+      c.kit.primary, c.kit.ink, c.kit.deep,
     ]);
     final hit = _cache[key];
     if (hit != null) return hit;
@@ -331,10 +339,12 @@ class BrandLayer {
     return h.withLightness((h.lightness * factor).clamp(0.0, 1.0)).toColor();
   }
 
-  /// The panel's colour at [p] (logical px from its top-start corner) in a panel of [size]: the top → bottom 60 / 40
-  /// gradient, exactly as [AppBrandLayer.sidebar] paints it.
-  Color sideAt(Size size, Offset p) =>
-      AppBrandFill.colorAt(sidebar, sideStops, size.height <= 0 ? 0 : (p.dy / size.height).clamp(0.0, 1.0));
+  /// The panel's colour at [p] (logical px from its top-start corner) in a panel of [size]: the radial gradient from
+  /// that corner, exactly as [AppBrandLayer.sidebar] paints it.
+  Color sideAt(Size size, Offset p) {
+    final r = sideRadius * (size.shortestSide <= 0 ? 1 : size.shortestSide);
+    return AppBrandFill.colorAt(sideRadial, sideRadialStops, (p.distance / r).clamp(0.0, 1.0));
+  }
 
   static BrandLayer _derive(ThemeConfigProvider c) {
     final dark = c.isDark;
@@ -352,11 +362,13 @@ class BrandLayer {
     // D-863: the green deepens toward the foot instead of fading into accent1 (darker only helps the light inks)
     final sideEnd = _l(s0, dark ? 0.8 : 0.74);
     final sidebar = [s0, s0, sideEnd];
-    final surfaces = [s0];
+    // the inks are checked on the old panel colour AND on the light end of the redesign's radial (KIT_SPEC §6.2: kit
+    // primary at the reading-start top corner), so the on-hero set reads everywhere on it
+    final surfaces = [s0, c.kit.primary];
     final spots = [s0];
-    final glassOver = [Color.alphaBlend(glass, s0)];
-    final hoverOver = [Color.alphaBlend(hover, s0)];
-    final userOver = [Color.alphaBlend(userGlass, s0)];
+    final glassOver = [for (final s in surfaces) Color.alphaBlend(glass, s)];
+    final hoverOver = [for (final s in surfaces) Color.alphaBlend(hover, s)];
+    final userOver = [for (final s in surfaces) Color.alphaBlend(userGlass, s)];
     Color onSide(double a) =>
         ensureContrast(Color.alphaBlend(ink.withValues(alpha: a), s0), [...surfaces, ...hoverOver, ...userOver]);
 
@@ -406,6 +418,7 @@ class BrandLayer {
 
     return BrandLayer._(
       sidebar: sidebar,
+      sideRadial: [c.kit.primary, c.kit.ink, c.kit.deep],
       sideSurfaces: surfaces,
       sideSpots: spots,
       sideInk: ensureContrast(ink, [...surfaces, ...glassOver]),
@@ -457,13 +470,14 @@ abstract final class AppBrandLayer {
         colors: s,
       );
 
-  /// The sidebar / rail / auth panel (D-650 r3, D-863): the green held to 60 %, then a deeper green, top → bottom
-  /// (the content of a tall card sits on the green; what sits lower picks its ink through [AppBrandInk]).
-  static LinearGradient sidebar(BuildContext context) => LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: of(context).sidebar,
-        stops: BrandLayer.sideStops,
+  /// The sidebar / rail / auth panel (KIT_SPEC §6.2, replaces the 60 / 40 linear panel of D-650 r3): a radial
+  /// gradient from the reading-start top corner, kit primary → ink → deep (what sits on it picks its ink through
+  /// [AppBrandInk], measured with [BrandLayer.sideAt]).
+  static RadialGradient sidebar(BuildContext context) => RadialGradient(
+        center: AlignmentDirectional.topStart,
+        radius: BrandLayer.sideRadius,
+        colors: of(context).sideRadial,
+        stops: BrandLayer.sideRadialStops,
       );
 
   static final Map<int, BrandInk> _inkCache = {};
@@ -1096,7 +1110,9 @@ class AppBrandInkState extends State<AppBrandInk> {
     for (final f in const [0.2, 0.5, 0.8]) {
       // a 4 px grid, so a scroll does not mint a new ink for every pixel
       final y = ((rect.top + rect.height * f).clamp(0.0, panel.size.height) / 4).round() * 4.0;
-      final x = l.sideAt(panel.size, Offset(rect.center.dx, y));
+      // sideAt measures from the reading-start top corner (the radial's centre, KIT_SPEC §6.2)
+      final dx = Directionality.maybeOf(context) == TextDirection.rtl ? panel.size.width - rect.center.dx : rect.center.dx;
+      final x = l.sideAt(panel.size, Offset(dx, y));
       if (!under.contains(x)) under.add(x);
     }
     final next = AppBrandLayer.inkOver(context, under);

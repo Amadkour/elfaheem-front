@@ -39,6 +39,7 @@ import 'package:flutter_education_app/features/exams/paper/exam_setup.dart';
 import 'package:flutter_education_app/features/exams/paper/omr_counts.dart';
 import 'package:flutter_education_app/features/exams/paper/bubble/bubble_import_screen.dart' show openBubbleSheetFinder;
 import 'package:flutter_education_app/features/exams/paper/templates/own_sheet.dart' show kOwnSheetFeatureKey;
+import 'package:flutter_education_app/features/profile/teacher/t2_frame.dart' show T2HeroScroll, T2Scope;
 
 /// Opens the wizard; true when it was finished (or the choice of Online was saved).
 Future<bool?> openExamSetupWizard(BuildContext context,
@@ -503,6 +504,7 @@ class _ExamSetupWizardState extends State<ExamSetupWizard> {
     final c = context.colors;
     return BasePage(
       appBar: AppHeader(title: t('إعداد الاختبار الورقي', 'Paper exam setup')),
+      // the teacher's accent for the page (the frame's hero reads it)
       child: _loading
           ? const AppListSkeleton(items: 4, withAvatar: false)
           : _loadError != null
@@ -672,29 +674,26 @@ class SetupFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    // the redesign (Tea2Exams sheet): the step's question on the teacher's hero, the step riding up over it
     return Column(children: [
       Expanded(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.lg),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 680),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                SetupProgress(index: index, total: total, label: stepLabel),
-                const SizedBox(height: AppSpace.lg),
-                Text(title, style: appText(21, w: FontWeight.w800, c: c.textDark, h: 1.3)),
-                if (subtitle != null) ...[
-                  const SizedBox(height: AppSpace.xxs),
-                  Text(subtitle!, style: appText(13.5, c: c.textMedium, h: 1.45)),
-                ],
-                const SizedBox(height: AppSpace.lg),
-                if (error != null) ...[
-                  AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: error!),
+        child: T2Scope(
+          child: T2HeroScroll(
+            width: AppWidth.form,
+            hero: AppHero(kicker: stepLabel, title: title, subtitle: subtitle, wipe: false),
+            children: [
+              AppCard(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                  SetupProgress(index: index, total: total, label: stepLabel),
                   const SizedBox(height: AppSpace.md),
-                ],
-                body,
-              ]),
-            ),
+                  if (error != null) ...[
+                    AppBanner(icon: Icons.error_outline_rounded, color: c.danger, text: error!),
+                    const SizedBox(height: AppSpace.md),
+                  ],
+                  body,
+                ]),
+              ),
+            ],
           ),
         ),
       ),

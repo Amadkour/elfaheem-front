@@ -42,7 +42,7 @@ Screens per group are counted in `SCREEN_MAP.md` ("Counts").
 - `assets/translation.json`: each group writes its strings in a sidecar file (`assets/redesign/<group>.json`, same shape) and the lead folds them in at merge. Both `ar` and `en` for every key.
 - `pubspec.yaml`, `pubspec.lock`, `test/contract/*.json`, `test/support/fake_api.dart`, the `homeBudgets`, `AttentionTabs`.
 - `lib/features/org/**`: never rebuilt. It only receives the new tokens through the kit.
-- `sync/`, `docs/redesign/ref/`, `tool/redesign/`, `.gitignore` (another agent's work).
+- `sync/`, `D:/platform/redesign-ref/ref/`, `tool/redesign/`, `.gitignore` (another agent's work).
 - A group that needs a new route, provider, kit piece or shared-file change writes the request in its report; the lead applies it.
 
 Known overlaps to watch:
@@ -60,7 +60,7 @@ One owner (two agents at most: tokens and motion; components and shells). Every 
 
 | File | Change |
 |---|---|
-| `lib/design/app_tokens.dart` | Radii and type scale of `design/kit.css`; `AppArea` and subject colour roles (below) |
+| `lib/design/app_tokens.dart` | Radii and type scale of `D:/platform/redesign-ref/design/kit.css`; `AppArea` and subject colour roles (below) |
 | `lib/config/theme/theme_config_model.dart`, `app_theme.dart`, `theme_config_provider.dart` + the backend theme seed | The new palette as theme defaults AND in the server seed, so both agree. Widgets keep reading `context.colors` only |
 | `lib/design/app_gradients.dart` | Hero gradient per area with precomputed stops (no `color-mix` at run time; the resolved hex table is in `kit.css`) |
 | `lib/design/app_motion_kit.dart` (+ new `lib/design/motion/`) | M1 to M16 (3.3). `AppOdometer`, `AppCountUp`, `AppPopIn`, `AppPressScale`, `AppDrawIn` already exist and are reused |
@@ -73,7 +73,7 @@ One owner (two agents at most: tokens and motion; components and shells). Every 
 | New `lib/design/app_area.dart` | `enum AppArea { home, learn, exam, games, store, quran, nahw, sched, chat, money, me }` and `AppAreaScope` (an `InheritedWidget` a page sets once; hero, selected states and icons read it) |
 | New `lib/design/app_subject_colors.dart` | `subjectColors(context, subjectKey)` giving colour, tint and ink; the same subject has the same colour everywhere |
 
-### 3.2 Token additions (DESIGN_SYSTEM 1.4 and `design/kit.css`)
+### 3.2 Token additions (DESIGN_SYSTEM 1.4 and `D:/platform/redesign-ref/design/kit.css`)
 
 - Accents, each with a tint and an ink: sun `#FFC53D`, mint `#19C29B`, grape `#7A4DF0`, pink `#FF5FA2`, lime `#9BD728`, sky `#3DA5FF`; tints and inks for the existing blue, cyan, apricot and coral. In the theme model they are new roles (for example `c.accentSun`, `c.accentSunTint`, `c.accentSunInk`), with the defaults above and a dark-mode value each.
 - Area pairs (`--k-acc`, `--k-acc2`): home blue to cyan, learn apricot to coral, exam grape to blue, games grape to pink, store sun to apricot, quran mint to `#0F6E6D`, nahw lime to mint, sched sky to cyan, chat pink to apricot, money sun to mint, me blue to grape.
@@ -129,7 +129,7 @@ Not in BACKEND_STATUS and found here: parent payments and invoices; a device or 
 1. **Live-room privacy on the server (WP1).** Hidden participants, subscribe to the teacher only, no data channel for students, hands and chat through server routes, "bring on stage". It changes LiveKit tokens for every room kind, guests and meetings included. Hiding it in the UI alone does not meet RULES 1.7. Needs a real two-device test.
 2. **`courses/teacher/course_form_screen.dart` is 2012 lines** in one form with one provider. The 7-step wizard must keep every field, the edit mode and the rule that a personal course never sends `next_course_ids`. Split it first with no behaviour change, then restyle.
 3. **Booking has no server model** (groups of 5 to 10 with a gender, 50-minute classes, individual slots, propose times). Phase 3 cannot ship before WP6, the largest package.
-4. **The sync with NextBrain (A-008, owner answer pending, default a).** Every `lib/` file a group rebuilds will conflict with later syncs; the list of redesign-owned paths must be kept as groups go.
+4. **Two products (D-1810).** Built in NextBrain, synced downstream after each merged phase. Any colour, name or market value must come from the theme / server data so the sync carries no brand; a gate greps new code for raw hex and brand names.
 5. **`assets/translation.json` and the shared kit under parallel agents.** Four student agents at once: sidecar strings and "no group edits `lib/design/`" are what keep the merges clean. The home request budgets and the contract snapshots are gates in every phase.
 6. **Screens marked `exists` from file names.** About 380 `exists` rows of `SCREEN_MAP.md` were not opened; 46 spot checks (97 rows) changed 18 statuses, most of them from partial or missing to exists. Each group confirms its rows before it starts.
 7. **Scope the design implies but nobody decided:** publish approval for courses, roles and permissions, 2-step verification for students, the privacy contract inside organizations.

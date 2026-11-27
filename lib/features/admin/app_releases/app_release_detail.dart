@@ -28,7 +28,6 @@ import '../../../design/app_kit.dart';
 import '../../../design/app_notice.dart';
 import '../../../design/app_tokens.dart';
 import '../../../utils/live_events.dart';
-import '../../../utils/widget/app_bar.dart';
 import '../../../utils/widget/base_page.dart';
 import '../admin_common.dart' show t;
 import '../admin_money_p8.dart' show p8SaveBytes;
@@ -37,6 +36,7 @@ import 'app_releases_api.dart';
 import 'app_releases_models.dart';
 import 'app_releases_text.dart';
 import 'app_releases_view.dart';
+import '../sup/sup_kit.dart';
 
 /// Saves a downloaded artifact (tests pass their own).
 typedef ReleaseFileSaver = Future<void> Function(Uint8List bytes, String name);
@@ -236,13 +236,16 @@ class AppReleaseDetailPageState extends State<AppReleaseDetailPage> {
   @override
   Widget build(BuildContext context) {
     final r = _r;
+    final name = r == null ? t('الإصدار', 'Version') : '${releasePlatformShort(r.platform)} ${r.label}';
     return BasePage(
       key: const ValueKey('admin.app_releases'),
-      appBar: ScreenAppBar(
-        title: r == null ? t('الإصدار', 'Version') : '${releasePlatformShort(r.platform)} ${r.label}',
-        actions: [AppRefreshAction(onRefresh: _load)],
-      ),
-      child: _error != null && r == null
+      child: SupPage(
+      title: name,
+      kicker: 'a2_rel_kicker'.tr,
+      headline: r == null ? name : '${'a2_build_of'.tr} $name',
+      line: 'a2_build_detail_line'.tr,
+      onRefresh: _load,
+      body: _error != null && r == null
           ? AppEmpty(icon: Icons.cloud_off_rounded, title: _error!, actionLabel: t('إعادة المحاولة', 'Retry'), onAction: _load)
           : r == null
               ? const AppListSkeleton(items: 4, withAvatar: false)
@@ -257,6 +260,7 @@ class AppReleaseDetailPageState extends State<AppReleaseDetailPage> {
                   codemagicLink: r.codemagicLink(appId: widget.codemagicAppId),
                   onOpenLink: widget.openLink,
                 ),
+      ),
     );
   }
 }

@@ -8,7 +8,9 @@
   3. images: every tracked image outside test/ and docs/ must be in sync/keep_paths.txt or sync/brand_assets.txt,
      and none of those may still be byte-identical to NextBrain's file at the same path (remote `nextbrain`);
   4. Alfaheem's hooks in shared files (sync/hooks.py; none in use since A-007 became NextBrain's D-949) are all in
-     place, and the landing has no fixed upstream colour left (every one is a variable the live theme sets).
+     place, and the landing has no fixed upstream colour left (every one is a variable the live theme sets);
+  5. the redesign kit palette (A-008): none of upstream's brand-role colours (tool/redesign/kit_palette.py) is left in
+     the palette files, and the Alfaheem palette (sync/kit_palette_alfaheem.py) has no pair under its floor.
 
 Usage: py -3.12 sync/check_identity.py [--ref nextbrain/production] [--verbose]
 """
@@ -117,6 +119,33 @@ def _read_lf(rel: str) -> str | None:
     return p.read_bytes().decode('utf-8').replace(chr(13) + chr(10), chr(10)) if p.exists() else None
 
 
+KIT_FILES = ['tool/redesign/kit_palette.json', 'lib/config/theme/kit_palette_defaults.dart',
+             'lib/config/theme/app_theme.dart']
+
+
+def kit_leftovers(bad: list[str]) -> None:
+    """Upstream's brand roles (its logo palette) must not survive in the palette files (A-008)."""
+    from kit_palette_alfaheem import U, build, under  # noqa: PLC0415
+    ours = build()
+    shared = {v for grp in ('accents', 'subjects', 'status') for v in _leaves(ours[grp])}
+    theirs = {v.lstrip('#').upper() for v in U.build()['brand'].values()} - {v.lstrip('#').upper() for v in shared}
+    theirs -= {'FFFFFF'}
+    for rel in KIT_FILES:
+        text = _read_lf(rel) or ''
+        for n, line in enumerate(text.split(chr(10)), 1):
+            for h in re.findall(r'(?:#|0x[0-9A-Fa-f]{2})([0-9A-Fa-f]{6})', line):
+                if h.upper() in theirs:
+                    bad.append(f'{rel}:{n}: an upstream brand colour #{h.upper()} (run sync/apply_identity.py, A-008)')
+    for row in under(ours):
+        bad.append('sync/kit_palette_alfaheem.py: %s: %s on %s = %.2f (< %s)' % row)
+
+
+def _leaves(node) -> list[str]:
+    if isinstance(node, dict):
+        return [x for v in node.values() for x in _leaves(v)]
+    return [node] if isinstance(node, str) and node.startswith('#') else []
+
+
 def main() -> int:
     rules = allow_rules()
     used = [0] * len(rules)
@@ -147,6 +176,7 @@ def main() -> int:
                 allowed += 1
 
     firebase_files(bad)
+    kit_leftovers(bad)
     bad.extend(missing_hooks(_read_lf))
     bad.extend(landing_leftovers(_read_lf, all_files))
     keep, brand = listed('keep_paths.txt'), listed('brand_assets.txt')

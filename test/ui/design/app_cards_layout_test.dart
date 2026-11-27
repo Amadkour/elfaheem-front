@@ -65,18 +65,22 @@ void main() {
     h.dispose();
   });
 
-  testWidgets('a resting card is the white card on one soft shadow with a near-invisible edge (D-632)', (tester) async {
+  // the redesign kit (KIT_SPEC §5.3) replaced D-632's hairline: a raised card is the card colour on the kit shadow,
+  // no edge, radius AppRadius.cardFor(width)
+  testWidgets('a resting card is the card colour on the kit shadow, no edge, radius cardFor', (tester) async {
     await tester.pumpWidget(layoutHost(const AppCard(child: Text('x'))));
     await tester.pump(const Duration(milliseconds: 100));
-    final m = tester.widget<Material>(find.descendant(of: find.byType(AppCard), matching: find.byType(Material)).first);
-    final c = tester.element(find.text('x')).colors;
-    expect(m.color, c.cardBg);
-    expect(m.elevation, 0);
-    expect((m.shape as RoundedRectangleBorder).side.color, c.cardEdge);
+    final ink = tester.widget<Ink>(find.descendant(of: find.byType(AppCard), matching: find.byType(Ink)).first);
+    final ctx = tester.element(find.text('x'));
+    final c = ctx.colors;
+    final deco = ink.decoration! as BoxDecoration;
+    expect(deco.color, c.cardBg);
+    expect(deco.border, isNull);
+    final r = BorderRadius.circular(AppRadius.cardFor(MediaQuery.sizeOf(ctx).width));
+    expect(deco.borderRadius, r);
     final lift = tester.widget<AppLift>(find.descendant(of: find.byType(AppCard), matching: find.byType(AppLift)));
-    expect(lift.radius ?? AppRadius.cardAll, AppRadius.cardAll);
+    expect(lift.radius, r);
     expect(c.cardShadow, isNotEmpty);
-    expect((m.shape as RoundedRectangleBorder).borderRadius, AppRadius.cardAll);
   });
 
   group('badge ink reads at AA on its tint', () {

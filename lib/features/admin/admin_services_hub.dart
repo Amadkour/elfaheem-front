@@ -62,7 +62,18 @@ import 'admin_theme_page.dart';
 import 'admin_app_versions_page.dart';
 import 'admin_fees_page.dart';
 import 'admin_parent_linking_page.dart';
+import 'admin_parent_requests_page.dart' show AdminParentRequestsPage;
+import 'approvals/admin_approvals_inbox.dart' show AdminApprovalsInboxPage;
+import 'help/admin_help_page.dart' show AdminHelpPage;
+import 'package:flutter_education_app/features/certificates/certificate_requests_screen.dart' show CertificateRequestsScreen;
+import 'package:flutter_education_app/features/profile/teacher/switch_device_requests/teacher_device_requests_screen.dart' show TeacherDeviceRequestsScreen;
 import 'admin_recents.dart';
+import 'adm_kit.dart';
+import 'sup/sup_kit.dart';
+import 'consoles/admin_booking_page.dart' show AdminBookingPage, kAdminBookingKey;
+import 'consoles/admin_demand_page.dart' show AdminTeacherDemandPage, kAdminTeacherDemandKey;
+import 'consoles/admin_markets_page.dart' show AdminPaymentMarketsPage, kAdminPaymentMarketsKey;
+import 'package:flutter_education_app/core/plural.dart' show countText;
 import 'live_settings/live_settings_page.dart' show LiveSettingsPage, kLiveSettingsFeatureKey, liveSettingsTitle;
 import 'package:flutter_education_app/features/payments/enrollment_request/teacher_transfers_provider.dart';
 import 'package:flutter_education_app/features/payments/enrollment_request/teacher_transfers_screen.dart';
@@ -170,17 +181,6 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
       icon: Icons.groups_rounded,
       colors: AdminPalette.blue,
       services: [
-        // D-1121: new accounts waiting for approval (the admin.users attention count)
-        AdminService(
-          labelKey: 'svc_pending_accounts',
-          descKey: 'svc_pending_accounts_d',
-          label: t('حسابات تنتظر الموافقة', 'Accounts waiting for approval'),
-          desc: t('وافق على الحسابات الجديدة أو ارفضها', 'Approve or reject new accounts'),
-          icon: Icons.how_to_reg_rounded,
-          colors: AdminPalette.orange,
-          badge: AttentionService.instance.count(AttentionTabs.adminUsers),
-          onTap: () => push(const AdminPendingAccountsPage()),
-        ),
         AdminService(
           labelKey: 'svc_datacenter',
           descKey: 'svc_datacenter_d',
@@ -226,13 +226,6 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
           onTap: () => push(const AdminAdminsPage()),
         ),
         AdminService(
-          labelKey: 'categories',
-          descKey: 'svc_categories_d',
-          icon: Icons.category_rounded,
-          colors: AdminPalette.teal,
-          onTap: () => push(const AdminCategoriesPage()),
-        ),
-        AdminService(
           labelKey: 'admin_parent_linking',
           descKey: 'svc_pl_requests_d',
           label: t('ربط أولياء الأمور', 'Parent linking'),
@@ -252,6 +245,67 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
           // never behind profile.study itself (D-801): switching the feature off must not hide its own settings
           visible: isSuper,
           onTap: () => push(const AdminStudyProfileSettingsPage()),
+        ),
+      ],
+    ),
+
+    // ── Requests and approvals (redesign A1): every queue that waits for an admin's decision, oldest first ──────
+    AdminServiceGroup(
+      id: 'approvals',
+      titleKey: 'a1_group_approvals',
+      subtitleKey: 'a1_group_approvals_d',
+      icon: Icons.fact_check_rounded,
+      colors: AdminPalette.orange,
+      services: [
+        AdminService(
+          labelKey: 'a1_inbox',
+          descKey: 'a1_inbox_d',
+          icon: Icons.inbox_rounded,
+          colors: AdminPalette.orange,
+          badge: AttentionService.instance.count(AttentionTabs.adminUsers) + transfers,
+          onTap: () => push(const AdminApprovalsInboxPage()),
+        ),
+        // D-1121: new accounts waiting for approval (the admin.users attention count)
+        AdminService(
+          labelKey: 'svc_pending_accounts',
+          descKey: 'svc_pending_accounts_d',
+          label: t('حسابات تنتظر الموافقة', 'Accounts waiting for approval'),
+          desc: t('وافق على الحسابات الجديدة أو ارفضها', 'Approve or reject new accounts'),
+          icon: Icons.how_to_reg_rounded,
+          colors: AdminPalette.orange,
+          badge: AttentionService.instance.count(AttentionTabs.adminUsers),
+          onTap: () => push(const AdminPendingAccountsPage()),
+        ),
+        AdminService(
+          labelKey: 'enrollment_requests',
+          descKey: 'svc_enrollment_d',
+          icon: Icons.how_to_reg_rounded,
+          colors: AdminPalette.green,
+          badge: transfers,
+          featureKey: 'profile.enrollment_request',
+          onTap: () => push(const TeacherTransfersScreen()),
+        ),
+        AdminService(
+          labelKey: 'a1_device_requests',
+          descKey: 'a1_device_requests_d',
+          icon: Icons.phonelink_setup_rounded,
+          colors: AdminPalette.slate,
+          onTap: () => push(const TeacherDeviceRequestsScreen()),
+        ),
+        AdminService(
+          labelKey: 'a1_cert_requests',
+          descKey: 'a1_cert_requests_d',
+          icon: Icons.workspace_premium_rounded,
+          colors: AdminPalette.violet,
+          featureKey: 'profile.certificate_requests',
+          onTap: () => push(const CertificateRequestsScreen()),
+        ),
+        AdminService(
+          labelKey: 'pl_requests_title',
+          descKey: 'svc_pl_requests_d',
+          icon: Icons.link_rounded,
+          colors: AdminPalette.green,
+          onTap: () => push(const AdminParentRequestsPage()),
         ),
       ],
     ),
@@ -276,15 +330,6 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
             badge
                 .refresh(); // approve / reject / paid happened in there → recount
           },
-        ),
-        AdminService(
-          labelKey: 'enrollment_requests',
-          descKey: 'svc_enrollment_d',
-          icon: Icons.how_to_reg_rounded,
-          colors: AdminPalette.green,
-          badge: transfers,
-          featureKey: 'profile.enrollment_request',
-          onTap: () => push(const TeacherTransfersScreen()),
         ),
         AdminService(
           labelKey: 'subscriptions',
@@ -316,20 +361,6 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
           featureKey: 'admin.course_trash',
           visible: isSuper,
           onTap: () => push(const CourseTrashPage()),
-        ),
-        // the digital store (learning hub phase 5, D-1336): every admin manages items; the review queue and the
-        // orders are the super admin's only (`/admin/store/*` answers 403 admin_required to admin / developer)
-        AdminService(
-          labelKey: 'admin_store',
-          descKey: 'admin_store_d',
-          label: t('المتجر الرقمي', 'Digital store'),
-          desc: isSuper
-              ? t('الكتب والملخصات، مراجعة ما يرسله المعلمون، وطلبات الشراء', 'Books and summaries, the review of what teachers send, and the purchase orders')
-              : t('الكتب والملخصات التي يبيعها المتجر', 'The books and summaries the store sells'),
-          icon: Icons.storefront_rounded,
-          colors: AdminPalette.green,
-          featureKey: isSuper ? kAdminStoreFeatureKey : kStoreManageFeatureKey,
-          onTap: () => push(StoreAdminHubPage(superAdmin: isSuper)),
         ),
         AdminService(
           labelKey: 'admin_points',
@@ -381,6 +412,16 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
           featureKey: 'profile.historical_payment',
           onTap: () => push(const AdminFinancePage()),
         ),
+        // currency rates, payment methods per country, VAT rules and the tax number (redesign payments package)
+        AdminService(
+          labelKey: 'a2_svc_markets',
+          descKey: 'a2_svc_markets_d',
+          icon: Icons.public_rounded,
+          colors: AdminPalette.teal,
+          featureKey: kAdminPaymentMarketsKey,
+          visible: isSuper,
+          onTap: () => push(const AdminPaymentMarketsPage()),
+        ),
       ],
     ),
 
@@ -392,6 +433,53 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
       icon: Icons.school_rounded,
       colors: AdminPalette.teal,
       services: [
+        AdminService(
+          labelKey: 'categories',
+          descKey: 'svc_categories_d',
+          icon: Icons.category_rounded,
+          colors: AdminPalette.teal,
+          onTap: () => push(const AdminCategoriesPage()),
+        ),
+        // the booking package's staff side: prices, in-person centres, groups, time requests (every platform admin)
+        AdminService(
+          labelKey: 'a2_svc_booking',
+          featureKey: kAdminBookingKey,
+          descKey: 'a2_svc_booking_d',
+          icon: Icons.event_seat_rounded,
+          colors: AdminPalette.orange,
+          onTap: () => push(const AdminBookingPage()),
+        ),
+        AdminService(
+          labelKey: 'a2_svc_demand',
+          descKey: 'a2_svc_demand_d',
+          icon: Icons.how_to_reg_rounded,
+          colors: AdminPalette.violet,
+          featureKey: kAdminTeacherDemandKey,
+          visible: isSuper,
+          onTap: () => push(const AdminTeacherDemandPage()),
+        ),
+        // the digital store (learning hub phase 5, D-1336): every admin manages items; the review queue and the
+        // orders are the super admin's only (`/admin/store/*` answers 403 admin_required to admin / developer)
+        AdminService(
+          labelKey: 'admin_store',
+          descKey: 'admin_store_d',
+          label: t('المتجر الرقمي', 'Digital store'),
+          desc: isSuper
+              ? t('الكتب والملخصات، مراجعة ما يرسله المعلمون، وطلبات الشراء', 'Books and summaries, the review of what teachers send, and the purchase orders')
+              : t('الكتب والملخصات التي يبيعها المتجر', 'The books and summaries the store sells'),
+          icon: Icons.storefront_rounded,
+          colors: AdminPalette.green,
+          featureKey: isSuper ? kAdminStoreFeatureKey : kStoreManageFeatureKey,
+          onTap: () => push(StoreAdminHubPage(superAdmin: isSuper)),
+        ),
+        AdminService(
+          labelKey: 'a1_help_admin',
+          descKey: 'a1_help_admin_d',
+          icon: Icons.help_center_rounded,
+          colors: AdminPalette.indigo,
+          featureKey: 'admin.help',
+          onTap: () => push(const AdminHelpPage()),
+        ),
         // the education levels of every country (learning hub phase 2, D-1304)
         AdminService(
           labelKey: 'admin_edu_levels',
@@ -817,65 +905,77 @@ class AdminServicesHub extends StatefulWidget {
 }
 
 class _AdminServicesHubState extends State<AdminServicesHub> {
-  String _q = '';
-
   @override
   Widget build(BuildContext context) {
     AdminPalette.attach(context);
     context.watch<LangProvider>(); // re-translate when the language changes
     final group = adminServiceGroups(context).firstWhere((g) => g.id == widget.groupId);
-    final all = group.visibleServices;
-    final items = AdminServicesHub.filter(all, _q);
-    final g = AppSpace.gutter(MediaQuery.sizeOf(context).width);
-
-    final body = ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: EdgeInsets.fromLTRB(g, AppSpace.md, g, AppSpace.xl),
-      children: [
-        Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: AdminServicesHub.maxWidth),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              AppSearchField(
-                hint: t('ابحث في ${group.titleKey.tr}', 'Search ${group.titleKey.tr}'),
-                onChanged: (v) => setState(() => _q = v),
-              ),
-              AppSpace.gapMd,
-              if (items.isEmpty)
-                AppEmpty(
-                  icon: Icons.search_off_rounded,
-                  title: t('لا توجد خدمة بهذا الاسم', 'No service matches'),
-                  message: t('جرّب كلمة أخرى', 'Try another word'),
-                )
-              else
-                _grid(items),
-            ]),
-          ),
-        ),
+    final all = [
+      for (final s in group.visibleServices)
+        if (s.featureKey == null || !AppConfig.disableList.contains(s.featureKey)) s,
+    ];
+    final waiting = all.fold<int>(0, (a, s) => a + (s.badge ?? 0));
+    final copy = adminHubCopy(group.id, waiting);
+    final open = adminHubPrimary(context, group.id);
+    return SupPage(
+      role: admRole(context),
+      showBack: false,
+      title: group.titleKey.tr,
+      kicker: group.titleKey.tr,
+      headline: copy.$1,
+      line: copy.$2 ?? group.subtitleKey.tr,
+      onRefresh: widget.onRefresh,
+      actions: [?open],
+      stats: [
+        if (waiting > 0) ...[
+          AppHeroStat(value: appCompactNumber(waiting), label: 'a1_waiting_decision'.tr),
+          AppHeroStat(value: '${all.length}', label: 'a1_services'.tr),
+        ],
       ],
-    );
-    return SafeArea(
-      child: widget.onRefresh == null ? body : AppRefresh(onRefresh: widget.onRefresh!, child: body),
+      body: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: SupPage.bodyPadding(context),
+        children: [
+          AdmServiceGrid(
+            title: 'a1_hub_services'.tr.replaceAll('{x}', group.titleKey.tr),
+            services: all,
+          ),
+        ],
+      ),
     );
   }
+}
 
-  Widget _grid(List<AdminService> items) => LayoutBuilder(builder: (context, box) {
-        final cols = AdminServicesHub.columnsFor(box.maxWidth);
-        final rows = (items.length / cols).ceil();
-        return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          for (var r = 0; r < rows; r++) ...[
-            if (r > 0) AppSpace.gapSm,
-            IntrinsicHeight(
-              child: Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                for (var i = 0; i < cols; i++) ...[
-                  if (i > 0) AppSpace.gapSm,
-                  Expanded(child: r * cols + i < items.length ? ServiceCard(items[r * cols + i]) : const SizedBox.shrink()),
-                ],
-              ]),
-            ),
-          ],
-        ]);
-      });
+/// The hub's headline and line (the reference's AdmPeople / AdmApprovals / AdmContent / AdmSupport heroes).
+(String, String?) adminHubCopy(String groupId, int waiting) => switch (groupId) {
+      'people' => ('a1_hub_people_head'.tr, null),
+      'approvals' => (
+          waiting > 0
+              ? countText(waiting,
+                  ar1: 'طلب واحد ينتظر قرارك',
+                  ar2: 'طلبين ينتظرون قرارك',
+                  arFew: '{n} طلبات تنتظر قرارك',
+                  arMany: '{n} طلب ينتظر قرارك',
+                  en1: 'One request waits for your decision',
+                  en: '{n} requests wait for your decision')
+              : 'a1_home_clear'.tr,
+          'a1_hub_approvals_line'.tr
+        ),
+      'learning' => ('a1_hub_learning_head'.tr, 'a1_hub_learning_line'.tr),
+      'support' => ('a1_hub_support_head'.tr, null),
+      'finance' => ('a1_hub_finance_head'.tr, null),
+      'config' => ('a1_hub_config_head'.tr, null),
+      _ => ('a1_hub_people_head'.tr, null),
+    };
+
+/// The hub's one hero button: a new message on People, the inbox on Requests and approvals.
+Widget? adminHubPrimary(BuildContext context, String groupId) {
+  Future<void> push(Widget w) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => w));
+  return switch (groupId) {
+    'people' => SupHeroButton(label: 'a1_new_message'.tr, icon: Icons.send_rounded, onTap: () => push(const AdminSendMessagePage())),
+    'approvals' => SupHeroButton(label: 'a1_open_inbox'.tr, icon: Icons.inbox_rounded, onTap: () => push(const AdminApprovalsInboxPage())),
+    _ => null,
+  };
 }
 
 /// One service tile: a brand-tint icon square, the name, up to two lines of description, and the count (or a
