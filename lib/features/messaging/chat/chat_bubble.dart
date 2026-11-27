@@ -224,6 +224,7 @@ extension _Also<T> on T {
 
 /// One line for a message that has no words of its own.
 String chatReplyPreview(ChatReplyRef r) {
+  if (r.hidden) return 'ow_chat_hidden_quote'.tr;
   if (r.deleted) return 'chat_deleted'.tr;
   if (r.body.trim().isNotEmpty) return r.body.replaceAll('\n', ' ');
   return r.kind == 'image' ? 'chat_photo'.tr : 'chat_file'.tr;
@@ -239,7 +240,7 @@ class ChatQuote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final who = you ? 'chat_you'.tr : (reply.senderName ?? '');
+    final who = you ? 'chat_you'.tr : (reply.hidden ? 'ow_a_student'.tr : (reply.senderName ?? ''));
     final preview = chatReplyPreview(reply);
     return Material(
       color: fill,

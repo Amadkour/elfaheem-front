@@ -33,6 +33,7 @@ import 'dart:math' as math;
 import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter_education_app/core/personal_access.dart' show PersonalAccess, enablePersonalFix, enablePersonalLabel;
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/home/teacher/add_class_materials_page.dart' show openAddClassMaterials;
 import 'package:flutter/rendering.dart';
 import 'package:flutter_education_app/core/app_identity.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
@@ -844,7 +845,7 @@ class TeacherHomeBody extends StatelessWidget {
           : HomeStatStrip(padding: EdgeInsets.zero, items: [
               HomeStat(icon: Icons.how_to_reg_outlined, label: 'home_t_attendance'.tr, count: p('attendance_missing'), tone: c.warning, onTap: () => onTab(1)),
               HomeStat(icon: Icons.grading_rounded, label: 'home_t_grading'.tr, count: p('grading'), tone: c.primary, onTap: () => onTab(1)),
-              HomeStat(icon: Icons.upload_file_outlined, label: 'home_t_material'.tr, count: p('materials_missing'), tone: c.accent2, onTap: () => onTab(1)),
+              HomeStat(icon: Icons.upload_file_outlined, label: 'home_t_material'.tr, count: p('materials_missing'), tone: c.accent2, onTap: () => openAddClassMaterials(context, courses: courses)),
               HomeStat(icon: Icons.person_add_alt_outlined, label: 'home_t_requests'.tr, count: p('enrollment_requests'), tone: c.primary, onTap: () => onTab(1)),
               HomeStat(
                 icon: Icons.payments_outlined,

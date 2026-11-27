@@ -254,7 +254,9 @@ class StudentCheckInProvider extends ChangeNotifier {
   }
 
   // ── main flow ─────────────────────────────────────────────────────────
-  Future<void> submit(String rawCode) async {
+  /// [viaClassmate]: the student chose "with a classmate's help" (owner 2026-11-27): skip the internet path and send
+  /// through a nearby classmate's phone (the relay); the classmate is never named to the student.
+  Future<void> submit(String rawCode, {bool viaClassmate = false}) async {
     if (busy) return;
     final code = rawCode.trim();
     _lastCode = code;
@@ -293,7 +295,7 @@ class StudentCheckInProvider extends ChangeNotifier {
       return;
     }
 
-    if (isOnline) {
+    if (isOnline && !viaClassmate) {
       await _submitOnline(code, key);
     } else {
       await _submitOffline(code, key);
