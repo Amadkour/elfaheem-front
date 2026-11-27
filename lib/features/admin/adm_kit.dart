@@ -12,6 +12,9 @@
 //   AdmServiceTile(service)             one tile of a hub's service grid (icon, count, name, one line)
 //   AdmServiceGrid(services:, title:)   the hub card: its name, how many services, a search, the tiles
 //   AdmField(label:, value:)            a label over a value (detail pages)
+//   AdmPage(title:, body:, …)            the older AdminPage's API on the Super Admin frame: the title becomes the
+//                                       hero's headline (or [headline]), the subtitle its line, the primary action
+//                                       and the extra actions its buttons
 //
 // Motion: admin pages use only M9 (press), M10 (figures), M13 (tabs) and M14 (sheets); nothing here loops.
 library;
@@ -28,6 +31,7 @@ import 'package:provider/provider.dart';
 import '../auth/auth_provider.dart' show MyAuthProvider;
 import 'admin_recents.dart';
 import 'admin_services_hub.dart' show AdminService;
+import 'sup/sup_kit.dart';
 
 /// The role accent of the signed-in admin: a super admin or developer gets the super admin's accent, anyone else
 /// (admin, an organization admin looking in) the admin accent. No auth provider above (a preview): admin.
@@ -38,6 +42,15 @@ AppRoleAccent admRole(BuildContext context) {
   } catch (_) {}
   final r = appRoleAccentFor(role);
   return r == AppRoleAccent.superAdmin ? r! : AppRoleAccent.admin;
+}
+
+/// The accent of a page every staff role opens (the exports): the signed-in role's own accent, admin by default.
+AppRoleAccent admRoleAny(BuildContext context) {
+  String? role;
+  try {
+    role = Provider.of<MyAuthProvider>(context, listen: false).currentUser?.role;
+  } catch (_) {}
+  return appRoleAccentFor(role) ?? AppRoleAccent.admin;
 }
 
 /// One line of the decision queue: a tinted glyph box, the title and one line, an optional tag ("Urgent", "Older
@@ -392,4 +405,94 @@ class AdmField extends StatelessWidget {
         const SizedBox(height: AppSpace.xxs),
         Text(value.isEmpty ? '—' : value, style: AppType.row(context), maxLines: 2, overflow: TextOverflow.ellipsis),
       ]);
+}
+
+/// The older `AdminPage` API (title, subtitle, primary action, actions, refresh, width) drawn on the Super Admin
+/// frame with the signed-in admin's role accent (redesign A1): an admin page changes `AdminPage(` to `AdmPage(` and
+/// may add a [kicker], a sharper [headline] and hero [stats] / [tabs].
+class AdmPage extends StatelessWidget {
+  const AdmPage({
+    super.key,
+    required this.title,
+    required this.body,
+    this.subtitle,
+    this.icon,
+    this.primaryAction,
+    this.actions = const [],
+    this.onRefresh,
+    this.updatedAt,
+    this.dirty = false,
+    this.floatingActionButton,
+    this.maxWidth,
+    this.width,
+    this.showBack = true,
+    this.helpPageId,
+    this.kicker,
+    this.headline,
+    this.stats = const [],
+    this.tabs,
+    this.tab = 0,
+    this.onTab,
+    this.heroBottom,
+    this.refreshable = true,
+  });
+
+  /// The page refreshes (pull and the bar's button). [onRefresh] may be null for a moment (while loading): the
+  /// frame still gets a stable function, because it re-creates its body when the refresh comes and goes.
+  final bool refreshable;
+
+  final String title;
+  final Widget body;
+  final String? subtitle;
+
+  /// Kept for the older call sites; the frame draws no page glyph.
+  final IconData? icon;
+  final Widget? primaryAction;
+  final List<Widget> actions;
+  final VoidCallback? onRefresh;
+  final DateTime? updatedAt;
+  final bool dirty;
+  final Widget? floatingActionButton;
+
+  /// `double.infinity` = the full width (a data table); otherwise [width] or the wide role.
+  final double? maxWidth;
+  final AppWidth? width;
+  final bool showBack;
+  final String? helpPageId;
+  final String? kicker;
+  final String? headline;
+  final List<AppHeroStat> stats;
+  final List<AppTabItem>? tabs;
+  final int tab;
+  final ValueChanged<int>? onTab;
+  final Widget? heroBottom;
+
+  @override
+  Widget build(BuildContext context) {
+    final refresh = onRefresh;
+    final role = admRole(context);
+    return SupPage(
+      role: role,
+      title: title,
+      // the gold script kicker reads under 3:1 on the admin hero's light corner (kit request in the A1 report): the
+      // admin accent draws none until the kit darkens that corner
+      kicker: null,
+      headline: headline ?? title,
+      line: subtitle,
+      actions: [...actions, ?primaryAction],
+      stats: stats,
+      tabs: tabs,
+      tab: tab,
+      onTab: onTab,
+      heroBottom: heroBottom,
+      onRefresh: refreshable ? () async => refresh?.call() : null,
+      updatedAt: updatedAt,
+      dirty: dirty,
+      floatingActionButton: floatingActionButton,
+      width: width ?? (maxWidth == double.infinity ? AppWidth.full : AppWidth.wide),
+      showBack: showBack,
+      helpPageId: helpPageId,
+      body: body,
+    );
+  }
 }

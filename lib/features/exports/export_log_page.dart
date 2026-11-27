@@ -19,8 +19,8 @@ import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/export/export_studio_api.dart';
 import 'package:flutter_education_app/design/export/table_export_model.dart' show tx;
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:flutter_education_app/features/admin/adm_kit.dart' show admRoleAny;
+import 'package:flutter_education_app/features/admin/sup/sup_kit.dart';
 
 import 'package:flutter_education_app/features/exports/exports_center_page.dart';
 
@@ -217,10 +217,15 @@ class _ExportLogPageState extends State<ExportLogPage> {
 
   @override
   Widget build(BuildContext context) {
-    return BasePage(
-      key: const ValueKey(kExportLogKey),
-      appBar: ScreenAppBar(title: exportLogTitle(), actions: [AppRefreshAction(onRefresh: _load)]),
-      child: LayoutBuilder(
+    // redesign A1 (AdmData exports): the signed-in role's hero; the kill switch stays on the page key
+    return SupPage(
+      pageKey: const ValueKey(kExportLogKey),
+      role: admRoleAny(context),
+      title: exportLogTitle(),
+      kicker: exportsCenterTitle(),
+      headline: tx('a1_exs_log_head', 'Who exported what, and when', 'مين صدّر وش، ومتى'),
+      width: AppWidth.full,
+      body: LayoutBuilder(
         builder: (context, box) => AppRefresh(
           onRefresh: _load,
           child: ListView(

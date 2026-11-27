@@ -20,6 +20,7 @@ import 'package:flutter_education_app/core/entities/entity_ref.dart' show Entity
 import 'admin_common.dart' show adminEntityCell, t;
 import 'admin_labels.dart';
 import 'admin_page.dart';
+import 'adm_kit.dart' show AdmPage;
 
 AppTone _statusTone(String s) => switch (s) {
       'approved' => AppTone.success,
@@ -56,9 +57,14 @@ class _ListState extends State<_List> {
   @override
   Widget build(BuildContext context) {
     final p = context.watch<AdminParentLinkProvider>();
-    return AdminPage(
+    return AdmPage(
+      kicker: 'admin_group_people'.tr,
       width: AppWidth.wide,
-      title: 'pl_requests_title'.tr,
+      title: 'a1_links_title'.tr,
+      // redesign A1 (AdmPeople links): how many wait, as the hero's headline
+      headline: p.pendingTotal > 0 ? 'a1_links_waiting'.tr.replaceAll('{n}', '${p.pendingTotal}') : 'pl_requests_title'.tr,
+      // the line only where the phone hero leaves the table its room
+      subtitle: MediaQuery.sizeOf(context).width >= 600 ? 'a1_links_line'.tr : null,
       icon: Icons.family_restroom_rounded,
       onRefresh: p.isLoading ? null : _reload,
       updatedAt: _loadedAt,
@@ -348,7 +354,8 @@ class _DetailState extends State<_Detail> {
   Widget build(BuildContext context) {
     final d = _d;
     final pending = d != null && d['status'] == 'pending';
-    return AdminPage(
+    return AdmPage(
+      kicker: 'admin_group_people'.tr,
       title: 'pl_request_details'.tr,
       icon: Icons.family_restroom_rounded,
       onRefresh: _loading || _busy ? null : _load,

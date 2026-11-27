@@ -32,6 +32,8 @@ import 'admin_account_fee_widgets.dart' show accountFeeRoleTitle;
 import 'admin_common.dart' show asMapList, t;
 import 'admin_labels.dart' show disposeAfterRoute;
 import 'admin_page.dart';
+import 'adm_kit.dart' show AdmPage;
+import 'package:flutter_education_app/config/app_config.dart' show Trans;
 import 'cfg_common.dart' show cfgErrorState;
 
 const _pendingPath = '/api/v1/admin/accounts/pending';
@@ -154,14 +156,18 @@ class _AdminPendingAccountsPageState extends State<AdminPendingAccountsPage> {
   Widget build(BuildContext context) {
     final statuses = {'pending': t('بانتظار الموافقة', 'Waiting'), 'rejected': t('مرفوضة', 'Rejected')};
     final roles = {'': t('كل الأدوار', 'All roles'), 'teacher': t('معلمون', 'Teachers'), 'parent': t('أولياء أمور', 'Parents'), 'student': t('طلاب', 'Students')};
-    return AdminPage(
+    return AdmPage(
+      kicker: 'a1_group_approvals'.tr,
       title: t('حسابات تنتظر الموافقة', 'Accounts waiting for approval'),
       icon: Icons.how_to_reg_rounded,
-      subtitle: _items == null
-          ? null
+      // redesign A1 (AdmApprovals accounts): how many wait, as the hero's headline
+      headline: _items == null
+          ? t('حسابات تنتظر الموافقة', 'Accounts waiting for approval')
           : countText(_total,
-              ar0: 'لا حسابات', ar1: 'حساب واحد', ar2: 'حسابان', arFew: '{n} حسابات', arMany: '{n} حساباً',
-              en0: 'No accounts', en1: '1 account', en: '{n} accounts'),
+              ar0: 'ما فيه حسابات تنتظرك', ar1: 'حساب جديد واحد ينتظرك', ar2: 'حسابين جديدين ينتظرونك', arFew: '{n} حسابات جديدة تنتظرك', arMany: '{n} حساب جديد ينتظرك',
+              en0: 'No account waits for you', en1: 'One new account waits for you', en: '{n} new accounts wait for you'),
+      subtitle: t('معلمين وأولياء أمور سجّلوا وينتظرون موافقة الإدارة قبل ما يبدون.',
+          'Teachers and parents who signed up and wait for the admins before they start.'),
       onRefresh: () => _load(keep: _items != null),
       body: Column(children: [
         SingleChildScrollView(

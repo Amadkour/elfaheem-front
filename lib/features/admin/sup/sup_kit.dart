@@ -58,7 +58,11 @@ class SupPage extends StatelessWidget {
     this.heroBottom,
     this.updatedAt,
     this.role = AppRoleAccent.superAdmin,
+    this.pageKey,
   });
+
+  /// The page's BasePage key: a `ValueKey('<feature id>')` keeps the page's kill switch ("coming soon").
+  final Key? pageKey;
 
   /// The role accent of the hero and cards: the super admin's gold by default; the admin pages (group A1) pass the
   /// signed-in person's accent, so a plain admin sees the admin accent on the pages both roles share.
@@ -195,6 +199,7 @@ class SupPage extends StatelessWidget {
           );
 
     Widget page = BasePage(
+      key: pageKey,
       appBar: appBar,
       floatingActionButton: floatingActionButton,
       child: refresh == null ? scroll : AppRefresh(onRefresh: refresh, child: scroll),

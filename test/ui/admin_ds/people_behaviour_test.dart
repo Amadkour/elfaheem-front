@@ -70,8 +70,10 @@ void main() {
       expect(find.byWidgetPredicate((w) => w is AppDataTable), findsOneWidget);
       expect(find.text('Omar Khaled 2'), findsOneWidget);
       expect(find.byType(FloatingActionButton), findsNothing);
-      // exactly one gradient (primary) button: the Add action
-      final primaries = tester.widgetList<AppButton>(find.byType(AppButton)).where((b) => b.variant == AppButtonVariant.primary);
+      // exactly one filled button: the Add action (the hero's forward button since the redesign, A1)
+      final primaries = tester
+          .widgetList<AppButton>(find.byType(AppButton))
+          .where((b) => b.variant == AppButtonVariant.primary || b.variant == AppButtonVariant.hot);
       expect(primaries.length, 1);
       expect(primaries.single.label, 'admin_add_student'.tr);
       // the shell's Refresh reloads this page in place

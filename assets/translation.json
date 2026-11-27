@@ -25193,5 +25193,19 @@
   "a1_otp_off_sup": {"en": "Phone verification codes are off: the text message provider is not connected yet, so phone sign-up falls back to email.", "ar": "رموز التحقق بالجوال متوقفة. مزوّد الرسائل النصية ما انربط بعد، فالتسجيل بالجوال يرجع للبريد."},
   "a1_set_provider": {"en": "Set up the provider", "ar": "اضبط المزوّد"},
   "a1_students_line": {"en": "Search, filter and open any student to see their courses, subscription and devices.", "ar": "ابحث، فلتر، وافتح أي طالب عشان تشوف دوراته واشتراكه وأجهزته."},
-  "a1_teachers_line": {"en": "Search, filter and open any teacher to see their courses, documents and reviews.", "ar": "ابحث، فلتر، وافتح أي معلم عشان تشوف دوراته ومستنداته ومراجعته."}
+  "a1_teachers_line": {"en": "Search, filter and open any teacher to see their courses, documents and reviews.", "ar": "ابحث، فلتر، وافتح أي معلم عشان تشوف دوراته ومستنداته ومراجعته."},
+  "a1_new_account": {"en": "New account", "ar": "حساب جديد"},
+  "a1_create_account": {"en": "Create the account", "ar": "أنشئ الحساب"},
+  "a1_courses_line": {"en": "Search, filter and open any course to see its students, its management and its access code.", "ar": "ابحث، فلتر، وافتح أي دورة عشان تشوف طلابها وإدارتها ورمز الوصول."},
+  "a1_links_waiting": {"en": "{n} link requests wait for you", "ar": "{n} طلبات ربط تنتظرك"},
+  "a1_exs_links_head": {"en": "Links to your files that expire on their own", "ar": "روابط لملفاتك تنتهي صلاحيتها تلقائيًا"},
+  "a1_exs_log_head": {"en": "Who exported what, and when", "ar": "مين صدّر وش، ومتى"},
+  "a1_exs_sched_head": {"en": "Files prepared for you on a timetable", "ar": "ملفات تتجهّز لك في مواعيد ثابتة"},
+  "a1_exs_center_head": {"en": "Your scheduled files and shared links", "ar": "ملفاتك المجدولة وروابط المشاركة"},
+  "a1_msg_who": {"en": "Who do you want to send to?", "ar": "لمين تبي ترسل؟"},
+  "a1_msg_head": {"en": "A message to a course's students, one person, or everyone", "ar": "رسالة لطلاب دورة، أو شخص واحد، أو الكل"},
+  "a1_msg_line": {"en": "Pick the audience and how it shows; see the preview and how many it reaches before you send.", "ar": "اختر الجمهور وطريقة الظهور، وشوف المعاينة وعدد اللي بتوصلهم قبل ما ترسل."},
+  "a1_cats_line": {"en": "Categories order courses in search and the store. A category that holds courses cannot be deleted.", "ar": "الأقسام ترتب الدورات في البحث والمتجر. ما تقدر تحذف قسم فيه دورات."},
+  "a1_links_line": {"en": "Check the documents and details before you link a parent to a student. A rejection reaches them with its reason.", "ar": "تأكد من المستندات والبيانات قبل ما تربط ولي الأمر بالطالب. الرفض يوصل له مع السبب."},
+  "a1_links_title": {"en": "Link requests", "ar": "طلبات الربط"}
 }

@@ -39,9 +39,81 @@ Map<String, dynamic> a1Overview() => {
       'realtime': {'events_24h': 184},
     };
 
+const _students = ['فيصل العنزي', 'ريم الحربي', 'عبدالرحمن الشمري', 'لمى القحطاني', 'سعود المطيري', 'ريم العنزي'];
+const _teachers = ['أ. ماجد الشهري', 'أ. فهد المطيري', 'أ. خالد العتيبي', 'أ. ماهر السبيعي', 'أ. نورة القحطاني'];
+
+/// One row of GET /api/v1/admin/users (the fields the server's _user_row sends).
+Map<String, dynamic> a1User(int i, String role) {
+  final names = role == 'teacher' ? _teachers : _students;
+  return {
+    'id': 100 + i,
+    'name': names[i % names.length],
+    'gmail': 'user$i@nextbrain.site',
+    'phone': '+9665041${1000 + i}',
+    'role': role,
+    'country': 'SA',
+    'is_active': i % 4 != 3,
+    'is_verified': true,
+    'pending_deletion': false,
+    'created_at': '2026-0${1 + i % 9}-1${i % 9}T10:00:00Z',
+    'last_login': '2026-11-2${i % 7}T08:30:00Z',
+    'login_times': 3 + i,
+    'courses_count': role == 'teacher' ? 2 + i % 4 : 0,
+    'enrolled_courses': role == 'student'
+        ? [for (var k = 0; k < 1 + i % 4; k++) {'id': 41 + k, 'name': 'الرياضيات ٣ ث', 'status': 'active'}]
+        : [],
+    'subscription': role == 'student' && i.isEven ? {'status': 'active', 'plan_code': 'monthly', 'amount': 450, 'currency': 'SAR'} : null,
+    'image_url': null,
+  };
+}
+
 /// Pending accounts, transfers, device and certificate requests, parent links: the inbox's queues.
 Map<String, FakeHandler> a1Routes() => {
       'GET /api/v1/admin/overview': (_) => a1Overview(),
+      'GET /api/v1/admin/users': (o) {
+        final role = o.uri.queryParameters['role'] ?? 'student';
+        final n = role == 'teacher' ? 5 : 6;
+        return {
+          'items': [for (var i = 0; i < n; i++) a1User(i, role)],
+          'total': role == 'teacher' ? 318 : 24810,
+          'page': 1,
+          'size': 20,
+          'pages': 1,
+        };
+      },
+      'GET /api/v1/admin/settings': (_) => {
+            'max_devices': 2,
+            'device_switch_days': 30,
+            'max_monthly_view': 150,
+            'allow_resubscribe': true,
+          },
+      'GET /api/v1/admin/categories': (_) => {
+            'items': [
+              {'id': 1, 'name_ar': 'الرياضيات', 'name_en': 'Maths', 'courses_count': 214},
+              {'id': 2, 'name_ar': 'الفيزياء', 'name_en': 'Physics', 'courses_count': 96},
+              {'id': 3, 'name_ar': 'القدرات والتحصيلي', 'name_en': 'Qudurat and Tahsili', 'courses_count': 140},
+            ],
+            'total': 3,
+          },
+      'GET /api/v1/datacenter/datasets': (_) => {
+            'items': [
+              {'key': 'users', 'title_ar': 'المستخدمون', 'title_en': 'Users'},
+              {'key': 'parents', 'title_ar': 'أولياء الأمور', 'title_en': 'Parents', 'can_import': true},
+            ]
+          },
+      'GET /api/v1/datacenter/users': (_) => {
+            'key': 'users',
+            'total': 2,
+            'columns': [
+              {'key': 'id', 'ar': '#', 'en': '#'},
+              {'key': 'name', 'ar': 'الاسم', 'en': 'Name'},
+              {'key': 'role', 'ar': 'الدور', 'en': 'Role'},
+            ],
+            'items': [
+              {'id': 101, 'name': 'فيصل العنزي', 'role': 'student'},
+              {'id': 7, 'name': 'أ. ماجد الشهري', 'role': 'teacher'},
+            ],
+          },
       'GET /api/v1/admin/accounts/pending': (_) => {
             'items': [
               {'id': 31, 'name': 'أ. ريم السبيعي', 'role': 'teacher', 'gmail': 'reem.s@mail.sa', 'created_at': '2026-11-21T09:00:00Z'},

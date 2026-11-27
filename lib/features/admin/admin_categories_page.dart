@@ -24,6 +24,7 @@ import 'admin_filter_models.dart';
 import 'admin_filters.dart';
 import 'admin_models.dart';
 import 'admin_page.dart';
+import 'adm_kit.dart' show AdmPage;
 import 'admin_providers.dart';
 import 'admin_table_export.dart' show adminCategoriesExport, exportPagedList;
 import 'package:flutter_education_app/design/app_kit.dart';
@@ -295,9 +296,11 @@ class _ViewState extends State<_View> {
       ],
     );
 
-    final page = AdminPage(
+    final page = AdmPage(
+      kicker: 'admin_group_learning'.tr,
       title: 'categories'.tr,
-      subtitle: wide && p.loaded ? _totalText(p.total) : 'svc_categories_d'.tr,
+      headline: p.loaded ? _totalText(p.total) : 'categories'.tr,
+      subtitle: 'a1_cats_line'.tr,
       icon: Icons.category_rounded,
       maxWidth: double.infinity,
       onRefresh: p.isLoading ? null : () => _reload(p),

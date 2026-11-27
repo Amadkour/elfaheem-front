@@ -4,6 +4,8 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/admin/adm_kit.dart' show admRole;
+import 'package:flutter_education_app/features/admin/sup/sup_kit.dart';
 
 import '../../../config/app_config.dart';
 import '../../../config/theme/theme_config_provider.dart';
@@ -123,36 +125,35 @@ class _AdminHelpPageState extends State<AdminHelpPage> {
   @override
   Widget build(BuildContext context) {
     final pages = _shownPages, flows = _shownFlows;
-    return BasePage(
-      key: const ValueKey(adminHelpFeatureKey),
-      useWebCard: true,
+    // redesign A1 (AdmContent help): the role's hero, Pages / Flows as its tabs, Export on it
+    return SupPage(
+      pageKey: const ValueKey(adminHelpFeatureKey),
+      role: admRole(context),
       width: AppWidth.wide,
-      appBar: ScreenAppBar(
-        helpPageId: 'admin.help',
-        title: _t('إدارة المساعدة', 'Help management'),
-        actions: [
-          IconButton(
-            tooltip: _t('تصدير', 'Export'),
-            constraints: const BoxConstraints(minWidth: AppTouch.min, minHeight: AppTouch.min),
-            onPressed: () => showHelpExportSheet(context, api: widget.api, flows: _flows),
-            icon: const Icon(Icons.file_download_outlined),
-          ),
-          AppRefreshAction(onRefresh: _load),
-        ],
-      ),
+      helpPageId: 'admin.help',
+      title: _t('إدارة المساعدة', 'Help management'),
+      kicker: 'admin_group_learning'.tr,
+      headline: _t('صفحات المساعدة والجولات التعريفية', 'Help pages and the guided tours'),
+      line: _t('النص اللي يظهر تحت زر المعلومات في كل صفحة.', 'The text behind the info button of every page.'),
+      onRefresh: _load,
+      tabs: [AppTabItem(_t('الصفحات', 'Pages')), AppTabItem(_t('المسارات', 'Flows'))],
+      tab: _flowsTab ? 1 : 0,
+      onTab: (i) => setState(() => _flowsTab = i == 1),
+      actions: [
+        SupHeroButton(
+          label: _t('تصدير', 'Export'),
+          icon: Icons.file_download_outlined,
+          onTap: () => showHelpExportSheet(context, api: widget.api, flows: _flows),
+        ),
+      ],
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _flowsTab ? _addFlow : _addPage,
         icon: const Icon(Icons.add_rounded),
         label: Text(_flowsTab ? _t('مسار جديد', 'New flow') : _t('مدخل جديد', 'New entry')),
       ),
-      child: ListView(
+      body: ListView(
         padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.xxl * 2),
         children: [
-          Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-            AppChoiceChip(label: _t('الصفحات', 'Pages'), selected: !_flowsTab, onTap: () => setState(() => _flowsTab = false)),
-            AppChoiceChip(label: _t('المسارات', 'Flows'), selected: _flowsTab, onTap: () => setState(() => _flowsTab = true)),
-          ]),
-          AppSpace.gapSm,
           Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
             AppChoiceChip(label: _t('كل الأدوار', 'All roles'), selected: _role == null, onTap: () => setState(() => _role = null)),
             for (final r in helpRoles) AppChoiceChip(label: helpRoleLabel(r, _ar), selected: _role == r, onTap: () => setState(() => _role = r)),

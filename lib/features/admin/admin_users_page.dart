@@ -14,7 +14,6 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../utils/widget/phone_field.dart';
-import '../../utils/widget/primary_button.dart';
 import 'admin_common.dart';
 import 'admin_filter_models.dart';
 import 'admin_filters.dart';
@@ -48,7 +47,7 @@ import 'package:flutter_education_app/design/app_badges.dart';
 import 'package:flutter_education_app/design/app_buttons.dart';
 import 'package:flutter_education_app/design/app_data_table.dart';
 import 'package:flutter_education_app/design/app_inputs.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show AppChoiceChip, AppDropdown, AppEmpty, AppListSkeleton, AppWidth, showAppNotice;
+import 'package:flutter_education_app/design/app_kit.dart' show AppDropdown, AppEmpty, AppListSkeleton, AppTabItem, AppTabs, AppWidth, showAppNotice;
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/app_username.dart' show usernameFrom;
 import '../auth/username.dart' show UsernameError;
@@ -219,7 +218,6 @@ class _UsersViewState extends State<_UsersView> {
     final users = [for (final r in p.rows) AdminUser(r)];
     _panel.siblings = [for (final u in users) _refOf(u)]; // previous / next and the keyboard walk these rows
     _panel.onEntityChanged = p.refresh;
-    final wide = MediaQuery.sizeOf(context).width >= 600;
 
     final state = p.error != null && p.rows.isEmpty
         ? AppTableState.error
@@ -328,7 +326,7 @@ class _UsersViewState extends State<_UsersView> {
       role: admRole(context),
       helpPageId: 'admin.users',
       title: isStudent ? 'admin_students'.tr : 'admin_teachers'.tr,
-      kicker: isStudent ? 'admin_students'.tr : 'a1_teachers'.tr,
+      // no kicker: it would repeat the page's name (and the gold script on the admin hero's light corner is under 3:1)
       headline: p.loaded ? _totalText(p.total) : (isStudent ? 'admin_students'.tr : 'admin_teachers'.tr),
       line: isStudent ? 'a1_students_line'.tr : 'a1_teachers_line'.tr,
       showBack: !widget.embedded,
@@ -374,7 +372,19 @@ class _UsersViewState extends State<_UsersView> {
   /// The search lives in the table toolbar; this is the rest of the ONE row of controls: the status filter, the
   /// advanced filter sheet (everything else, subscription filter included) and Export.
   Widget _controls(BuildContext context, AdminUsersProvider p, List<FilterSpec> specs) {
+    const statuses = ['all', 'active', 'inactive', 'pending_deletion'];
+    final labels = ['filter_all'.tr, 'exam_status_active'.tr, 'admin_inactive'.tr, 'admin_pending_deletion'.tr];
+    // the design's segmented status on a wide screen; the dropdown on a phone
+    final segmented = MediaQuery.sizeOf(context).width >= 1100;
     return Row(mainAxisSize: MainAxisSize.min, children: [
+      if (segmented)
+        AppTabs(
+          hug: true,
+          items: [for (final l in labels) AppTabItem(l)],
+          index: statuses.indexOf(p.status ?? 'all').clamp(0, statuses.length - 1),
+          onChanged: (i) => p.setStatus(i == 0 ? null : statuses[i]),
+        )
+      else
       Flexible(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 168),
@@ -1181,11 +1191,7 @@ class _UserFormState extends State<_UserForm> {
         SheetHeader(
           editing
               ? 'admin_edit_user'.tr
-              : (role == 'teacher'
-                    ? 'admin_add_teacher'.tr
-                    : _role == 'parent'
-                        ? t('إضافة ولي أمر', 'Add parent')
-                        : 'admin_add_student'.tr),
+              : (role == 'teacher' ? 'admin_add_teacher'.tr : 'a1_new_account'.tr),
         ),
         Flexible(
           child: SingleChildScrollView(
@@ -1195,19 +1201,20 @@ class _UserFormState extends State<_UserForm> {
               child: Column(
                 children: [
                   // the students list also creates parent accounts
+                  // the students list also creates parent accounts: the design's segmented Student / Parent
                   if (!editing && role == 'student')
                     Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpace.sm),
-                      child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
-                        for (final r in const ['student', 'parent'])
-                          AppChoiceChip(
-                            key: ValueKey('admin.user_role.$r'),
-                            label: r == 'parent' ? t('ولي أمر', 'Parent') : t('طالب', 'Student'),
-                            icon: r == 'parent' ? Icons.family_restroom_rounded : Icons.school_rounded,
-                            selected: _role == r,
-                            onTap: () => setState(() => _role = r),
-                          ),
-                      ]),
+                      padding: const EdgeInsets.only(bottom: AppSpace.md),
+                      child: AppTabs(
+                        key: const ValueKey('admin.user_role'),
+                        expand: true,
+                        items: [
+                          AppTabItem(t('طالب', 'Student'), icon: Icons.school_rounded),
+                          AppTabItem(t('ولي أمر', 'Parent'), icon: Icons.family_restroom_rounded),
+                        ],
+                        index: _role == 'parent' ? 1 : 0,
+                        onChanged: (i) => setState(() => _role = i == 1 ? 'parent' : 'student'),
+                      ),
                     ),
                   Field(
                     controller: _name,
@@ -1242,11 +1249,21 @@ class _UserFormState extends State<_UserForm> {
                   AppPasswordField(controller: _password, label: editing
                         ? 'admin_new_password_optional'.tr
                         : 'password'.tr, required: !editing),
-                  PrimaryButton(
-                    label: 'save'.tr,
-                    isLoading: busy,
-                    onPressed: _submit,
-                  ),
+                  AppSpace.gapSm,
+                  // the design's footer: the one filled button, Cancel beside it
+                  Row(children: [
+                    Expanded(
+                      child: AppButton.primary(
+                        key: const ValueKey('admin.user_save'),
+                        label: editing ? 'save'.tr : 'a1_create_account'.tr,
+                        busy: busy,
+                        expand: true,
+                        onPressed: _submit,
+                      ),
+                    ),
+                    AppSpace.gapSm,
+                    AppButton.ghost(label: 'cancel'.tr, onPressed: () => Navigator.pop(context)),
+                  ]),
                 ],
               ),
             ),

@@ -18,8 +18,8 @@ import 'package:flutter_education_app/design/app_contrast.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/export/table_export_model.dart' show tx;
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:flutter_education_app/features/admin/adm_kit.dart' show admRoleAny;
+import 'package:flutter_education_app/features/admin/sup/sup_kit.dart';
 
 import 'package:flutter_education_app/features/exports/export_links_page.dart';
 import 'package:flutter_education_app/features/exports/export_log_page.dart';
@@ -192,9 +192,14 @@ class ExportsCenterPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BasePage(
-      appBar: ScreenAppBar(title: exportsCenterTitle()),
-      child: AppSettingsPage(groups: [
+    // redesign A1 (AdmData exports): the signed-in role's hero over the export tools
+    return SupPage(
+      role: admRoleAny(context),
+      title: exportsCenterTitle(),
+      kicker: exportsCenterTitle(),
+      headline: tx('a1_exs_center_head', 'Your scheduled files and shared links', 'ملفاتك المجدولة وروابط المشاركة'),
+      width: AppWidth.reading,
+      body: AppSettingsPage(groups: [
         AppSettingsGroup(
           title: tx('exs_center_mine', 'My exports', 'تصديراتي'),
           icon: Icons.file_download_rounded,
