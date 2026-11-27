@@ -458,20 +458,24 @@ class RecommendationCard extends StatelessWidget {
     final co = item.course;
     final row = shape == CourseCardShape.row;
     final reason = AppStatusBadge(label: item.reasonText, accent: AppAccent.grape, icon: Icons.auto_awesome_rounded);
-    final actions = Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-      if (onDismiss != null)
-        Flexible(
-          child: AppButton.secondary(
+    // a Wrap: "Not interested" and the price share the line, and the price drops under it on a narrow card
+    final actions = Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: AppSpace.xs,
+      runSpacing: AppSpace.xs,
+      children: [
+        if (onDismiss != null)
+          AppButton.secondary(
             key: ValueKey('recs.dismiss.${co.id}'),
             label: 'sa_recs_not_interested'.tr,
             icon: Icons.close_rounded,
             size: AppButtonSize.sm,
             onPressed: onDismiss,
           ),
-        ),
-      const SizedBox(width: AppSpace.xs),
-      CoursePriceFooter(price: coursePriceLabel(co.currency, co.isFree ? 0 : co.finalPrice), free: co.isFree || co.finalPrice == 0),
-    ]);
+        CoursePriceFooter(price: coursePriceLabel(co.currency, co.isFree ? 0 : co.finalPrice), free: co.isFree || co.finalPrice == 0),
+      ],
+    );
     return CourseListCard(
       shape: shape,
       title: co.name,
