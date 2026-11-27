@@ -310,6 +310,7 @@
  "parent.insights",
  "parent.message_teacher",
  "parent.org_view",
+ "parent.payments",
  "payment_callback",
  "payment_callback.try_again",
  "payments",
