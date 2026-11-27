@@ -46,13 +46,64 @@ import 'package:flutter_education_app/features/home/teacher/teacher_models.dart'
 /// what is live, D-630). [live] → "Return to live" with a ringed red dot. [compact] → the round icon only (narrow
 /// headers). [onHero] → the greeting hero's call to action: a full-height cream pill in the primary ink.
 class GoLiveButton extends StatelessWidget {
-  const GoLiveButton({super.key, this.live = false, this.onTap, this.busy = false, this.compact = false, this.onHero = false});
+  const GoLiveButton({super.key, this.live = false, this.onTap, this.busy = false, this.compact = false, this.onHero = false, this.block = false});
+
+  /// T1 (Tea1Home): the hero's one call to action as a full-width live-red pill with the white dot ("Go live" /
+  /// "Back to the live").
+  final bool block;
 
   final bool live;
   final VoidCallback? onTap;
   final bool busy;
   final bool compact;
   final bool onHero;
+
+  Widget _blockButton(BuildContext context) {
+    final c = context.colors;
+    final label = live ? 't1_hm_go_back'.tr : 't1_hm_go_live'.tr;
+    final ink = c.onHero;
+    final dot = busy
+        ? SizedBox.square(dimension: AppIconSize.sm, child: CircularProgressIndicator(strokeWidth: AppBorder.focus, color: ink))
+        : Container(
+            width: AppSpace.sm,
+            height: AppSpace.sm,
+            decoration: BoxDecoration(color: ink, shape: BoxShape.circle, boxShadow: [BoxShadow(color: ink.withValues(alpha: .35), spreadRadius: AppSpace.xxs)]),
+          );
+    return Semantics(
+      button: true,
+      label: label,
+      excludeSemantics: true,
+      child: AppPressScale(
+        enabled: !busy && onTap != null,
+        scale: 0.98,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [c.danger, Color.lerp(c.danger, c.onHero, .12)!]),
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            boxShadow: [BoxShadow(color: c.danger.withValues(alpha: .35), blurRadius: AppSpace.md, offset: const Offset(0, AppSpace.xs))],
+          ),
+          child: Material(
+            type: MaterialType.transparency,
+            child: InkWell(
+              key: const ValueKey('t1_home.go_live'),
+              onTap: busy ? null : onTap,
+              customBorder: const StadiumBorder(),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: AppTouch.min + AppSpace.xs),
+                child: Center(
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: ink))),
+                    const SizedBox(width: AppSpace.sm),
+                    dot,
+                  ]),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   static String labelFor(bool live) => live ? t('العودة للبث', 'Return to live') : t('ابدأ البث', 'Go live');
 
@@ -61,6 +112,7 @@ class GoLiveButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (block) return _blockButton(context);
     final c = context.colors;
     // the primary action in emerald, not a solid live red (D-630: red only where it means something): on the forest
     // hero (the greeting hero's call to action, or inside a ChromeBar) a cream plate in emerald ink, elsewhere the
@@ -213,7 +265,10 @@ GoLiveCourse goLiveCourseOf(TeacherCourse x) {
 
 /// The header's "Go live": follows the open room ([LiveRoomHost]) and the home's live sessions.
 class GoLiveEntry extends StatefulWidget {
-  const GoLiveEntry({super.key, required this.courses, required this.schedule, this.loading = false, this.onDone, this.onNewCourse, this.onHero = false});
+  const GoLiveEntry({super.key, required this.courses, required this.schedule, this.loading = false, this.onDone, this.onNewCourse, this.onHero = false, this.block = false});
+
+  /// The T1 hero's full-width live-red call to action ([GoLiveButton.block]).
+  final bool block;
 
   /// Drawn as the greeting hero's call to action ([GoLiveButton.onHero]).
   final bool onHero;
@@ -272,6 +327,7 @@ class _GoLiveEntryState extends State<GoLiveEntry> {
           busy: _busy || widget.loading,
           compact: MediaQuery.sizeOf(context).width < 340,
           onHero: widget.onHero,
+          block: widget.block,
           onTap: _tap,
         ),
       );

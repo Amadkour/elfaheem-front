@@ -14,7 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/plural.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp, AppOdometer, AppPressScale;
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppCountUp, AppPressScale;
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/features/home/teacher/todo/teacher_todo_models.dart';
 
@@ -78,7 +78,6 @@ String todoReasonLabel(String r) => switch (r) {
 const double _kWell = AppSpace.xxl - AppSpace.xs;
 const double _kWellCompact = AppSpace.xl + AppSpace.xxs;
 const double kTodoRowIndent = AppSpace.md + _kWell + AppSpace.sm;
-const double _kRowIndentCompact = AppSpace.md + _kWellCompact + AppSpace.sm;
 
 /// One to-do item. [onOpen] runs its action; [onMenu] a menu choice; [onRestore] (a hidden item) replaces the menu.
 class TodoRow extends StatelessWidget {
@@ -90,7 +89,12 @@ class TodoRow extends StatelessWidget {
     this.onRestore,
     this.compact = false,
     this.busy = false,
+    this.card = false,
   });
+
+  /// T1: the item as its own card (Tea1Home todo): the priority stripe at the end edge, the tags, the title, the
+  /// evidence, the course and a "More" menu beside the one action button. Home card and full page both draw it.
+  final bool card;
 
   final TodoItem item;
   final VoidCallback? onOpen;
@@ -105,6 +109,7 @@ class TodoRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (card && onRestore == null) return _buildCard(context);
     final c = context.colors;
     final x = item;
     final hiddenRow = onRestore != null;
@@ -176,11 +181,112 @@ class TodoRow extends StatelessWidget {
     );
   }
 
+  Widget _buildCard(BuildContext context) {
+    final c = context.colors;
+    final x = item;
+    final tone = switch (x.priority) {
+      'high' => c.danger,
+      'medium' => c.warning,
+      _ => c.textLight,
+    };
+    final age = todoAgeLabel(x.at);
+    final body = Padding(
+      padding: const EdgeInsets.all(AppSpace.md),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+          Expanded(
+            child: Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, children: [
+              _Chip(text: todoPriorityLabel(x.priority), color: tone, strong: true),
+              _Chip(text: todoGroupLabel(x.group), color: c.textMedium),
+            ]),
+          ),
+          if (age != null) ...[
+            const SizedBox(width: AppSpace.xs),
+            Text(age, maxLines: 1, style: AppType.meta(context).copyWith(color: c.textLight)),
+          ],
+        ]),
+        const SizedBox(height: AppSpace.xs),
+        Text(x.title, maxLines: 3, overflow: TextOverflow.ellipsis, style: AppType.bodyStrong(context).copyWith(color: c.textDark, height: 1.3)),
+        if (x.why.isNotEmpty) ...[
+          const SizedBox(height: AppSpace.xxs),
+          Text(x.why, maxLines: 3, overflow: TextOverflow.ellipsis, style: AppType.body(context).copyWith(color: c.textMedium, height: 1.4)),
+        ],
+        if (x.students.isNotEmpty) ...[const SizedBox(height: AppSpace.sm), _Students(students: x.students, total: x.count)],
+        if ((x.courseName ?? '').isNotEmpty || x.returned) ...[
+          const SizedBox(height: AppSpace.sm),
+          Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+            if ((x.courseName ?? '').isNotEmpty)
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: _Chip._maxWidth),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.menu_book_outlined, size: AppIconSize.sm, color: c.textLight),
+                  const SizedBox(width: AppSpace.xxs),
+                  Flexible(child: Text(x.courseName!, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.textMedium))),
+                ]),
+              ),
+            if (x.returned) _Chip(text: 'todo_returned'.tr, icon: Icons.replay_rounded, color: c.textMedium),
+          ]),
+        ],
+        const SizedBox(height: AppSpace.sm),
+        Wrap(spacing: AppSpace.sm, runSpacing: AppSpace.xs, alignment: WrapAlignment.spaceBetween, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          if (onMenu != null) _MoreMenu(onMenu: busy ? null : onMenu!),
+          if (onOpen != null) AppButton.primary(label: todoActionLabel(x), size: AppButtonSize.sm, onPressed: busy ? null : onOpen),
+        ]),
+      ]),
+    );
+    return AnimatedOpacity(
+      opacity: busy ? 0.5 : 1,
+      duration: AppMotion.of(context).fast,
+      child: Container(
+        decoration: BoxDecoration(
+          color: c.cardBg,
+          borderRadius: AppRadius.cardAll,
+          border: Border.all(color: c.divider, width: AppBorder.hairline),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(children: [
+          body,
+          if (x.priority != 'low')
+            PositionedDirectional(
+              end: 0,
+              top: AppSpace.md,
+              child: Container(
+                width: AppSpace.xxs,
+                height: AppSpace.xl,
+                decoration: BoxDecoration(color: tone, borderRadius: const BorderRadiusDirectional.horizontal(start: Radius.circular(AppSpace.xxs))),
+              ),
+            ),
+        ]),
+      ),
+    );
+  }
+
   static String _hiddenLabel(TodoItem x) => switch (x.state) {
         'snooze' => x.until == null ? 'todo_snoozed'.tr : 'todo_snoozed_until'.tr.replaceAll('{d}', AppTime.date(x.until!, pattern: 'EEE d MMM')),
         'done' => 'todo_marked_done'.tr,
         _ => 'todo_dismissed'.tr,
       };
+}
+
+/// The group's tag on a card ("Grading & exams").
+String todoGroupLabel(TodoGroup g) => switch (g) {
+      TodoGroup.grading => 'todo_g_grading'.tr,
+      TodoGroup.students => 'todo_g_students'.tr,
+      TodoGroup.schedule => 'todo_g_schedule'.tr,
+      TodoGroup.content => 'todo_g_content'.tr,
+      TodoGroup.requests => 'todo_g_requests'.tr,
+    };
+
+/// How long the item has waited: "Today" / "Yesterday" / "For 3 days" (null when the server sent no date).
+String? todoAgeLabel(DateTime? at, {DateTime? now}) {
+  if (at == null) return null;
+  final n = (now ?? DateTime.now()).toUtc();
+  final a = at.toUtc();
+  final days = DateTime.utc(n.year, n.month, n.day).difference(DateTime.utc(a.year, a.month, a.day)).inDays;
+  if (days <= 0) return 't1_hm_age_today'.tr;
+  if (days == 1) return 't1_hm_age_yesterday'.tr;
+  return countText(days, ar1: 'من يوم', ar2: 'من يومين', arFew: 'من {n} أيام', arMany: 'من {n} يومًا', en1: 'For 1 day', en: 'For {n} days')
+      .replaceFirst('{n}', '$days');
 }
 
 /// A small fact under a row: a full pill. [strong] (the priority) wears its tone's tint and ink; the rest are quiet.
@@ -216,9 +322,49 @@ class _Chip extends StatelessWidget {
   }
 }
 
+/// "More": the snooze / done / dismiss menu as an outlined pill (the card row).
+class _MoreMenu extends StatelessWidget {
+  const _MoreMenu({required this.onMenu});
+  final ValueChanged<TodoMenu>? onMenu;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return _MenuPopup(
+      onMenu: onMenu,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: AppTouch.min),
+        child: Container(
+          alignment: AlignmentDirectional.center,
+          padding: const EdgeInsets.symmetric(horizontal: AppSpace.md),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            border: Border.all(color: c.divider, width: AppBorder.hairline),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Flexible(child: Text('t1_hm_more'.tr, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: c.textDark, fontWeight: FontWeight.w600))),
+            const SizedBox(width: AppSpace.xs),
+            Icon(Icons.more_horiz_rounded, size: AppIconSize.md, color: c.textMedium),
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
 class _Menu extends StatelessWidget {
   const _Menu({required this.onMenu});
   final ValueChanged<TodoMenu>? onMenu;
+
+  @override
+  Widget build(BuildContext context) =>
+      _MenuPopup(onMenu: onMenu, icon: Icon(Icons.more_vert_rounded, color: context.colors.textLight, size: AppIconSize.md));
+}
+
+class _MenuPopup extends StatelessWidget {
+  const _MenuPopup({required this.onMenu, this.icon, this.child});
+  final ValueChanged<TodoMenu>? onMenu;
+  final Widget? icon, child;
 
   @override
   Widget build(BuildContext context) {
@@ -234,7 +380,7 @@ class _Menu extends StatelessWidget {
     return PopupMenuButton<TodoMenu>(
       enabled: onMenu != null,
       tooltip: 'todo_more'.tr,
-      icon: Icon(Icons.more_vert_rounded, color: c.textLight, size: AppIconSize.md),
+      icon: icon,
       shape: RoundedRectangleBorder(borderRadius: AppRadius.cardAll, side: BorderSide(color: c.divider, width: AppBorder.hairline)),
       color: c.cardBg,
       onSelected: onMenu,
@@ -245,6 +391,7 @@ class _Menu extends StatelessWidget {
         item(TodoMenu.snooze7, Icons.snooze_rounded, 'todo_snooze_7'.tr),
         item(TodoMenu.dismiss, Icons.do_not_disturb_on_outlined, 'todo_dismiss'.tr),
       ],
+      child: child,
     );
   }
 }
@@ -323,35 +470,27 @@ class TeacherTodoCard extends StatelessWidget {
     final c = context.colors;
     final top = list.items.take(max).toList();
     final link = appInk(context, c.primary);
+    // T1: every item is its own card with its action and "More"; the link to the whole list closes the group
     final rows = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          for (var i = 0; i < top.length; i++) ...[
-            if (i > 0) Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, indent: _kRowIndentCompact, color: c.divider),
-            TodoRow(item: top[i], compact: true, onOpen: () => onOpenItem(top[i]), onMenu: (m) => onMenu(top[i], m)),
-          ],
-          Divider(height: AppBorder.hairline, thickness: AppBorder.hairline, color: c.divider),
-          InkWell(
-            onTap: onSeeAll,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: AppTouch.min),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
-                child: Row(children: [
-                  Icon(Icons.checklist_rounded, size: AppIconSize.md, color: link),
-                  const SizedBox(width: AppSpace.xs),
-                  Expanded(
-                    child: Text(
-                      list.totalCount > top.length ? 'todo_see_all_n'.tr.replaceAll('{n}', '${list.totalCount}') : 'todo_open_list'.tr,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppType.label(context).copyWith(color: link, fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  Icon(Icons.chevron_right_rounded, size: AppIconSize.md, color: c.textLight),
-                ]),
-              ),
+      for (var i = 0; i < top.length; i++) ...[
+        if (i > 0) const SizedBox(height: AppSpace.sm),
+        TodoRow(item: top[i], card: true, onOpen: () => onOpenItem(top[i]), onMenu: (m) => onMenu(top[i], m)),
+      ],
+      if (list.totalCount > top.length) ...[
+        const SizedBox(height: AppSpace.xs),
+        InkWell(
+          onTap: onSeeAll,
+          borderRadius: BorderRadius.circular(AppRadius.chip),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: AppTouch.min),
+            child: Center(
+              child: Text('todo_see_all_n'.tr.replaceAll('{n}', '${list.totalCount}'),
+                  maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: link, fontWeight: FontWeight.w600)),
             ),
           ),
-        ]);
+        ),
+      ],
+    ]);
     if (bare) return rows;
     return Padding(
       padding: padding,
@@ -361,9 +500,7 @@ class TeacherTodoCard extends StatelessWidget {
   }
 }
 
-/// The full page's three counts in one row; a tap filters (null = clear). The page's one memorable element: while
-/// something is urgent its tile is the peach block with the figure rolling in (AppOdometer) in the amber ink — the
-/// other two stay paper and count up once.
+/// The full page's three counts in one row (glass tiles on the hero); a tap filters (null = clear).
 class TodoSummary extends StatelessWidget {
   const TodoSummary({super.key, required this.items, this.selected, this.onSelect});
   final List<TodoItem> items;
@@ -382,6 +519,8 @@ class TodoSummary extends StatelessWidget {
   }
 }
 
+/// One of the three counts on the page's hero (a glass tile: the priority's dot, the figure, the label). The picked
+/// one wears a ring (the filter it applies).
 class _SummaryTile extends StatelessWidget {
   const _SummaryTile({required this.priority, required this.count, required this.selected, this.onTap});
   final String priority;
@@ -392,12 +531,13 @@ class _SummaryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final tone = todoTone(context, priority);
-    final lead = priority == 'high' && count > 0; // the block
-    final block = AppBlockColors.of(context, lead ? AppBlockTone.peach : AppBlockTone.paper);
-    final figureInk = count == 0 ? block.faint : block.accentInk(tone);
-    final r = AppRadius.cardAll;
-    final figureStyle = AppType.figureLarge(context).copyWith(color: figureInk);
+    final dot = switch (priority) {
+      'high' => c.danger,
+      'medium' => c.warning,
+      _ => c.onHeroMuted,
+    };
+    final r = BorderRadius.circular(AppRadius.tile);
+    final figure = AppType.figureLarge(context).copyWith(color: c.onHero);
     final memory = 'todo.summary.$priority';
     return Semantics(
       button: onTap != null,
@@ -407,37 +547,34 @@ class _SummaryTile extends StatelessWidget {
       child: AppPressScale(
         enabled: onTap != null,
         child: Material(
-          color: block.surface,
+          color: c.heroGlass,
           shape: RoundedRectangleBorder(
             borderRadius: r,
-            // picked: a 2 px ink ring (the filter it applies); else the block's own edge
-            side: selected
-                ? BorderSide(color: c.textDark, width: AppBorder.focus)
-                : block.border == null
-                    ? BorderSide.none
-                    : BorderSide(color: block.border!, width: AppBorder.hairline),
+            side: BorderSide(color: selected ? c.onHero : c.heroGlassBorder, width: selected ? AppBorder.focus : AppBorder.hairline),
           ),
           child: InkWell(
             onTap: onTap,
             customBorder: RoundedRectangleBorder(borderRadius: r),
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpace.sm),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Container(width: AppSpace.xs, height: AppSpace.xs, decoration: BoxDecoration(color: tone, shape: BoxShape.circle)),
-                  const SizedBox(width: AppSpace.xs - 2),
-                  Flexible(
-                    child: Text(todoPriorityLabel(priority),
-                        maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: block.muted)),
-                  ),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: AppTouch.min),
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpace.sm),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+                  Row(children: [
+                    Expanded(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: AlignmentDirectional.centerStart,
+                        child: AppCountUp('$count', memoryKey: memory, style: figure),
+                      ),
+                    ),
+                    Container(width: AppSpace.xs, height: AppSpace.xs, decoration: BoxDecoration(color: dot, shape: BoxShape.circle)),
+                  ]),
+                  const SizedBox(height: AppSpace.xxs),
+                  Text(todoPriorityLabel(priority),
+                      maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: c.onHeroMuted)),
                 ]),
-                const SizedBox(height: AppSpace.xs),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: AlignmentDirectional.centerStart,
-                  child: lead ? AppOdometer('$count', memoryKey: memory, style: figureStyle) : AppCountUp('$count', memoryKey: memory, style: figureStyle),
-                ),
-              ]),
+              ),
             ),
           ),
         ),
