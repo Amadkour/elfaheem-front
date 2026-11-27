@@ -68,6 +68,9 @@ void main() {
     for (final e in _homes.entries) {
       final role = e.key;
       test('$role: other roles\' homes send it to ${e.value}, its own home opens', () async {
+        // the release behaviour: a debug build opens the developer tools (/kit_gallery) to every role on purpose
+        debugOpenRoutesEnabled = false;
+        addTearDown(() => debugOpenRoutesEnabled = true);
         final auth = await _signedInAs(role);
         for (final route in roleOnlyRoutes.keys) {
           final allowed = roleOnlyRoutes[route]!.contains(role);
@@ -88,6 +91,11 @@ void main() {
         expect(routeRoleRedirect(r, role: 'student', homeRoute: auth.homeRoute), '/dashboard', reason: r);
       }
       expect(routeRoleRedirect('/admin_dashboard?tab=users', role: 'student', homeRoute: auth.homeRoute), '/dashboard');
+    });
+
+    test('a debug build opens the developer tools to every role', () {
+      expect(debugOpenRoutesEnabled, isTrue);
+      expect(routeRoleRedirect('/kit_gallery', role: 'student', homeRoute: '/dashboard'), isNull);
     });
 
     test('routes open to every signed-in role are never redirected', () {
