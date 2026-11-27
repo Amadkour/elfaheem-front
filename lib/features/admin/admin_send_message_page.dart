@@ -271,7 +271,7 @@ class _AdminSendMessagePageState extends State<AdminSendMessagePage> {
             final kit = context.colors.kit;
             final opts = [
               ('all_students', 'admin_all_students'.tr, Icons.groups_rounded, kit.accent(AppAccent.sky)),
-              ('course', 'admin_a_course'.tr, Icons.menu_book_rounded, kit.warmTone),
+              ('course', 'a1_course_students'.tr, Icons.menu_book_rounded, kit.warmTone),
               ('student', 'admin_one_student'.tr, Icons.person_rounded, kit.ok),
               ('all_teachers', 'admin_all_teachers'.tr, Icons.school_rounded, kit.accent(AppAccent.grape)),
               ('teacher', 'admin_one_teacher'.tr, Icons.co_present_rounded, kit.live),

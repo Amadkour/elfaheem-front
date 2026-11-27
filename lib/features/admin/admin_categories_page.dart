@@ -203,7 +203,6 @@ class _ViewState extends State<_View> {
     final p = context.watch<AdminCategoriesProvider>();
     final items = p.items;
     _panel.siblings = [for (final cat in items) _refOf(cat)]; // previous / next and the keyboard walk these rows
-    final wide = MediaQuery.sizeOf(context).width >= 600;
 
     final table = AppDataTable<AdminCategory>(
       state: p.error != null && p.rows.isEmpty
