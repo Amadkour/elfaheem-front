@@ -79,8 +79,10 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
         onRetry: () => prov.loadSessions(null),
       );
     }
+    final ready = prov.selectedSession != null && !prov.isLoadingStudents && !prov.hasError;
     return Column(children: [
-      ParentComponent(featureKey: 'teacher_attendance.session_flag', child: _buildSessionBar(prov)),
+      // The lesson chips scroll with the register once it is shown, so a small screen keeps its room for the rows.
+      if (!ready) ParentComponent(featureKey: 'teacher_attendance.session_flag', child: _buildSessionBar(prov)),
       if (prov.selectedSession != null) ...[
         if (prov.isLoadingStudents)
           const Expanded(child: AppListSkeleton())
@@ -136,6 +138,7 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
       return CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
+          SliverToBoxAdapter(child: ParentComponent(featureKey: 'teacher_attendance.session_flag', child: _buildSessionBar(prov))),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0),
             sliver: SliverToBoxAdapter(
@@ -217,25 +220,24 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
       padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
       child: SafeArea(
         top: false,
-        child: Row(children: [
-          Expanded(
-            child: Text(
-              n == 0
-                  ? attT('t1_cl_no_changes')
-                  : countText(n,
-                      ar1: 'عدّلت طالبًا واحدًا',
-                      ar2: 'عدّلت طالبين',
-                      arFew: 'عدّلت {n} طلاب',
-                      arMany: 'عدّلت {n} طالبًا',
-                      en1: 'You edited 1 student',
-                      en: 'You edited {n} students'),
-              style: AppType.meta(context),
-            ),
-          ),
-          AppSpace.gapSm,
-          AppButton.primary(
+        child: LayoutBuilder(builder: (context, box) {
+          final narrow = box.maxWidth < 480;
+          final note = Text(
+            n == 0
+                ? attT('t1_cl_no_changes')
+                : countText(n,
+                    ar1: 'عدّلت طالبًا واحدًا',
+                    ar2: 'عدّلت طالبين',
+                    arFew: 'عدّلت {n} طلاب',
+                    arMany: 'عدّلت {n} طالبًا',
+                    en1: 'You edited 1 student',
+                    en: 'You edited {n} students'),
+            style: AppType.meta(context),
+          );
+          final save = AppButton.primary(
             icon: Icons.check_rounded,
             busy: prov.saving,
+            expand: narrow,
             label: attT('t1_cl_save'),
             onPressed: prov.saving || prov.changes.isEmpty
                 ? null
@@ -245,8 +247,10 @@ class _TeacherAttendanceViewState extends State<_TeacherAttendanceView> {
                     if (!mounted) return;
                     showAppNotice(ok ? 'attendance_saved'.tr : 'save_failed'.tr, error: !ok);
                   },
-          ),
-        ]),
+          );
+          if (narrow) return Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [note, AppSpace.gapXs, save]);
+          return Row(children: [Expanded(child: note), AppSpace.gapSm, save]);
+        }),
       ),
     );
   }

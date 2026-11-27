@@ -193,12 +193,14 @@ class AttendanceProjectorView extends StatelessWidget {
               ),
               AppSpace.gapXs,
               if (!ended && !closing)
-                Padding(
+                Flexible(
+                  child: Padding(
                   padding: const EdgeInsets.only(top: AppSpace.xxs),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     AttLiveDot(color: c.success),
                     Flexible(child: Text(attT('t1_cl_open_live'), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: Color.lerp(c.success, onHero, 0.45)))),
                   ]),
+                  ),
                 ),
               const HelpInfoButton(pageId: 'attendance.checkin'),
             ]),
@@ -362,8 +364,8 @@ class _CountTile extends StatelessWidget {
       label: '${attT('att_t_present')}: $value',
       excludeSemantics: true,
       child: Container(
-        constraints: const BoxConstraints(minHeight: AppTouch.primary, minWidth: AppTouch.primary * 3),
-        padding: const EdgeInsets.symmetric(horizontal: AppSpace.lg, vertical: AppSpace.sm),
+        constraints: const BoxConstraints(minHeight: AppTouch.primary, minWidth: AppTouch.primary * 2),
+        padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
         decoration: BoxDecoration(
             color: c.heroGlass,
             borderRadius: AppRadius.cardAll,
@@ -373,7 +375,7 @@ class _CountTile extends StatelessWidget {
           AppSpace.gapSm,
           AppOdometer('$value', memoryKey: 'att_live_present', style: AppType.figureLarge(context).copyWith(color: c.onHero)),
           AppSpace.gapXs,
-          Text(attT('att_t_present'), style: AppType.label(context).copyWith(color: c.onHeroMuted)),
+          Flexible(child: Text(attT('att_t_present'), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.label(context).copyWith(color: c.onHeroMuted))),
         ]),
       ),
     );
