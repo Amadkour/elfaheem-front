@@ -29,6 +29,13 @@ final Map<String, Widget Function()> _cases = {
       ]),
   'trailing': () => const AppHero(title: 'Home', trailing: SizedBox(width: 280, height: 120)),
   'leading': () => const AppHero(title: 'Home', subtitle: 'sub', leading: CircleAvatar(child: Text('F'))),
+  'head action': () => AppHero(
+      title: _longEn, kicker: 'Admin', headAction: IconButton(onPressed: () {}, icon: const Icon(Icons.more_vert_rounded))),
+  'stat deltas': () => AppHero(title: 'Home', statsOnPhone: true, stats: const [
+        AppHeroStat(value: '1,284', label: 'new students this week across every course', delta: '+312 since last week'),
+        AppHeroStat(value: '96%', label: 'attendance', delta: '+4.5 points compared with the previous month'),
+        AppHeroStat(value: '12', label: 'courses'),
+      ]),
   'bottom': () => const AppHero(title: 'Home', bottom: SizedBox(height: 42, child: Placeholder())),
   'long ar': () => AppHero(title: _longAr, subtitle: _longAr, kicker: _longAr, stats: _stats(4)),
   'long en': () => AppHero(title: _longEn, subtitle: _longEn, kicker: _longEn, stats: _stats(4)),

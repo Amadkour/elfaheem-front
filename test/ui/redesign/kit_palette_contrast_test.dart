@@ -72,6 +72,11 @@ void main() {
     aa('hot_fg on hot_a', b.hotFg, b.hotA);
     aa('hot_fg on hot_b', b.hotFg, b.hotB);
     aa('warm_on_dark on ink', b.warmOnDark, b.ink);
+    // the gold kicker sits on the admin hero's start corner: every stop of that hero reads it as small text
+    final admin = p.roles['admin']!;
+    for (final stop in [admin.heroA, admin.heroMid, b.deep]) {
+      aa('warm_on_dark on the admin hero ${stop.toARGB32().toRadixString(16)}', b.warmOnDark, stop);
+    }
   });
 
   test('KitColors resolves the dark tone', () {

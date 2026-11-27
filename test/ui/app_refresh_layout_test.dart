@@ -56,6 +56,24 @@ void main() {
     expect(calls, 2, reason: 'non-scrollable child accepts the pull');
   });
 
+  testWidgets('enabled: false ignores the pull and keeps the same tree (state survives the switch)', (tester) async {
+    var calls = 0;
+    Future<void> load() async => calls++;
+    final key = GlobalKey();
+    Widget host(bool on) => layoutHost(AppRefresh(
+        enabled: on, onRefresh: load, child: ListView(children: [TextField(key: key), const Text('row 0')])));
+    await tester.pumpWidget(host(false));
+    await tester.pump();
+    final state = key.currentState;
+    await _pull(tester, find.text('row 0'));
+    expect(calls, 0, reason: 'a disabled refresh does nothing');
+    await tester.pumpWidget(host(true));
+    await tester.pump();
+    expect(key.currentState, same(state), reason: 'switching it on must not rebuild the subtree');
+    await _pull(tester, find.text('row 0'));
+    expect(calls, 1);
+  });
+
   testWidgets('AppRefreshAction: hidden on phones, shown with always, runs onRefresh', (tester) async {
     var calls = 0;
     Future<void> load() async => calls++;
