@@ -7,10 +7,12 @@
 //
 //   BkTransferForm       the plain-values sheet body (bank rows, fields, the photo tile, the send button)
 //   showBkTransferSheet  opens it over the flow; true once the proof was sent
+//   showBkResendProof    the subject page's booking card: a held seat without a proof, or a rejected proof — asks
+//                        the server for the bank details (pay with `bank_transfer`), then the same sheet
 library;
 
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show Uint8List, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -18,20 +20,90 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
+import 'package:flutter_education_app/features/booking/booking_api.dart';
 import 'package:flutter_education_app/features/booking/booking_flow_controller.dart';
 import 'package:flutter_education_app/features/booking/booking_models.dart';
 import 'package:flutter_education_app/features/booking/booking_parts.dart' show bkFill;
 
+/// The proof upload behind the sheet: null when sent, else the error text.
+typedef BkSendProof = Future<String?> Function({
+  required String senderName,
+  String? senderPhone,
+  String? reference,
+  required String fileName,
+  String? filePath,
+  Uint8List? fileBytes,
+});
+
 /// Opens the proof sheet for the booking [c] just confirmed. True when the proof was sent.
 Future<bool> showBkTransferSheet(BuildContext context, BkFlowController c) async {
-  final r = await showAppSheet<bool>(context, (ctx) => _BkTransferSheet(c: c));
+  final r = await showAppSheet<bool>(
+    context,
+    (ctx) => ListenableBuilder(
+      listenable: c,
+      builder: (_, _) => _BkTransferSheet(
+        info: c.transferInfo ?? const BkTransferInfo(),
+        amount: c.price == null ? null : bkMoney(c.price!, c.currency),
+        busy: c.busy,
+        send: c.sendTransfer,
+      ),
+    ),
+  );
+  return r == true;
+}
+
+/// Sends (again) the proof of booking [b] from the subject page. True when the proof was sent; an error is shown.
+Future<bool> showBkResendProof(BuildContext context, BkBooking b, {BookingApi? api}) async {
+  final a = api ?? BookingApi();
+  BkTransferInfo? info;
+  try {
+    info = (await a.pay(b.id, provider: kBkTransfer)).transfer;
+  } catch (e) {
+    showAppNotice(bkErrorText(e), error: true);
+    return false;
+  }
+  if (!context.mounted) return false;
+  Future<String?> send({
+    required String senderName,
+    String? senderPhone,
+    String? reference,
+    required String fileName,
+    String? filePath,
+    Uint8List? fileBytes,
+  }) async {
+    try {
+      await a.sendTransfer(b.id,
+          senderName: senderName,
+          senderPhone: senderPhone,
+          reference: reference,
+          fileName: fileName,
+          filePath: filePath,
+          fileBytes: fileBytes);
+      return null;
+    } catch (e) {
+      return bkErrorText(e);
+    }
+  }
+
+  final r = await showAppSheet<bool>(
+    context,
+    (_) => _BkTransferSheet(
+      info: info ?? const BkTransferInfo(),
+      amount: b.price == null ? null : bkMoney(b.price!, b.currency),
+      send: send,
+    ),
+  );
+  if (r == true) showAppNotice('ow_transfer_sent'.tr);
   return r == true;
 }
 
 class _BkTransferSheet extends StatefulWidget {
-  const _BkTransferSheet({required this.c});
+  const _BkTransferSheet({required this.info, required this.send, this.amount, this.busy = false});
 
-  final BkFlowController c;
+  final BkTransferInfo info;
+  final String? amount;
+  final bool busy;
+  final BkSendProof send;
 
   @override
   State<_BkTransferSheet> createState() => _BkTransferSheetState();
@@ -44,6 +116,7 @@ class _BkTransferSheetState extends State<_BkTransferSheet> {
   XFile? _file;
   Uint8List? _bytes;
   String? _error;
+  bool _sending = false;
 
   @override
   void dispose() {
@@ -66,7 +139,7 @@ class _BkTransferSheetState extends State<_BkTransferSheet> {
   }
 
   Future<void> _send() async {
-    final info = widget.c.transferInfo ?? const BkTransferInfo();
+    final info = widget.info;
     final missing = _name.text.trim().isEmpty ||
         (info.needPhone && _phone.text.trim().isEmpty) ||
         (info.needReference && _ref.text.trim().isEmpty);
@@ -78,7 +151,8 @@ class _BkTransferSheetState extends State<_BkTransferSheet> {
       setState(() => _error = 'ow_transfer_photo_needed'.tr);
       return;
     }
-    final err = await widget.c.sendTransfer(
+    setState(() => _sending = true);
+    final err = await widget.send(
       senderName: _name.text.trim(),
       senderPhone: _phone.text,
       reference: _ref.text,
@@ -87,6 +161,7 @@ class _BkTransferSheetState extends State<_BkTransferSheet> {
       fileBytes: _bytes,
     );
     if (!mounted) return;
+    setState(() => _sending = false);
     if (err != null) {
       setState(() => _error = err);
       return;
@@ -95,20 +170,17 @@ class _BkTransferSheetState extends State<_BkTransferSheet> {
   }
 
   @override
-  Widget build(BuildContext context) => ListenableBuilder(
-        listenable: widget.c,
-        builder: (context, _) => BkTransferForm(
-          info: widget.c.transferInfo ?? const BkTransferInfo(),
-          amount: widget.c.price == null ? null : bkMoney(widget.c.price!, widget.c.currency),
-          name: _name,
-          phone: _phone,
-          reference: _ref,
-          photoName: _file?.name,
-          error: _error,
-          busy: widget.c.busy,
-          onPick: _pick,
-          onSend: _send,
-        ),
+  Widget build(BuildContext context) => BkTransferForm(
+        info: widget.info,
+        amount: widget.amount,
+        name: _name,
+        phone: _phone,
+        reference: _ref,
+        photoName: _file?.name,
+        error: _error,
+        busy: widget.busy || _sending,
+        onPick: _pick,
+        onSend: _send,
       );
 }
 

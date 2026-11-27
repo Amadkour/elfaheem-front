@@ -69,6 +69,7 @@ import 'package:flutter_education_app/core/course_access.dart' show EnrollBarMod
 import 'package:flutter_education_app/features/booking/booking_api.dart';
 import 'package:flutter_education_app/features/booking/booking_flow_controller.dart' show BkFlowController;
 import 'package:flutter_education_app/features/booking/booking_flow_page.dart' show openBookFlow;
+import 'package:flutter_education_app/features/booking/booking_transfer_sheet.dart' show showBkResendProof;
 import 'package:flutter_education_app/features/booking/booking_mine_card.dart';
 import 'package:flutter_education_app/features/booking/booking_models.dart';
 import 'package:flutter_education_app/features/booking/booking_parts.dart' show bkFill;
@@ -813,11 +814,20 @@ class _CoursePageState extends State<_CoursePage> {
     }
   }
 
+  /// A bank-transfer proof sent (again) from the booking card (owner 2026-11-27).
+  Future<void> _sendProof(BkBooking b) async {
+    if (offlineBlocked()) return;
+    final sent = await showBkResendProof(context, b);
+    if (!mounted || !sent) return;
+    final t = bkTargetOf(context.read<CourseDetailProvider>().course);
+    if (t != null) _loadMine(t.$1);
+  }
+
   /// "حجزك" on the subject page: shown while the booking still asks for something.
   Widget? _bookingCard(CourseModel c) {
     final b = bkShownBooking(_bkMine);
     if (b == null || b.active) return null;
-    return BkMineCard(booking: b, busy: _bkPaying, onPay: () => _payBooking(b));
+    return BkMineCard(booking: b, busy: _bkPaying, onPay: () => _payBooking(b), onSendProof: () => _sendProof(b));
   }
 
   /// The next class of an active booking when the course has none scheduled yet (BookM6).
@@ -943,7 +953,8 @@ class _CoursePageState extends State<_CoursePage> {
         if (!subjectBotOff()) 'bk_inc_bot'.tr,
       ],
       extras: [
-        if (mine != null) BkMineCard(booking: mine, busy: _bkPaying, onPay: () => _payBooking(mine)),
+        if (mine != null)
+          BkMineCard(booking: mine, busy: _bkPaying, onPay: () => _payBooking(mine), onSendProof: () => _sendProof(mine)),
         for (final w in spotlight)
           if (w is! CourseNextCard) w,
       ],

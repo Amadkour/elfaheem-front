@@ -6,6 +6,8 @@
 //   Centres    GET|POST /api/v1/admin/booking/centres · PUT|DELETE /{id} (DELETE deactivates)
 //   Groups     GET|POST /api/v1/admin/booking/groups · pause / resume / close through POST /packages/{id}/status
 //   Requests   GET /api/v1/admin/booking/requests?status · POST /{id}/schedule · POST /{id}/decline
+//   Transfers  GET /api/v1/admin/booking/transfers?status · POST /{payment_id}/approve · POST /{payment_id}/reject
+//              {reason} — the bank-transfer proofs of booking seats (owner 2026-11-27), with the receipt preview
 // Every PUT sends every field. Staff routes: counts and rosters are shown here (privacy applies to students only).
 // No kill switch of its own (the `booking` key turns the student flow off, not this page): the page sits behind
 // the admin permission (the server's `admin_only`).
@@ -89,6 +91,8 @@ class _AdminBookingPageState extends State<AdminBookingPage> {
   List<Map<String, dynamic>> _requests = [];
   String _groupStatus = '';
   String _requestStatus = '';
+  List<Map<String, dynamic>> _transfers = [];
+  String _transferStatus = 'pending';
 
   @override
   void initState() {
@@ -179,6 +183,7 @@ class _AdminBookingPageState extends State<AdminBookingPage> {
         _api.get('/api/v1/admin/booking/centres'),
         _fetchGroups(),
         _fetchRequests(),
+        _fetchTransfers(),
       ]);
       if (!mounted) return;
       setState(() {
@@ -186,6 +191,7 @@ class _AdminBookingPageState extends State<AdminBookingPage> {
         _centres = cList(cMap(r[1])['items']);
         _groups = cList(cMap(r[2])['items']);
         _requests = cList(cMap(r[3])['items']);
+        _transfers = cList(cMap(r[4])['items']);
         _loaded = true;
         _error = null;
       });
@@ -222,6 +228,106 @@ class _AdminBookingPageState extends State<AdminBookingPage> {
         final r = cMap(await _fetchGroups());
         if (mounted) setState(() => _groups = cList(r['items']));
       });
+
+  Future<dynamic> _fetchTransfers() =>
+      _api.get('/api/v1/admin/booking/transfers', queryParams: {'status': _transferStatus});
+
+  Future<void> _reloadTransfers() => _reload(() async {
+        final r = cMap(await _fetchTransfers());
+        if (mounted) setState(() => _transfers = cList(r['items']));
+      });
+
+  Future<void> _approveTransfer(Map<String, dynamic> t) async {
+    final ok = await appConfirm(context, message: 'ow_adm_approve_q'.tr, confirmLabel: 'ow_adm_approve'.tr);
+    if (!ok || !mounted) return;
+    try {
+      await _api.post('/api/v1/admin/booking/transfers/${cInt(t['payment_id'])}/approve');
+      showAppNotice('ow_adm_approved'.tr);
+    } catch (e) {
+      showAppNotice(cfgErrorMessage(e), error: true);
+    }
+    await _reloadTransfers();
+  }
+
+  Future<void> _rejectTransfer(Map<String, dynamic> t) async {
+    final ok = await showAppSheet<bool>(context,
+        (_) => _DeclineSheet(url: '/api/v1/admin/booking/transfers/${cInt(t['payment_id'])}/reject', doneKey: 'ow_adm_rejected'));
+    if (ok == true) await _reloadTransfers();
+  }
+
+  void _previewProof(String url) => showDialog<void>(
+        context: context,
+        builder: (ctx) => Dialog(
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+            Flexible(
+              child: InteractiveViewer(
+                child: Image.network(url, fit: BoxFit.contain,
+                    errorBuilder: (_, _, _) => Padding(padding: AppSpace.card, child: Text('ow_adm_proof_failed'.tr))),
+              ),
+            ),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text('close'.tr)),
+          ]),
+        ),
+      );
+
+  Widget _transfersTab(BuildContext context) => ListView(padding: SupPage.bodyPadding(context), children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpace.md),
+          child: AppDropdown<String>(
+            decoration: InputDecoration(labelText: 'a2_bk_status'.tr),
+            value: _transferStatus,
+            items: [
+              for (final s in const ['pending', 'approved', 'rejected', 'all'])
+                DropdownMenuItem(value: s, child: Text('ow_adm_tr_$s'.tr)),
+            ],
+            onChanged: (v) {
+              setState(() => _transferStatus = v ?? 'pending');
+              _reloadTransfers();
+            },
+          ),
+        ),
+        if (_transfers.isEmpty) AppEmpty(icon: Icons.account_balance_outlined, title: 'ow_adm_transfers_empty'.tr),
+        for (final t in _transfers) ...[_transferCard(context, t), const SizedBox(height: AppSpace.sm)],
+      ]);
+
+  Widget _transferCard(BuildContext context, Map<String, dynamic> t) {
+    final status = cStr(t['status']);
+    final payer = cMap(t['payer']), student = cMap(t['student']);
+    final proof = cStr(t['proof_url']);
+    final amount = cNum(t['amount']);
+    final lines = [
+      if (cInt(payer['user_id']) != cInt(student['user_id'])) trp('ow_adm_paid_by', {'name': cStr(payer['name'], '—')}),
+      trp('ow_adm_sender', {'name': cStr(t['sender_name'], '—')}),
+      [cStr(t['sender_phone']), cStr(t['transfer_reference'])].where((s) => s.isNotEmpty).join(' · '),
+      if (t['booking_id'] != null) trp('ow_adm_booking', {'id': '${t['booking_id']}'}),
+      if (t['submitted_at'] != null) trp('a2_bk_sent', {'at': _when(t['submitted_at'])}),
+      if (cStr(t['rejection_reason']).isNotEmpty) trp('ow_adm_reason', {'reason': cStr(t['rejection_reason'])}),
+    ];
+    final tone = switch (status) { 'approved' => AppTone.success, 'rejected' => AppTone.danger, _ => AppTone.warning };
+    return AppCard(
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(
+            child: Text(cStr(student['name'], '—'), style: AppType.section(context), maxLines: 1, overflow: TextOverflow.ellipsis),
+          ),
+          const SizedBox(width: AppSpace.xs),
+          AppStatusBadge(label: 'ow_adm_tr_$status'.tr, tone: tone, dense: true),
+        ]),
+        if (amount != null) Text('${amount % 1 == 0 ? amount.toInt() : amount} ${cStr(t['currency'])}', style: AppType.tileTitle(context)),
+        for (final l in lines)
+          if (l.isNotEmpty) Text(l, style: AppType.meta(context)),
+        const SizedBox(height: AppSpace.xs),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+          if (proof.isNotEmpty)
+            AppButton.ghost(label: 'ow_adm_proof'.tr, icon: Icons.image_outlined, onPressed: () => _previewProof(proof)),
+          if (status == 'pending') ...[
+            AppButton.secondary(label: 'ow_adm_approve'.tr, icon: Icons.check_rounded, onPressed: () => _approveTransfer(t)),
+            AppButton.ghost(label: 'ow_adm_reject'.tr, icon: Icons.close_rounded, onPressed: () => _rejectTransfer(t)),
+          ],
+        ]),
+      ]),
+    );
+  }
 
   Future<void> _reloadRequests() => _reload(() async {
         final r = cMap(await _fetchRequests());
@@ -271,7 +377,8 @@ class _AdminBookingPageState extends State<AdminBookingPage> {
   }
 
   Future<void> _decline(Map<String, dynamic> r) async {
-    final ok = await showAppSheet<bool>(context, (_) => _DeclineSheet(requestId: cInt(r['id']) ?? 0));
+    final ok = await showAppSheet<bool>(context,
+        (_) => _DeclineSheet(url: '/api/v1/admin/booking/requests/${cInt(r['id']) ?? 0}/decline'));
     if (ok == true) await _reloadRequests();
   }
 
@@ -507,6 +614,7 @@ class _AdminBookingPageState extends State<AdminBookingPage> {
   @override
   Widget build(BuildContext context) {
     final waiting = _requests.where((r) => r['status'] == 'proposed' || r['status'] == 'notify').length;
+    final proofs = _transfers.where((t) => t['status'] == 'pending').length;
     final actions = <Widget>[
       if (_loaded && _tab == 0) cfgSaveButton(dirty: _settingsDirty, busy: _saving, onSave: _saveSettings),
       if (_loaded && _tab == 1) SupHeroButton(label: 'a2_bk_centre_new'.tr, icon: Icons.add_rounded, onTap: _editCentre),
@@ -526,6 +634,7 @@ class _AdminBookingPageState extends State<AdminBookingPage> {
               AppHeroStat(value: '${_centres.where((c) => c['active'] == true).length}', label: 'a2_bk_stat_centres'.tr),
               AppHeroStat(value: '${_groups.length}', label: 'a2_bk_stat_groups'.tr),
               AppHeroStat(value: '$waiting', label: 'a2_bk_stat_requests'.tr),
+              AppHeroStat(value: '$proofs', label: 'ow_adm_stat_transfers'.tr),
             ]
           : const [],
       tabs: [
@@ -533,6 +642,7 @@ class _AdminBookingPageState extends State<AdminBookingPage> {
         supTab('a2_bk_tab_centres'.tr),
         supTab('a2_bk_tab_groups'.tr),
         supTab('a2_bk_tab_requests'.tr, count: waiting),
+        supTab('ow_adm_tab_transfers'.tr, count: proofs),
       ],
       tab: _tab,
       onTab: (i) => setState(() => _tab = i),
@@ -546,6 +656,7 @@ class _AdminBookingPageState extends State<AdminBookingPage> {
                   _centresTab(context),
                   _groupsTab(context),
                   _requestsTab(context),
+                  _transfersTab(context),
                 ]),
     );
   }
@@ -1101,10 +1212,11 @@ class _ScheduleSheetState extends State<_ScheduleSheet> {
   }
 }
 
+/// A reason, then POST [url] `{reason}`: declines a time request, or rejects a transfer proof.
 class _DeclineSheet extends StatefulWidget {
-  const _DeclineSheet({required this.requestId});
+  const _DeclineSheet({required this.url, this.doneKey = 'a2_bk_declined'});
 
-  final int requestId;
+  final String url, doneKey;
 
   @override
   State<_DeclineSheet> createState() => _DeclineSheetState();
@@ -1128,9 +1240,9 @@ class _DeclineSheetState extends State<_DeclineSheet> {
     }
     setState(() => _busy = true);
     try {
-      await ApiClient().post('/api/v1/admin/booking/requests/${widget.requestId}/decline', body: {'reason': reason});
+      await ApiClient().post(widget.url, body: {'reason': reason});
       if (!mounted) return;
-      showAppNotice('a2_bk_declined'.tr);
+      showAppNotice(widget.doneKey.tr);
       Navigator.pop(context, true);
     } catch (e) {
       showAppNotice(cfgErrorMessage(e), error: true);
