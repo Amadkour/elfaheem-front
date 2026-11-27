@@ -15,7 +15,8 @@ import 'package:flutter_education_app/design/app_kit.dart';
 
 String _t(String ar, String en) => AppConfig.lang == 'ar' ? ar : en;
 
-/// One selectable pill: a 48 px touch target, the primary wash when selected (the course filter bar uses it too).
+/// One selectable pill: the kit's choice chip ([AppChip], KIT_SPEC §5.5: 34 high in a 48 hit area, the ink fill
+/// when selected), so the education pickers, the course filter bar and the study step all draw the same chip.
 class EduChoiceChip extends StatelessWidget {
   const EduChoiceChip({super.key, required this.label, required this.selected, required this.onTap});
   final String label;
@@ -23,39 +24,7 @@ class EduChoiceChip extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: label,
-      child: ExcludeSemantics(
-        child: Material(
-          color: selected ? c.primaryTint : c.cardBg,
-          shape: RoundedRectangleBorder(
-            borderRadius: AppRadius.chipAll,
-            side: BorderSide(color: selected ? c.primary : c.controlEdge, width: selected ? AppBorder.strong : AppBorder.hairline),
-          ),
-          child: InkWell(
-            borderRadius: AppRadius.chipAll,
-            onTap: onTap,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(minHeight: AppTouch.min),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xs),
-                child: Center(
-                  widthFactor: 1,
-                  child: Text(label,
-                      style: AppType.row(context).copyWith(
-                          color: selected ? c.primary : c.textDark, fontWeight: selected ? FontWeight.w700 : FontWeight.w500)),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => AppChoiceChip(label: label, selected: selected, onTap: onTap);
 }
 
 class _EduGroup extends StatelessWidget {
