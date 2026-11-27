@@ -26,3 +26,9 @@ Statuses: todo / doing / done / verified. On a resume, continue from the first l
 | 7 | Landing (persona pages; rd/landing merged) | done (visual verify in phase 9) |
 | 8 | International pass | done (rd/intl + back rd/be-fix merged) |
 | 9 | Final check and REPORT.md | doing: audit fixes merged, REPORT.md written; CI test fixes on rd/fx-tests (_wt/rd-int); then Alfaheem sync |
+
+## Resume point (2026-11-28)
+
+- NextBrain: everything merged on `feature/redesign` = `test` (front 19c852cd, back 714259e5); test env https://nextbrain.site/app-test/ updated to that.
+- Running: Alfaheem re-sync to those heads + one-time switch of its live theme to the blue kit at its next deploy (seed step, marker `alfaheem.kit_theme_applied`).
+- Nothing on production/main, nothing deployed to production. Owner questions left: REPORT.md section 4 "Still open".

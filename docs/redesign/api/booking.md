@@ -313,3 +313,27 @@ join flow's delivery step and `StudyProfileForm` (`interestChoices`, from `GET /
 "district": {…} | null}], "in_person": true}`; `in_person: false` and no items while `booking.in_person` is off.
 `POST /booking/teacher/slots` with `"mode": "in_person"` needs `centre_id` (422 `bad_value {field: centre_id}`, 404
 `centre_not_found` for an unknown or inactive one, 409 `mode_unavailable` while `booking.in_person` is off).
+
+## Monthly renewal, scheduled sweeps, proposal alerts (2026-11-27, back branch `rd/ow-owed`, migration `0190`)
+
+Test `tests/redesign/e2e_owed_jobs.py` (back, fake clock). Back changelog: `FLUTTER_API_CHANGES.md` (2026-11-27).
+
+- **Every paid weekly booking renews monthly** (group or individual; a free one, a one-off slot or an ended group
+  does not). The server job (every 5 min, idempotent) sets `period_ends_at` = paid time + 1 month; at that instant the
+  next month is **due**: the student and every linked parent get a notification (`type: booking`) once.
+- **BookingView gains** `"period_ends_at"` (instant | null) and `"renewal"`: null, or
+  `{"status": "due" | "lapsed", "amount", "currency", "period_ends_at", "lapses_at", "checkout": {...} | null}`.
+  While due the booking stays `active` (classes go on); show "جدّد اشتراكك" with the amount and `lapses_at`.
+- **Paying the renewal** is the existing `POST /booking/{id}/pay {provider?}`: a card checkout for the next month
+  (the same open one is returned on a second tap), or `"provider": "bank_transfer"` → `{booking, checkout: null,
+  transfer: {...}}` and the proof goes to the existing `POST /booking/{id}/transfer`. Paid → `renewal` null and
+  `period_ends_at` moves on one month.
+- **Lapse:** still unpaid `renewal_grace_days` after `period_ends_at` (booking setting, default **3**, 0 – 30,
+  `PUT /admin/booking/settings`) → BookingView `status: "lapsed"` (a new ended status, like `expired`), the seat is
+  freed (a group's waitlist is offered it), student + parents notified once. A renewal payment that lands after
+  the lapse is recorded as a refund due (`refund_reason: "lapsed"`). To continue the student books again.
+- **Holds are swept by the job too** (30 min card seats, 48 h transfer seats, unpaid scheduled proposals), not
+  only when a booking route is read.
+- **Proposals alert the admins:** `confirm` with a `proposal` notifies every platform admin (a proposal has no
+  teacher yet) and sends LiveEvents **`booking_requests`** `{booking_id, status: proposed | scheduled | declined}` to
+  the admins (also on schedule / decline): the admin requests queue reloads on it.
