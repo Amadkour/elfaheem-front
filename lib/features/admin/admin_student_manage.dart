@@ -271,25 +271,24 @@ class _AdminStudentManage extends StudentManage {
   Widget _devices(BuildContext context, UserDetail d, AdminUser u) {
     if (d.devices.isEmpty) return Text('admin_no_registered_devices'.tr, style: AppType.body(context));
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      for (final dev in d.devices)
-        Row(children: [
-          entityToneIcon(context, Icons.phone_android_rounded, AppTone.brand),
-          AppSpace.gapSm,
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-              Text(dev.deviceName, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.row(context)),
-              Text('${'admin_since'.tr} ${shortDate(dev.boundAt)}', style: AppType.meta(context)),
-            ]),
-          ),
-          AppIconButton(
-            key: ValueKey('md.student.device.${dev.id}'),
+      for (var i = 0; i < d.devices.length; i++) ...[
+        if (i > 0) const SizedBox(height: AppSpace.xs),
+        // redesign A1 (AdmStudents account tab): each device a kit tile with its own sign-out
+        AppTile(
+          dense: true,
+          icon: Icons.phone_android_rounded,
+          title: d.devices[i].deviceName,
+          subtitle: '${'admin_since'.tr} ${shortDate(d.devices[i].boundAt)}',
+          trailing: AppIconButton(
+            key: ValueKey('md.student.device.${d.devices[i].id}'),
             icon: Icons.delete_outline_rounded,
             tooltip: 'delete'.tr,
             onPressed: () async {
-              if (await _p.removeDevice(u.id, dev.id)) await _changed();
+              if (await _p.removeDevice(u.id, d.devices[i].id)) await _changed();
             },
           ),
-        ]),
+        ),
+      ],
       if (d.lastDeviceSwitchAt != null) ...[
         const SizedBox(height: AppSpace.xs),
         Text('${'admin_last_switch'.tr}: ${shortDate(d.lastDeviceSwitchAt)}', style: AppType.meta(context)),

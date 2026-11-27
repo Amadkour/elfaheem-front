@@ -28,8 +28,8 @@ import 'package:flutter_education_app/features/teachers/teacher_onboarding.dart'
 import 'package:flutter_education_app/features/teachers/teachers_api.dart';
 import 'package:flutter_education_app/features/teachers/teachers_models.dart';
 import 'package:flutter_education_app/features/teachers/teachers_parts.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:flutter_education_app/features/admin/adm_kit.dart' show admRole;
+import 'package:flutter_education_app/features/admin/sup/sup_kit.dart';
 
 const List<String> kTeacherReviewStatuses = ['pending', 'approved', 'rejected', 'draft'];
 
@@ -225,15 +225,33 @@ class _TeacherReviewPageState extends State<TeacherReviewPage> {
           ),
       ]);
     }
-    return BasePage(
+    // redesign A1 (AdmTeachers review): the role's hero with how many profiles wait, the status tabs on it
+    final pending = _tab == 0 && !_loading && _error == null ? _total : null;
+    return SupPage(
+      role: admRole(context),
+      title: t('مراجعة المعلمين', 'Teacher review'),
+      kicker: t('مراجعة المعلمين', 'Teacher review'),
+      headline: pending == null
+          ? t('ملفات المعلمين قبل ما تظهر للطلاب', 'Teacher profiles before students see them')
+          : plural.countText(pending,
+              ar0: 'ما فيه ملفات تنتظر المراجعة',
+              ar1: 'ملف واحد ينتظر المراجعة',
+              ar2: 'ملفين تنتظر المراجعة',
+              arFew: '{n} ملفات تنتظر المراجعة',
+              arMany: '{n} ملف ينتظر المراجعة',
+              en0: 'No profile waits for review',
+              en1: 'One profile waits for review',
+              en: '{n} profiles wait for review'),
+      line: t('اقرأ الملف، افتح المستندات، واعتمد أو ارفض مع سبب واضح يوصل للمعلم.',
+          'Read the profile, open the documents, and approve or reject with a clear reason the teacher receives.'),
       width: AppWidth.content,
-      appBar: ScreenAppBar(title: t('مراجعة المعلمين', 'Teacher review')),
-      child: SafeArea(
-        child: AppRefresh(
-          onRefresh: _load,
-          child: ListView(padding: const EdgeInsets.all(AppSpace.md), children: [filters, list, const SizedBox(height: AppSpace.lg)]),
-        ),
-      ),
+      onRefresh: _load,
+      helpPageId: 'admin.teacher_documents',
+      stats: [
+        if (pending != null) AppHeroStat(value: '$pending', label: t('بانتظار المراجعة', 'Waiting for review')),
+        if (_refunds != null) AppHeroStat(value: '${_refunds!.length}', label: t('مبالغ للردّ', 'Refunds due')),
+      ],
+      body: ListView(padding: SupPage.bodyPadding(context), children: [filters, list]),
     );
   }
 }
@@ -436,10 +454,14 @@ class _ReviewDetailPageState extends State<_ReviewDetailPage> {
   }
 
   @override
-  Widget build(BuildContext context) => BasePage(
+  Widget build(BuildContext context) => SupPage(
+        role: admRole(context),
         width: AppWidth.reading,
-        appBar: ScreenAppBar(title: _p.name.isEmpty ? t('ملف معلم', 'Teacher profile') : _p.name),
-        child: SafeArea(
+        title: _p.name.isEmpty ? t('ملف معلم', 'Teacher profile') : _p.name,
+        kicker: t('مراجعة المعلمين', 'Teacher review'),
+        headline: _p.name.isEmpty ? t('ملف معلم', 'Teacher profile') : _p.name,
+        line: teacherStatusLabel(_p.status),
+        body: SafeArea(
           child: TeacherReviewDetail(
             profile: _p,
             busy: _busy,

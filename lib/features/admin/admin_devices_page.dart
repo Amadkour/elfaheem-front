@@ -13,6 +13,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'admin_common.dart' show t;
 import 'admin_page.dart';
+import 'adm_kit.dart' show AdmPage;
 import 'admin_providers.dart';
 
 class AdminDevicesPage extends StatelessWidget {
@@ -161,7 +162,8 @@ class _ViewState extends State<_View> {
       );
     }
 
-    return AdminPage(
+    return AdmPage(
+      kicker: 'admin_group_support'.tr,
       width: AppWidth.reading,
       title: 'admin_devices'.tr,
       subtitle: 'svc_devices_d'.tr,

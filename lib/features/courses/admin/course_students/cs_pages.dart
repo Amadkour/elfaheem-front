@@ -10,8 +10,9 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:flutter_education_app/config/app_config.dart' show Trans;
+import 'package:flutter_education_app/features/admin/adm_kit.dart' show admRole;
+import 'package:flutter_education_app/features/admin/sup/sup_kit.dart';
 
 import 'package:flutter_education_app/features/admin/admin_common.dart' show Debouncer, t;
 import 'package:flutter_education_app/features/admin/admin_money_p8.dart' show p8SaveBytes;
@@ -158,10 +159,15 @@ class _CourseStudentsPageState extends State<CourseStudentsPage> {
   Widget build(BuildContext context) {
     final c = context.colors;
     final ex = _q.extra;
-    return BasePage(
+    // redesign A1 (AdmStudents enrol): the role's hero; the page's own pull-to-refresh stays on the list
+    return SupPage(
+      role: admRole(context),
       width: AppWidth.wide,
-      appBar: ScreenAppBar(title: t('الدورات والطلاب', 'Courses & students')),
-      child: AppRefresh(
+      title: t('الدورات والطلاب', 'Courses & students'),
+      kicker: 'admin_students'.tr,
+      headline: t('اشتراك كل طالب في كل دورة', 'Every student’s place in every course'),
+      line: t('سبب الوصول بالضبط، والتمديد أو المنح أو الإلغاء مع السجل.', 'Exactly why they have access; extend, grant or cancel, with the log.'),
+      body: AppRefresh(
         onRefresh: _load,
         child: ListView(
           padding: EdgeInsets.all(AppSpace.gutter(MediaQuery.sizeOf(context).width)),
@@ -335,10 +341,14 @@ class _CourseRosterPageState extends State<CourseRosterPage> {
   Widget build(BuildContext context) {
     final title = _data.courseName.isNotEmpty ? _data.courseName : widget.courseName;
     final selected = _q.status == null ? null : csFilterStatuses.where((s) => csStatusWire(s) == _q.status).firstOrNull;
-    return BasePage(
+    return SupPage(
+      role: admRole(context),
       width: AppWidth.wide,
-      appBar: ScreenAppBar(title: title),
-      child: AppRefresh(
+      title: title,
+      kicker: t('الدورات والطلاب', 'Courses & students'),
+      headline: title,
+      line: _data.teacherName.isEmpty ? null : _data.teacherName,
+      body: AppRefresh(
         onRefresh: _load,
         child: ListView(
           padding: EdgeInsets.all(AppSpace.gutter(MediaQuery.sizeOf(context).width)),

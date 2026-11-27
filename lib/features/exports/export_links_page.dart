@@ -25,8 +25,8 @@ import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/design/export/export_studio_api.dart';
 import 'package:flutter_education_app/design/export/export_studio_model.dart';
 import 'package:flutter_education_app/design/export/table_export_model.dart' show tx;
-import 'package:flutter_education_app/utils/widget/app_bar.dart';
-import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:flutter_education_app/features/admin/adm_kit.dart' show admRoleAny;
+import 'package:flutter_education_app/features/admin/sup/sup_kit.dart';
 import 'package:provider/provider.dart';
 
 import 'package:flutter_education_app/features/org/org_providers.dart' show OrgSession;
@@ -191,9 +191,14 @@ class _ExportLinksPageState extends State<ExportLinksPage> {
     final items = _items;
     final now = DateTime.now().toUtc();
     final untokened = items != null && items.any((l) => l.activeAt(now) && _urlOf(l) == null);
-    return BasePage(
-      key: const ValueKey(kExportLinksKey),
-      appBar: ScreenAppBar(title: exportLinksTitle(), actions: [AppRefreshAction(onRefresh: _load)]),
+    // redesign A1 (AdmData exports): the signed-in role's hero; the kill switch stays on the page key
+    return SupPage(
+      pageKey: const ValueKey(kExportLinksKey),
+      role: admRoleAny(context),
+      title: exportLinksTitle(),
+      kicker: exportsCenterTitle(),
+      headline: tx('a1_exs_links_head', 'Links to your files that expire on their own', 'روابط لملفاتك تنتهي صلاحيتها تلقائيًا'),
+      width: AppWidth.full,
       floatingActionButton: _missing || items == null
           ? null
           : FloatingActionButton.extended(
@@ -201,7 +206,7 @@ class _ExportLinksPageState extends State<ExportLinksPage> {
               icon: const Icon(Icons.add_link_rounded),
               label: Text(tx('exs_link_new', 'New link', 'رابط جديد')),
             ),
-      child: LayoutBuilder(
+      body: LayoutBuilder(
         builder: (context, box) => AppRefresh(
           onRefresh: _load,
           child: ListView(

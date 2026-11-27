@@ -36,6 +36,12 @@ import 'admin_payouts_page.dart';
 import 'admin_providers.dart';
 import 'admin_subscriptions_page.dart';
 import 'admin_users_page.dart';
+import 'admin_analytics_page.dart';
+import 'admin_common.dart' show isSuperNow;
+import 'admin_courses_page.dart';
+import 'admin_datacenter_page.dart';
+import 'admin_send_message_page.dart';
+import 'admin_view_as_page.dart';
 import 'package:flutter_education_app/features/payments/enrollment_request/teacher_transfers_screen.dart';
 
 class AdminOverviewPage extends StatelessWidget {
@@ -163,6 +169,10 @@ class _ViewState extends State<_View> with WidgetsBindingObserver {
     ]);
   }
 
+  /// The payload on screen and when it arrived.
+  Object? _shown;
+  DateTime? _shownAt;
+
   Future<void> _open(Widget page) async {
     await Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
     _reloadQuietly();
@@ -252,6 +262,12 @@ class _ViewState extends State<_View> with WidgetsBindingObserver {
     // Live count owned by the dashboard shell (same number as the Finance / More badge).
     final pendingPayouts = context.watch<AdminPendingPayoutsProvider>().count;
     final name = context.watch<MyAuthProvider>().currentUser?.name ?? '';
+    // when this payload arrived: the hero's "Updated …" line
+    if (!identical(home, _shown)) {
+      _shown = home;
+      _shownAt = DateTime.now();
+    }
+    final sup = isSuperNow(context);
 
     return AppRefresh(
       onRefresh: _refresh,
@@ -261,6 +277,7 @@ class _ViewState extends State<_View> with WidgetsBindingObserver {
         pendingPayouts: pendingPayouts,
         notice: p.error == null ? null : 'admin_home_stale'.tr,
         assistant: _assistant,
+        updatedAt: _shownAt,
         actions: AdminHomeActions(
           openStudents: () => widget.onOpenTab(1),
           openCourses: () => widget.onOpenTab(2),
@@ -275,6 +292,12 @@ class _ViewState extends State<_View> with WidgetsBindingObserver {
           openIncome: () => showIncomeBreakdown(context),
           openJobs: () => _showJobsSheet(home.jobsFailedByKind, home.jobsFailed24h),
           openAlert: _openAlert,
+          openViewAs: sup ? () => _open(const AdminViewAsPage()) : null,
+          openAnalytics: () => _open(AdminAnalyticsPage(data: home, pendingPayouts: pendingPayouts)),
+          addStudent: () => _open(const AdminUsersPage(role: 'student', autoAdd: true)),
+          sendMessage: () => _open(const AdminSendMessagePage()),
+          exportData: () => _open(const DataCenterPage()),
+          addCourse: () => _open(const AdminCoursesPage(autoAdd: true)),
         ),
       ),
     );

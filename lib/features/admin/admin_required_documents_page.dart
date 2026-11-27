@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 
 import 'admin_common.dart';
 import 'admin_page.dart';
+import 'adm_kit.dart' show AdmPage;
 import 'package:flutter_education_app/design/app_kit.dart';
 
 /// icon_name (stored in the DB) → icon. Use the same map in
@@ -203,7 +204,8 @@ class _AdminRequiredDocumentsPageState extends State<AdminRequiredDocumentsPage>
   Widget build(BuildContext context) {
     context.watch<LangProvider>(); // whole page re-translates when the language changes
     final c = context.colors;
-    return AdminPage(
+    return AdmPage(
+      kicker: 'a1_teachers'.tr,
       helpPageId: 'admin.teacher_documents',
       title: 'required_documents_title'.tr,
       icon: Icons.folder_shared_rounded,
