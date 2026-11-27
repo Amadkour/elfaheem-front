@@ -118,8 +118,8 @@ const KitPalette kKitPaletteDefaults = KitPalette(
     'home': KitAccentSet(
       a: Color(0xFF186848),
       b: Color(0xFF2FA26C),
-      heroA: Color(0xFF2FA26C),
-      heroMid: Color(0xFF1B6142),
+      heroA: Color(0xFF186848),
+      heroMid: Color(0xFF155C40),
       tint: Color(0xFFDFEAE5),
       ink: Color(0xFF186848),
       tintDark: Color(0xFF1D2D28),
@@ -248,8 +248,8 @@ const KitPalette kKitPaletteDefaults = KitPalette(
     'me': KitAccentSet(
       a: Color(0xFF186848),
       b: Color(0xFF7A4DF0),
-      heroA: Color(0xFF2FA26C),
-      heroMid: Color(0xFF1B6142),
+      heroA: Color(0xFF186848),
+      heroMid: Color(0xFF155C40),
       tint: Color(0xFFDFEAE5),
       ink: Color(0xFF186848),
       tintDark: Color(0xFF1D2D28),

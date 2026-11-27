@@ -111,8 +111,8 @@
     "home": {
       "a": "#186848",
       "b": "#2FA26C",
-      "hero_a": "#2FA26C",
-      "hero_mid": "#1B6142",
+      "hero_a": "#186848",
+      "hero_mid": "#155C40",
       "tint": "#DFEAE5",
       "ink": "#186848",
       "tint_dark": "#1D2D28",
@@ -241,8 +241,8 @@
     "me": {
       "a": "#186848",
       "b": "#7A4DF0",
-      "hero_a": "#2FA26C",
-      "hero_mid": "#1B6142",
+      "hero_a": "#186848",
+      "hero_mid": "#155C40",
       "tint": "#DFEAE5",
       "ink": "#186848",
       "tint_dark": "#1D2D28",

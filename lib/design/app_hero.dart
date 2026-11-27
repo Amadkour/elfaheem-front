@@ -20,6 +20,7 @@ import 'package:flutter_education_app/config/theme/kit_palette.dart' show KitSet
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 
 import 'app_area.dart';
+import 'app_contrast.dart' show passesContrast;
 import 'app_motion_kit.dart';
 import 'app_responsive.dart' show Breakpoints;
 import 'app_tokens.dart';
@@ -205,6 +206,13 @@ class AppHero extends StatelessWidget {
   /// The leading box: 56 on phones, 72 from 700 px.
   static double leadingSize(bool wide) => wide ? AppDashSize.avatar : AppDashSize.avatarSm;
 
+  /// The kicker's ink on [set]: the gold line only where it reads at 4.5:1 on every stop of the hero (the green
+  /// heroes, teacher); on a light stop (sun, lime, sky, the gold heroes, …) it is the on-hero ink instead.
+  static Color kickerInk(BuildContext context, KitSet set) {
+    final c = context.colors;
+    return passesContrast(c.kit.warmOnDark, set.heroStops) ? c.kit.warmOnDark : c.onHero;
+  }
+
   Widget _title(BuildContext context, TextStyle style) {
     final word = squiggle?.trim();
     final at = word == null || word.isEmpty ? -1 : title.indexOf(word);
@@ -249,7 +257,7 @@ class AppHero extends StatelessWidget {
         Text(kicker!,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppType.kicker(context).copyWith(color: c.kit.warmOnDark)),
+            style: AppType.kicker(context).copyWith(color: kickerInk(context, s))),
         const SizedBox(height: AppSpace.xxs),
       ],
       _title(context, titleStyle),
