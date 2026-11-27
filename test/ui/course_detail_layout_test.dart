@@ -6,6 +6,7 @@ import 'package:flutter_education_app/features/courses/course_space/course_space
 import 'package:flutter_education_app/features/courses/student/details/components/about.dart';
 import 'package:flutter_education_app/features/courses/student/details/components/course_detail_parts.dart';
 import 'package:flutter_education_app/features/courses/student/details/components/issued_certificate.dart';
+import 'package:flutter_education_app/features/courses/student/details/course_detail_screen.dart' show courseHeroStudentsStat;
 import 'package:flutter_education_app/features/home/student/models.dart';
 import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -139,5 +140,22 @@ void main() {
         () => CourseBlockedView(locked: locked, title: '$_long $_long', onBack: () {}, onEnterCode: () {}),
       );
     }
+  });
+
+  testWidgets('a learner (students_count null, D-1950) gets no students stat, never "0 students"', (t) async {
+    expect(courseHeroStudentsStat(null), isEmpty);
+    expect(courseHeroStudentsStat(0), hasLength(1)); // a teacher's own zero is still a fact
+    Widget page(int? count) => CourseSpace(
+          hero: CourseSpaceHeroData(title: 'بايثون', stats: [
+            ...courseHeroStudentsStat(count),
+            const CourseSpaceStat(icon: Icons.play_circle_outline_rounded, value: '12', label: 'lessons'),
+          ]),
+          onBack: () {},
+          tabs: [CourseSpaceTab(id: 'a', label: 'a', icon: Icons.info_outline_rounded, builder: (_) => const SizedBox(height: 100))],
+          activeTab: 'a',
+          onTab: (_) {},
+        );
+    await expectNoLayoutErrors(t, () => page(null), act: (t) async => expect(find.byIcon(Icons.groups_rounded), findsNothing));
+    await expectNoLayoutErrors(t, () => page(95), act: (t) async => expect(find.byIcon(Icons.groups_rounded), findsWidgets));
   });
 }

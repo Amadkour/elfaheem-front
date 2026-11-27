@@ -525,7 +525,9 @@ class CourseModel with DiscountInfo {
   final double totalHours;
   final AppCurrency currency;
   final CourseStatus status;
-  final int studentsCount, sessionsCount;
+  /// Null for a learner (D-1950: a student never sees how many are enrolled), and then the stat is not drawn.
+  final int? studentsCount;
+  final int sessionsCount;
   final bool isPublished;
   bool isEnrolled;
 
@@ -582,7 +584,7 @@ class CourseModel with DiscountInfo {
     this.currency = AppCurrency.egp,
     this.status = CourseStatus.inProgress,
     this.category,
-    this.studentsCount = 0,
+    this.studentsCount,
     this.sessionsCount = 0,
     this.totalHours = 0.0,
     this.isFavorite = false,
@@ -653,7 +655,7 @@ class CourseModel with DiscountInfo {
     currency: AppCurrencyX.fromCode(j['currency'] as String?),
     status: CourseStatusX.fromApiValue(j['status'] as String?),
     studentsCount:
-    ((j['students_count'] ?? j['enrollment_count']) as num?)?.toInt() ?? 0,
+    ((j['students_count'] ?? j['enrollment_count']) as num?)?.toInt(),
     sessionsCount: j['sessions_count'] as int? ?? 0,
     totalHours: (j['total_hours'] as num?)?.toDouble() ?? 0.0,
     expectedHours: (j['expected_hours'] as num?)?.toDouble() ?? 0.0,
@@ -747,7 +749,7 @@ class CourseModel with DiscountInfo {
     certificates: certificates,
     schedules: schedules,
     prerequisites: prerequisites,
-    studentsCount: studentsCount,
+    studentsCount: studentsCount ?? 0,
     sessionsCount: sessionsCount,
     tools: tools,
     isPublished: true,

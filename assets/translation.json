@@ -26491,5 +26491,10 @@
   "sv_md_p7_empty_left": {
     "en": "You have not left any course",
     "ar": "لم تنسحب من أي دورة"
-  }
+  },
+  "sb_att_no_relay": {"en": "We couldn't check you in from here. Try again near the class, or ask your teacher.", "ar": "تعذّر تسجيل حضورك من هنا. حاول مرة أخرى وأنت قرب الصف، أو اسأل معلمك."},
+  "sb_att_witnesses": {"en": "We couldn't confirm that you're in class. Try again near the class, or ask your teacher.", "ar": "تعذّر التأكد من أنك في الصف. حاول مرة أخرى وأنت قرب الصف، أو اسأل معلمك."},
+  "sb_att_bluetooth_off": {"en": "A setting on your phone is off. Check your phone's connection settings and try again, or ask your teacher.", "ar": "أحد إعدادات هاتفك مغلق. افحص إعدادات الاتصال في هاتفك وحاول مرة أخرى، أو اسأل معلمك."},
+  "sb_gl_room_full": {"en": "The session is full right now. Try again in a little while.", "ar": "الحصة ممتلئة الآن. حاول مرة أخرى بعد قليل."},
+  "sb_gl_room_full_meeting": {"en": "The meeting is full right now. Try again in a little while.", "ar": "الاجتماع ممتلئ الآن. حاول مرة أخرى بعد قليل."}
 }

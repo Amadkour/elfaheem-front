@@ -53,3 +53,41 @@ class StudentLiveApi {
     return r is Map ? r['sent'] != false : true;
   }
 }
+
+/// The guest's side of the same two calls (a public guest link): no account, so the PUBLIC routes with the guest's
+/// own LiveKit token, sent with `auth: false` (no bearer, and a 401 never sends the visitor to the login screen):
+///
+///   POST /api/v1/public/live/hand {token, raised}   → {raised}
+///   POST /api/v1/public/live/ask  {token, text}     → {sent}     (401 bad_token, 403 participant_removed)
+class GuestStudentLiveApi extends StudentLiveApi {
+  GuestStudentLiveApi(super.ref, {required this.token, super.api});
+
+  /// The guest's LiveKit token (the join answer's, RoomPage.guestToken).
+  final String? Function() token;
+
+  @override
+  Future<bool> hand(bool raised) async {
+    final r = await _api.post('/api/v1/public/live/hand', body: {'token': token() ?? '', 'raised': raised}, auth: false);
+    return r is Map ? r['raised'] == true : raised;
+  }
+
+  @override
+  Future<bool> ask(String text) async {
+    final t = text.trim();
+    if (t.isEmpty) return false;
+    final r = await _api.post(
+      '/api/v1/public/live/ask',
+      body: {'token': token() ?? '', 'text': t.length > kLiveAskMaxLength ? t.substring(0, kLiveAskMaxLength) : t},
+      auth: false,
+    );
+    return r is Map ? r['sent'] != false : true;
+  }
+}
+
+/// Which room a person gets: the private one (student/student_room_view.dart: the stage, "you and the teacher", no
+/// head count, no participant list) for a private learner AND for every guest of a public link (each guest's token is
+/// private, D-1950); the full room for the teacher, a host and everyone else.
+bool liveRoomIsPrivate({required bool isTeacher, required bool isGuest, required bool host, String? metadata}) {
+  if (isGuest) return true;
+  return !isTeacher && !host && liveTokenIsPrivate(metadata);
+}

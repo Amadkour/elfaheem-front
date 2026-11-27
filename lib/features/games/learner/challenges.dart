@@ -27,10 +27,17 @@ import 'package:flutter_education_app/features/games/games_api.dart' show gamesE
 import 'package:flutter_education_app/features/games/games_models.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
+import 'package:flutter_education_app/features/auth/auth_provider.dart';
+import 'package:provider/provider.dart';
 
 /// The kill switch of the challenges and the class board.
 const kGamesChallengesKey = 'games.challenges';
 bool gamesChallengesOff() => AppConfig.disableList.contains(kGamesChallengesKey);
+
+/// The roles that see the class board (my course against the other courses). A learner (student, parent, visitor)
+/// never does: the privacy contract (DESIGN_SYSTEM §1.2) keeps group rankings away from students.
+const Set<String> kClassBoardRoles = {'teacher', 'admin', 'super-admin', 'developer', 'org-admin', 'org-staff'};
+bool gamesClassBoardFor(String? role) => role != null && kClassBoardRoles.contains(role);
 
 /// `/games/c/<code>` (the app's own) or `/games/challenge/<code>` (the link the server gives) → the code.
 String? challengeCodeFromRoute(String? route) {
@@ -486,9 +493,12 @@ class _ClassRow extends StatelessWidget {
 
 /// The games tab's "Challenges": My challenges, the class board and "New challenge".
 class GamesChallengesPage extends StatefulWidget {
-  const GamesChallengesPage({super.key, this.api, this.ageBand});
+  const GamesChallengesPage({super.key, this.api, this.ageBand, this.showClassBoard});
   final GamesV4Api? api;
   final String? ageBand;
+
+  /// The class board tab (and its call). Null → from the signed-in role ([gamesClassBoardFor]): staff only.
+  final bool? showClassBoard;
   @override
   State<GamesChallengesPage> createState() => _GamesChallengesPageState();
 }
@@ -503,11 +513,21 @@ class _GamesChallengesPageState extends State<GamesChallengesPage> {
   String? _error, _boardError;
   bool _boardLoading = false;
 
+  late final bool _boardShown = widget.showClassBoard ?? _staffViewer();
+
+  bool _staffViewer() {
+    try {
+      return gamesClassBoardFor(context.read<MyAuthProvider>().currentUser?.role);
+    } catch (_) {
+      return false; // no auth provider: treat as a learner
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     _loadMine();
-    _loadCourses();
+    if (_boardShown) _loadCourses(); // a learner never asks for the class board
   }
 
   Future<void> _loadMine() async {
@@ -576,7 +596,7 @@ class _GamesChallengesPageState extends State<GamesChallengesPage> {
   @override
   Widget build(BuildContext context) {
     final Widget body;
-    if (_tab == 0) {
+    if (_tab == 0 || !_boardShown) {
       body = _mine == null
           ? (_error != null
               ? AppErrorState(message: _error, onRetry: _loadMine)
@@ -617,14 +637,17 @@ class _GamesChallengesPageState extends State<GamesChallengesPage> {
           return ListView(
             padding: EdgeInsets.fromLTRB(gutter, AppSpace.md, gutter, AppSpace.xl),
             children: [
-              AppTabs(
-                items: [AppTabItem(t('تحدّياتي', 'My challenges')), AppTabItem(t('ترتيب الصفوف', 'Class board'))],
-                index: _tab,
-                expand: true,
-                onChanged: (i) => setState(() => _tab = i),
-              ),
-              const SizedBox(height: AppSpace.md),
-              if (_tab == 0 && (_mine?.isNotEmpty ?? false)) ...[
+              if (_boardShown) ...[
+                AppTabs(
+                  key: const ValueKey('games.challenges.tabs'),
+                  items: [AppTabItem(t('تحدّياتي', 'My challenges')), AppTabItem(t('ترتيب الصفوف', 'Class board'))],
+                  index: _tab,
+                  expand: true,
+                  onChanged: (i) => setState(() => _tab = i),
+                ),
+                const SizedBox(height: AppSpace.md),
+              ],
+              if ((_tab == 0 || !_boardShown) && (_mine?.isNotEmpty ?? false)) ...[
                 AppButton.primary(
                   key: const ValueKey('games.challenges.new'),
                   label: t('تحدٍّ جديد', 'New challenge'),

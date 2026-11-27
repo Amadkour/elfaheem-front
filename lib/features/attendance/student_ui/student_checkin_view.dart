@@ -15,6 +15,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_motion_kit.dart';
+import 'package:flutter_education_app/features/attendance/attendance_strings.dart' show attT;
 import 'package:flutter_education_app/features/attendance/relay_host_provider.dart';
 import 'package:flutter_education_app/features/attendance/student_checkin_provider.dart';
 
@@ -23,6 +24,20 @@ enum StudentCheckInPhase { code, running, done, failed }
 
 /// The ring's size.
 const double _kRing = 112;
+
+/// The provider's failure keys that name the relay, the witnesses or Bluetooth → neutral texts that only say what to
+/// do (the privacy contract: a student never reads about classmates; O-6).
+const Map<String, String> kStudentCheckInNeutralErrors = {
+  'att_err_no_relay': 'sb_att_no_relay',
+  'att_err_witnesses': 'sb_att_witnesses',
+  'att_err_bluetooth_off': 'sb_att_bluetooth_off',
+};
+
+/// The text of a failed check-in for the student (null key → the generic failure).
+String studentCheckInErrorText(String? messageKey) {
+  final key = messageKey ?? 'att_err_generic';
+  return attT(kStudentCheckInNeutralErrors[key] ?? key);
+}
 
 /// The sheet (kit sheet: a bottom sheet on phones, a dialog on wide windows). Resolves when it closes.
 Future<void> showStudentAttendCheckIn(BuildContext context, {int? sessionId, int? courseId, String? title}) {
@@ -96,7 +111,7 @@ class _CheckInHostState extends State<_CheckInHost> {
       phase: phase,
       pending: o?.kind == OutcomeKind.pending,
       doneAt: phase == StudentCheckInPhase.done ? AppTime.time(DateTime.now().toUtc()) : null,
-      error: phase == StudentCheckInPhase.failed ? (o?.messageKey ?? 'att_err_generic').tr : null,
+      error: phase == StudentCheckInPhase.failed ? studentCheckInErrorText(o?.messageKey) : null,
       code: _code,
       onSubmit: _submit,
       onRetry: () {
