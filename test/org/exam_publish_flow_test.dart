@@ -199,7 +199,7 @@ void main() {
       // D-1131: the place on the paper, never the database id; an older server's row falls back to its order
       expect(find.text('Question 1'), findsOneWidget);
       expect(find.text('Question 7'), findsOneWidget);
-      expect(find.text('1.5 / 2'), findsOneWidget);
+      expect(find.text('1.5 of 2'), findsOneWidget); // the redesigned result card words the row's score
       expect(find.text('Question #4'), findsNothing);
       expect(find.byType(ResultAnswerCard), findsNothing);
       await _end(tester);
