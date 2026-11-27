@@ -17,12 +17,13 @@
 //                              (autofocus) → Join. The pre-join page then waits for Join like every entry (D-106).
 //                              Tried once per visit; a PIN or a missing recording consent waits for the visitor.
 //   GuestLiveContent       → the pure layout (plain values + callbacks): loading skeleton · not live (waiting) ·
-//                            live · error. Tested with expectNoLayoutErrors (test/ui/guest_live_layout_test.dart).
-//                            Back from the room, a signed-out guest also sees the soft "create an account / sign
-//                            in" card (GuestLinkCta, D-844) — never a wall. While the page is open a stray 401 never
-//                            redirects to the login page (GuestLinkVisit, D-840).
+//                            live · error; redesign Stu1Public?screen=liveguest (S-A2): the room on a tile, "Join as
+//                            a guest", name, code, ONE button, "Have an account? Join with it", the recording line.
+//                            Tested with expectNoLayoutErrors (test/ui/guest_live_layout_test.dart).
+//                            Back from the room, a signed-out guest sees the soft "Enjoyed it? Create your account"
+//                            card alone (GuestLiveAfterCard, D-844; "Not now" brings the room back) — never a wall.
+//                            While the page is open a stray 401 never redirects to the login page (GuestLinkVisit, D-840).
 import 'package:flutter_education_app/features/guest/sa_hero_page.dart';
-import 'package:flutter_education_app/design/app_area.dart' show AppArea;
 import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'dart:async';
 import 'dart:math' as math;
@@ -49,6 +50,7 @@ import 'package:flutter_education_app/features/guest/guest_link_cta.dart';
 import 'package:flutter_education_app/features/guest/guest_live_api.dart';
 import 'package:flutter_education_app/features/rag/app_assistant.dart' show AppAssistant;
 import 'package:flutter_education_app/design/app_icons.dart';
+import 'package:flutter_education_app/design/motion/motion.dart' show AppPop;
 
 /// SharedPreferences key of the last name a guest typed.
 const String kGuestLiveNamePref = 'guest_live_name';
@@ -424,11 +426,13 @@ class _GuestLivePageState extends State<GuestLivePage> {
           onConsentChanged: (v) => unawaited(_setConsent(v)),
           onJoin: _join,
           onRetry: () => _load(first: true),
+          onSignIn: () => openGuestSignUp(context, '/login'),
           afterRoom: _backFromRoom && !_signedIn
-              ? GuestLinkCta(
-                  afterMeeting: true,
+              ? GuestLiveAfterCard(
+                  kind: _info?.ref.kind ?? LiveRoomKind.meeting,
                   onRegister: () => openGuestSignUp(context, '/register'),
                   onSignIn: () => openGuestSignUp(context, '/login'),
+                  onLater: () => setState(() => _backFromRoom = false),
                 )
               : null,
         )),
@@ -460,11 +464,15 @@ class GuestLiveContent extends StatelessWidget {
     this.signedIn = false,
     this.accountName = '',
     this.onJoinWithAccount,
+    this.onSignIn,
     this.afterRoom,
   });
 
-  /// Back from the room: the soft "create an account / sign in" card under the page (D-844).
+  /// Back from the room: the soft "create an account / sign in" card, drawn alone (D-844, S-A2).
   final Widget? afterRoom;
+
+  /// Signed out: "Have an account? Sign in with it".
+  final VoidCallback? onSignIn;
 
   final bool loading;
   final GuestLiveInfo? info;
@@ -503,70 +511,61 @@ class GuestLiveContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    // back from the room (D-844): the sign-up card alone; "Not now" brings the room's card back
+    final after = afterRoom != null && !loading;
     return SafeArea(
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 560),
+          constraints: BoxConstraints(maxWidth: AppWidth.form.max),
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+            padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.lg),
             children: [
-              AppHero(
-                title: 'guest_live_title'.tr,
-                subtitle: liveTr('guest_live_subtitle', info?.ref.kind ?? LiveRoomKind.session),
-                icon: Icons.sensors_rounded,
-              ),
-              const SizedBox(height: AppSpace.xxs),
-              if (loading)
+              if (after)
+                afterRoom!
+              else if (loading)
                 // The skeleton is a ListView: it needs a height inside this list.
-                const SizedBox(height: 260, child: AppListSkeleton(items: 3, withAvatar: false))
+                const SizedBox(height: AppDashSize.sidebar, child: AppListSkeleton(items: 3, withAvatar: false))
               else if (error != null && (errorFinal || info == null))
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  child: AppCard(
-                    key: const ValueKey('guest_live.error'),
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                      AppBanner(icon: Icons.link_off_rounded, text: error!, color: c.danger),
-                      if (rateLimitSeconds > 0) ...[
-                        const SizedBox(height: AppSpace.sm),
-                        _RateLimitBanner(seconds: rateLimitSeconds),
-                      ],
-                      if (!errorFinal) ...[
-                        const SizedBox(height: AppSpace.sm),
-                        AppPrimaryButton(
-                          key: const ValueKey('guest_live.retry'),
-                          label: 'retry'.tr,
-                          icon: Icons.refresh_rounded,
-                          onPressed: rateLimitSeconds > 0 ? null : onRetry,
-                        ),
-                      ],
-                    ]),
-                  ),
+                AppCard(
+                  key: const ValueKey('guest_live.error'),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    AppBanner(icon: Icons.link_off_rounded, text: error!, color: c.danger),
+                    if (rateLimitSeconds > 0) ...[
+                      const SizedBox(height: AppSpace.sm),
+                      _RateLimitBanner(seconds: rateLimitSeconds),
+                    ],
+                    if (!errorFinal) ...[
+                      const SizedBox(height: AppSpace.sm),
+                      KeyedSubtree(
+                        key: const ValueKey('guest_live.retry'),
+                        child: AppButton.secondary(
+                        label: 'retry'.tr,
+                        icon: Icons.refresh_rounded,
+                        expand: true,
+                        onPressed: rateLimitSeconds > 0 ? null : onRetry,
+                      )),
+                    ],
+                  ]),
                 )
               else if (info != null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  child: _SessionCard(
-                    info: info!,
-                    joining: joining,
-                    nameController: nameController,
-                    pinController: pinController,
-                    pinError: pinError,
-                    shakeTick: shakeTick,
-                    consent: consent,
-                    rateLimitSeconds: rateLimitSeconds,
-                    onPinChanged: onPinChanged,
-                    onConsentChanged: onConsentChanged,
-                    onJoin: onJoin,
-                    transientError: error,
-                    signedIn: signedIn,
-                    accountName: accountName,
-                    onJoinWithAccount: onJoinWithAccount,
-                  ),
+                _SessionCard(
+                  info: info!,
+                  joining: joining,
+                  nameController: nameController,
+                  pinController: pinController,
+                  pinError: pinError,
+                  shakeTick: shakeTick,
+                  consent: consent,
+                  rateLimitSeconds: rateLimitSeconds,
+                  onPinChanged: onPinChanged,
+                  onConsentChanged: onConsentChanged,
+                  onJoin: onJoin,
+                  transientError: error,
+                  signedIn: signedIn,
+                  accountName: accountName,
+                  onJoinWithAccount: onJoinWithAccount,
+                  onSignIn: signedIn ? null : onSignIn,
                 ),
-              if (afterRoom != null && !loading) ...[
-                const SizedBox(height: AppSpace.md),
-                Padding(padding: const EdgeInsets.symmetric(horizontal: 14), child: afterRoom!),
-              ],
             ],
           ),
         ),
@@ -592,7 +591,11 @@ class _SessionCard extends StatefulWidget {
     this.signedIn = false,
     this.accountName = '',
     this.onJoinWithAccount,
+    this.onSignIn,
   });
+
+  /// Signed out: "Have an account? Sign in with it" (the guest page's sign-in).
+  final VoidCallback? onSignIn;
 
   final GuestLiveInfo info;
   final bool joining;
@@ -617,6 +620,9 @@ class _SessionCard extends StatefulWidget {
 }
 
 class _SessionCardState extends State<_SessionCard> {
+  /// From this tile width the room's state sits at the end of the row.
+  static const double roomyTile = 340;
+
   /// Used when the caller passes no PIN controller (tests, previews).
   TextEditingController? _ownPin;
 
@@ -660,6 +666,7 @@ class _SessionCardState extends State<_SessionCard> {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final kit = c.kit;
     final info = widget.info;
     final live = info.isLive;
     final full = info.maxGuests != null && info.guestsJoined >= info.maxGuests!;
@@ -671,52 +678,79 @@ class _SessionCardState extends State<_SessionCard> {
     final accountJoin = widget.signedIn && info.signedInJoin && widget.onJoinWithAccount != null;
     // A direct link: just the title, the host and the name field — the visitor comes straight in.
     final quick = info.autoJoin;
+    final admitAuto = quick || info.guestAdmission == LiveGuestAdmission.auto;
+    // redesign (Stu1Public?screen=liveguest, S-A2): the room on a tile, "Join as a guest", the name, the code, ONE
+    // button, "Have an account? Sign in with it" and the recording line at the foot
+    final lines = <(IconData, String)>[
+      if (!quick && info.courseName.trim().isNotEmpty) (Icons.menu_book_rounded, info.courseName),
+      if (!quick && info.startsAt != null) (Icons.event_rounded, AppTime.dateTime(info.startsAt!)),
+      (
+        admitAuto ? Icons.door_front_door_outlined : Icons.how_to_reg_rounded,
+        admitAuto
+            ? t('تدخل مباشرة بعد الانضمام', 'You come straight in after joining')
+            : t('يقبل المضيف الزوار واحداً واحداً، وقد تنتظر قليلاً', 'The host lets visitors in one by one, you may wait a moment'),
+      ),
+      if (!quick) (info.canPublish ? Icons.mic_rounded : Icons.hearing_rounded, (info.canPublish ? 'guest_link_mode_publish' : 'guest_link_mode_listen').tr),
+      if (info.requiresPin) (Icons.lock_rounded, 'guest_live_pin_protected'.tr),
+    ];
     return AppCard(
       key: ValueKey(live ? 'guest_live.live' : 'guest_live.waiting'),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        // Status + names
-        Wrap(spacing: 6, runSpacing: 6, children: [
-          AppBadgePill(
-            (live ? 'guest_live_badge_live' : 'guest_live_badge_waiting').tr,
-            icon: live ? Icons.fiber_manual_record_rounded : Icons.schedule_rounded,
-            color: live ? c.danger : c.warning,
+        // the room: its glyph, the title, the host and whether it is on
+        Container(
+          padding: const EdgeInsets.all(AppSpace.md),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [kit.well, kit.primaryTone.tint]),
+            borderRadius: BorderRadius.circular(AppRadius.tile),
+            border: Border.all(color: kit.line, width: AppBorder.strong),
           ),
-          if (info.isMeeting)
-            AppBadgePill(t('اجتماع', 'Meeting'), key: const ValueKey('guest_live.meeting'), icon: Icons.groups_rounded, color: c.primary),
-          if (info.recurring)
-            AppBadgePill('guest_live_recurring'.tr,
-                key: const ValueKey('guest_live.recurring'), icon: Icons.event_repeat_rounded, color: c.primary),
-        ]),
-        const SizedBox(height: AppSpace.xs),
-        Text(title, style: appText(18, w: FontWeight.w800, c: c.textDark, h: 1.2)),
-        const SizedBox(height: AppSpace.xs),
-        if (!quick && info.courseName.trim().isNotEmpty) AppInfoRow(Icons.menu_book_rounded, info.courseName),
-        if (host.isNotEmpty) AppInfoRow(info.isMeeting ? Icons.person_rounded : Icons.school_rounded, host),
-        if (!quick && info.startsAt != null) AppInfoRow(Icons.event_rounded, AppTime.dateTime(info.startsAt!)),
-        AppInfoRow(
-          quick || info.guestAdmission == LiveGuestAdmission.auto ? Icons.door_front_door_outlined : Icons.how_to_reg_rounded,
-          quick || info.guestAdmission == LiveGuestAdmission.auto
-              ? t('تدخل مباشرة بعد الانضمام', 'You come straight in after joining')
-              : t('يقبل المضيف الزوار واحداً واحداً — قد تنتظر قليلاً', 'The host lets visitors in one by one — you may wait a moment'),
+          // the state hugs the end; on a narrow tile (320 px, large text) it joins the tags under the host
+          child: LayoutBuilder(builder: (context, box) {
+            final roomy = box.maxWidth >= _SessionCardState.roomyTile;
+            final state = live
+                ? AppLiveTag(label: 'sa_gl_on'.tr)
+                : AppStatusBadge(label: 'guest_live_badge_waiting'.tr, tone: AppTone.warning, icon: Icons.schedule_rounded);
+            final tags = [
+              if (!roomy) state,
+              if (info.isMeeting)
+                AppStatusBadge(key: const ValueKey('guest_live.meeting'), label: t('اجتماع', 'Meeting'), tone: AppTone.info, dense: true),
+              if (info.recurring)
+                AppStatusBadge(key: const ValueKey('guest_live.recurring'), label: 'guest_live_recurring'.tr, tone: AppTone.info, dense: true),
+            ];
+            return Row(children: [
+              AppIconBox(
+                icon: info.isMeeting ? Icons.videocam_rounded : Icons.cast_for_education_rounded,
+                solid: true,
+                size: roomy ? AppTouch.primary : AppTouch.min,
+              ),
+              const SizedBox(width: AppSpace.sm),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.section(context)),
+                  if (host.isNotEmpty) ...[
+                    const SizedBox(height: AppSpace.xxs),
+                    Text('sa_gl_host'.tr.replaceAll('{name}', host), maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+                  ],
+                  if (tags.isNotEmpty) ...[
+                    const SizedBox(height: AppSpace.xxs),
+                    Wrap(spacing: AppSpace.xxs, runSpacing: AppSpace.xxs, children: tags),
+                  ],
+                ]),
+              ),
+              if (roomy) ...[const SizedBox(width: AppSpace.xs), state],
+            ]);
+          }),
         ),
-        if (!quick)
-          AppInfoRow(
-            info.canPublish ? Icons.mic_rounded : Icons.hearing_rounded,
-            (info.canPublish ? 'guest_link_mode_publish' : 'guest_link_mode_listen').tr,
+        AppSpace.gapSm,
+        for (final (icon, text) in lines)
+          Padding(
+            padding: const EdgeInsets.only(top: AppSpace.xxs),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Icon(icon, size: AppIconSize.sm, color: c.textMedium),
+              const SizedBox(width: AppSpace.xs),
+              Expanded(child: Text(text, style: AppType.meta(context))),
+            ]),
           ),
-        if (!quick && info.maxGuests != null)
-          AppInfoRow(Icons.people_alt_rounded, '${'guest_link_joined'.tr}: ${info.guestsJoined} / ${info.maxGuests}'),
-        if (info.requiresPin) AppInfoRow(Icons.lock_rounded, 'guest_live_pin_protected'.tr),
-
-        if (info.recordingEnabled) ...[
-          const SizedBox(height: AppSpace.sm),
-          AppBanner(
-            key: const ValueKey('guest_live.recorded'),
-            icon: Icons.fiber_manual_record_rounded,
-            text: liveTr('lr_may_be_recorded', kind),
-            color: c.danger,
-          ),
-        ],
 
         if (!live) ...[
           const SizedBox(height: AppSpace.sm),
@@ -728,10 +762,6 @@ class _SessionCardState extends State<_SessionCard> {
                 ? 'guest_live_recurring_next'.tr.replaceAll('{when}', AppTime.dateTime(info.startsAt!))
                 : liveTr('guest_live_waiting_msg', kind),
             color: c.warning,
-            action: const Padding(
-              padding: EdgeInsets.all(8),
-              child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-            ),
           ),
         ],
         if (widget.transientError != null) ...[
@@ -752,17 +782,17 @@ class _SessionCardState extends State<_SessionCard> {
           _RateLimitBanner(seconds: widget.rateLimitSeconds),
         ],
 
-        const SizedBox(height: AppSpace.md),
-        Divider(height: 1, color: c.divider),
-        const SizedBox(height: AppSpace.md),
-
+        AppSpace.gapLg,
+        Semantics(header: true, child: Text('sa_gl_as_guest'.tr, style: AppType.pageTitle(context))),
+        AppSpace.gapMd,
         Focus(
           key: const ValueKey('guest_live.name'),
           focusNode: _nameGroup,
           child: AppField(
             controller: widget.nameController,
             label: 'guest_live_name'.tr,
-            hint: 'guest_live_name_hint'.tr,
+            hint: 'sa_gl_name_hint'.tr,
+            helper: 'guest_live_name_hint'.tr,
             keyboard: TextInputType.name,
           ),
         ),
@@ -775,7 +805,7 @@ class _SessionCardState extends State<_SessionCard> {
               children: [
                 AppField(
                   controller: _pin,
-                  label: 'guest_live_pin'.tr,
+                  label: 'sa_gl_code'.tr,
                   hint: liveTr('guest_live_pin_hint', kind),
                   keyboard: TextInputType.number,
                   ltr: true,
@@ -790,13 +820,16 @@ class _SessionCardState extends State<_SessionCard> {
                 ),
                 if (widget.pinError)
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.only(bottom: AppSpace.sm),
                     child: Row(
                       key: const ValueKey('guest_live.pin_error'),
                       children: [
-                        Icon(Icons.error_outline_rounded, size: 16, color: c.danger),
+                        Icon(Icons.error_outline_rounded, size: AppIconSize.sm, color: kit.error.color),
                         const SizedBox(width: AppSpace.xs),
-                        Expanded(child: Text(liveTr('guest_live_err_pin', kind), style: appText(12, c: c.danger, w: FontWeight.w600))),
+                        Expanded(
+                          child: Text(liveTr('guest_live_err_pin', kind),
+                              style: AppType.meta(context).copyWith(color: kit.error.ink, fontWeight: FontWeight.w600)),
+                        ),
                       ],
                     ),
                   ),
@@ -810,34 +843,105 @@ class _SessionCardState extends State<_SessionCard> {
             value: widget.consent,
             onChanged: widget.joining ? null : widget.onConsentChanged,
           ),
-        AppPrimaryButton(
+        AppSpace.gapXs,
+        KeyedSubtree(
           key: const ValueKey('guest_live.join'),
+          child: AppButton.primary(
           label: widget.joining
               ? 'lr_joining'.tr
               : limited
                   ? 'guest_live_wait_s'.tr.replaceAll('{s}', '${widget.rateLimitSeconds}')
                   : live
-                      ? liveTr('lr_join_session', kind)
+                      ? (info.isMeeting ? 'sa_gl_join_meeting'.tr : 'sa_gl_join_class'.tr)
                       : liveTr('guest_live_join_when_live', kind),
           icon: widget.joining ? null : DirIcons.login,
           busy: widget.joining,
+          expand: true,
+          size: AppButtonSize.lg,
           onPressed: live && !full && !limited && !needsConsent ? widget.onJoin : null,
-        ),
-        if (accountJoin) ...[
-          const SizedBox(height: AppSpace.xs),
-          Align(
-            alignment: AlignmentDirectional.center,
-            child: AppPill(
-              key: const ValueKey('guest_live.join_account'),
-              icon: Icons.account_circle_rounded,
-              label: widget.accountName.isEmpty
-                  ? t('الانضمام بحسابي', 'Join with my account')
-                  : '${t('الانضمام بحسابي', 'Join with my account')} (${widget.accountName})',
-              color: c.primary,
-              onTap: live && !limited && !needsConsent && !widget.joining ? widget.onJoinWithAccount : null,
-            ),
+        )),
+        if (accountJoin || widget.onSignIn != null) ...[
+          AppSpace.gapXs,
+          Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: AppSpace.xxs,
+            children: [
+              Text('sa_gl_have_account'.tr, style: AppType.meta(context)),
+              AppButton.ghost(
+                key: ValueKey(accountJoin ? 'guest_live.join_account' : 'guest_live.sign_in'),
+                label: accountJoin && widget.accountName.isNotEmpty
+                    ? '${'sa_gl_with_account'.tr} (${widget.accountName})'
+                    : 'sa_gl_with_account'.tr,
+                size: AppButtonSize.sm,
+                onPressed: accountJoin
+                    ? (live && !limited && !needsConsent && !widget.joining ? widget.onJoinWithAccount : null)
+                    : widget.onSignIn,
+              ),
+            ],
           ),
         ],
+        if (info.recordingEnabled) ...[
+          AppSpace.gapXs,
+          Row(
+            key: const ValueKey('guest_live.recorded'),
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.fiber_manual_record_rounded, size: AppIconSize.xs, color: kit.live.color),
+              const SizedBox(width: AppSpace.xxs),
+              Flexible(child: Text(liveTr('lr_may_be_recorded', kind), textAlign: TextAlign.center, style: AppType.meta(context))),
+            ],
+          ),
+        ],
+      ]),
+    );
+  }
+}
+
+/// Back from the room, a signed-out guest (D-844): "Enjoyed the meeting?", Create your account, Sign in, Not now.
+class GuestLiveAfterCard extends StatelessWidget {
+  const GuestLiveAfterCard({super.key, required this.kind, required this.onRegister, required this.onSignIn, required this.onLater});
+
+  final LiveRoomKind kind;
+  final VoidCallback onRegister, onSignIn, onLater;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final kit = c.kit;
+    return AppCard(
+      key: const ValueKey('guest_live.after'),
+      child: Column(children: [
+        AppSpace.gapSm,
+        AppPop(
+          child: Container(
+            width: AppTouch.primary * 1.5,
+            height: AppTouch.primary * 1.5,
+            decoration: BoxDecoration(gradient: kit.hotButton, borderRadius: AppRadius.plate),
+            child: Icon(Icons.star_outline_rounded, size: AppIconSize.hero, color: kit.hotFg),
+          ),
+        ),
+        AppSpace.gapMd,
+        Semantics(
+          header: true,
+          child: Text(kind == LiveRoomKind.meeting ? 'sa_gl_after_meeting'.tr : 'sa_gl_after_class'.tr,
+              textAlign: TextAlign.center, style: AppType.pageTitle(context)),
+        ),
+        AppSpace.gapXs,
+        Text('sa_gl_after_sub'.tr, textAlign: TextAlign.center, style: AppType.body(context)),
+        AppSpace.gapLg,
+        AppButton.primary(
+          key: const ValueKey('guest_live.after_register'),
+          label: 'sa_gl_after_create'.tr,
+          expand: true,
+          size: AppButtonSize.lg,
+          onPressed: onRegister,
+        ),
+        AppSpace.gapXs,
+        Wrap(alignment: WrapAlignment.center, spacing: AppSpace.sm, children: [
+          AppButton.ghost(key: const ValueKey('guest_live.after_sign_in'), label: 'sa_gs_login'.tr, size: AppButtonSize.sm, onPressed: onSignIn),
+          AppButton.ghost(key: const ValueKey('guest_live.after_later'), label: 'sa_gl_after_later'.tr, size: AppButtonSize.sm, onPressed: onLater),
+        ]),
       ]),
     );
   }

@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_buttons.dart';
 import 'package:flutter_education_app/features/guest/guest_live_api.dart';
 import 'package:flutter_education_app/features/guest/guest_live_page.dart';
+import 'package:flutter_education_app/features/live/live_room.dart' show LiveRoomKind;
 import 'package:flutter_education_app/features/sessions/teacher/components/guest_link_sheet.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -358,6 +359,40 @@ void main() {
         tester,
         () => _page(error: 'The server could not be reached.'),
         act: (t) async => expect(find.byKey(const ValueKey('guest_live.retry')), findsOneWidget),
+      );
+    });
+
+    testWidgets('back from the room: the sign-up card alone; signed out: "Join with your account" (S-A2)', (tester) async {
+      await expectNoLayoutErrors(
+        tester,
+        () => GuestLiveContent(
+          loading: false,
+          info: _info,
+          error: null,
+          joining: false,
+          nameController: TextEditingController(),
+          onJoin: () {},
+          onRetry: () {},
+          afterRoom: GuestLiveAfterCard(kind: LiveRoomKind.meeting, onRegister: () {}, onSignIn: () {}, onLater: () {}),
+        ),
+        act: (t) async {
+          expect(find.byKey(const ValueKey('guest_live.after')), findsOneWidget);
+          expect(find.byKey(const ValueKey('guest_live.live')), findsNothing);
+        },
+      );
+      await expectNoLayoutErrors(
+        tester,
+        () => GuestLiveContent(
+          loading: false,
+          info: _info,
+          error: null,
+          joining: false,
+          nameController: TextEditingController(),
+          onJoin: () {},
+          onRetry: () {},
+          onSignIn: () {},
+        ),
+        act: (t) async => expect(find.byKey(const ValueKey('guest_live.sign_in')), findsOneWidget),
       );
     });
   });
