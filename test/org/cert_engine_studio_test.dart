@@ -304,7 +304,8 @@ void main() {
     expect(calls['rename'], [
       {'name': 'Gold diploma'}
     ]);
-    expect(find.text('Gold diploma'), findsOneWidget);
+    // the hero band above the workspace repeats the name; the rename button carries it once
+    expect(find.descendant(of: find.byKey(const ValueKey('cert-title')), matching: find.text('Gold diploma')), findsOneWidget);
     expect(find.text('All changes saved'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
@@ -436,6 +437,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('cert-section-generate')));
     await settle(tester, 300);
     await tester.ensureVisible(find.text('Dark colours'));
+    await tester.pump(); // the studio sits on the hero band now: the switch is below the fold until the scroll lays out
     await tester.tap(find.text('Dark colours'));
     await tester.pump();
     final hexBox = find.descendant(of: find.byType(CertThemeColorField), matching: find.byType(TextField));
