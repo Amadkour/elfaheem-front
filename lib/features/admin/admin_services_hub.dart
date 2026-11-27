@@ -64,6 +64,10 @@ import 'admin_fees_page.dart';
 import 'admin_parent_linking_page.dart';
 import 'admin_parent_requests_page.dart' show AdminParentRequestsPage;
 import 'approvals/admin_approvals_inbox.dart' show AdminApprovalsInboxPage;
+import 'governance/admin_roles_page.dart' show AdminRolesPage;
+import 'governance/audit_log_page.dart' show AdminAuditLogPage;
+import 'governance/gov_api.dart' show kAdminRolesKey, kAuditLogKey, kPublishQueueKey;
+import 'governance/publish_queue_page.dart' show AdminPublishQueuePage;
 import 'help/admin_help_page.dart' show AdminHelpPage;
 import 'package:flutter_education_app/features/certificates/certificate_requests_screen.dart' show CertificateRequestsScreen;
 import 'package:flutter_education_app/features/profile/teacher/switch_device_requests/teacher_device_requests_screen.dart' show TeacherDeviceRequestsScreen;
@@ -225,6 +229,24 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
           visible: isSuper,
           onTap: () => push(const AdminAdminsPage()),
         ),
+        // admin governance (docs/redesign/api/governance.md): the roles editor (super admin) and the activity log
+        AdminService(
+          labelKey: 'ow_ro_title',
+          descKey: 'ow_svc_roles_d',
+          icon: Icons.manage_accounts_rounded,
+          colors: AdminPalette.violet,
+          featureKey: kAdminRolesKey,
+          visible: isSuper,
+          onTap: () => push(const AdminRolesPage()),
+        ),
+        AdminService(
+          labelKey: 'ow_al_title',
+          descKey: 'ow_svc_audit_d',
+          icon: Icons.history_rounded,
+          colors: AdminPalette.slate,
+          featureKey: kAuditLogKey,
+          onTap: () => push(const AdminAuditLogPage()),
+        ),
         AdminService(
           labelKey: 'admin_parent_linking',
           descKey: 'svc_pl_requests_d',
@@ -275,6 +297,15 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
           colors: AdminPalette.orange,
           badge: AttentionService.instance.count(AttentionTabs.adminUsers),
           onTap: () => push(const AdminPendingAccountsPage()),
+        ),
+        // courses teachers sent for publishing while "Review before publishing" is on (governance.md §1)
+        AdminService(
+          labelKey: 'ow_pq_title',
+          descKey: 'ow_svc_pq_d',
+          icon: Icons.fact_check_rounded,
+          colors: AdminPalette.teal,
+          featureKey: kPublishQueueKey,
+          onTap: () => push(const AdminPublishQueuePage()),
         ),
         AdminService(
           labelKey: 'enrollment_requests',

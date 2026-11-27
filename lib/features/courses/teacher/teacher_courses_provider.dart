@@ -345,18 +345,25 @@ class TeacherCoursesProvider extends BaseProvider {
     final result =
     await run(() => _api.post('/api/v1/courses/$courseId/publish'));
     if (result != null) {
-      _updateLocalPublish(courseId, isPublished: true);
+      // with the platform's publish review on, the answer is still unpublished and `pending_review`
+      final j = result is Map ? result : const {};
+      final review = j['review_status'] as String?;
+      _updateLocal(courseId, (c) => c.copyWith(
+          isPublished: j['is_published'] as bool? ?? true, reviewStatus: review, clearReview: review == null));
       onCoursesChanged?.call();
       return true;
     }
     return false;
   }
 
+  /// True after [publishCourse] when the course went to the review queue instead of going live.
+  bool isUnderReview(int courseId) => _allCourses.any((c) => c.id == courseId && c.underReview);
+
   Future<bool> unpublishCourse(int courseId) async {
     final result =
     await run(() => _api.post('/api/v1/courses/$courseId/unpublish'));
     if (result != null) {
-      _updateLocalPublish(courseId, isPublished: false);
+      _updateLocal(courseId, (c) => c.copyWith(isPublished: false, clearReview: true));
       onCoursesChanged?.call();
       return true;
     }
@@ -382,11 +389,8 @@ class TeacherCoursesProvider extends BaseProvider {
   // Private helpers
   // ─────────────────────────────────────────────────────────────────────────
 
-  void _updateLocalPublish(int courseId, {required bool isPublished}) {
-    _allCourses = _allCourses
-        .map((c) =>
-    c.id == courseId ? c.copyWith(isPublished: isPublished) : c)
-        .toList();
+  void _updateLocal(int courseId, TeacherCourse Function(TeacherCourse c) f) {
+    _allCourses = [for (final c in _allCourses) c.id == courseId ? f(c) : c];
     notifyListeners();
   }
 

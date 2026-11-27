@@ -318,6 +318,12 @@ class TeacherCourse with DiscountInfo {
   final double expectedHours;
   final CategoryModel? category;
   final bool isPublished;
+
+  /// The publish review (docs/redesign/api/governance.md §1): null | pending_review | approved | rejected, and the
+  /// reviewer's reason when rejected.
+  final String? reviewStatus, reviewReason;
+  bool get underReview => reviewStatus == 'pending_review';
+  bool get reviewRejected => reviewStatus == 'rejected' && !isPublished;
   final List<CourseSchedule> schedules;
   final List<CourseCertificate> certificates;
   final List<CourseTool> tools;
@@ -387,6 +393,8 @@ class TeacherCourse with DiscountInfo {
     this.price = 0,
     this.category,
     this.isPublished = false,
+    this.reviewStatus,
+    this.reviewReason,
     this.schedules = const [],
     this.certificates = const [],
     this.tools = const [],
@@ -453,6 +461,8 @@ class TeacherCourse with DiscountInfo {
         ? CategoryModel.fromJson(j['category'] as Map<String, dynamic>)
         : null,
     isPublished: j['is_published'] as bool? ?? false,
+    reviewStatus: j['review_status'] as String?,
+    reviewReason: j['review_reason'] as String?,
     type: j['type'] as String? ?? 'recorded',
     schedules: (j['schedules'] as List? ?? [])
         .map((e) => CourseSchedule.fromJson(e as Map<String, dynamic>))
@@ -529,6 +539,9 @@ class TeacherCourse with DiscountInfo {
 
   TeacherCourse copyWith({
     bool? isPublished,
+    String? reviewStatus,
+    String? reviewReason,
+    bool clearReview = false,
     String? imageUrl,
     int? discountDays,
     List<CourseSchedule>? schedules,
@@ -571,6 +584,8 @@ class TeacherCourse with DiscountInfo {
     priceSixMonths: priceSixMonths ?? this.priceSixMonths,
     category: category,
     isPublished: isPublished ?? this.isPublished,
+    reviewStatus: clearReview ? null : (reviewStatus ?? this.reviewStatus),
+    reviewReason: clearReview ? null : (reviewReason ?? this.reviewReason),
     schedules: schedules ?? this.schedules,
     certificates: certificates ?? this.certificates,
     tools: tools ?? this.tools,
