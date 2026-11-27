@@ -4,6 +4,8 @@
 #   sync/sync.sh                       # merge nextbrain/production
 #   sync/sync.sh f10567b1              # merge one NextBrain commit
 set -euo pipefail
+# Git Bash on Windows rewrites "<ref>:<path>" (a ref with a slash) as a path list; keep git arguments as written.
+export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL="*"
 cd "$(git rev-parse --show-toplevel)"
 REF="${1:-nextbrain/production}"
 
