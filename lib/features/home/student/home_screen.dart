@@ -704,17 +704,17 @@ class _Sections extends StatelessWidget {
     final courses = home.coursesProgress.isNotEmpty
         ? null
         : HomeSideCard(
-            title: 'my_courses'.tr,
+            title: 'sv_my_courses'.tr,
             icon: Icons.auto_stories_rounded,
             count: home.coursesProgress.length,
-            actionLabel: home.coursesProgress.isEmpty ? 'home_s_browse'.tr : 'show_all'.tr,
+            actionLabel: home.coursesProgress.isEmpty ? 'sv_home_s_browse'.tr : 'show_all'.tr,
             onAction: () => body.onTab('my_courses'),
             child: home.coursesProgress.isEmpty
                 ? AppEmpty(
                     icon: Icons.auto_stories_rounded,
-                    title: 'home_s_no_courses'.tr,
-                    message: 'home_s_no_courses_hint'.tr,
-                    actionLabel: 'home_s_browse'.tr,
+                    title: 'sv_home_s_no_courses'.tr,
+                    message: 'sv_home_s_no_courses_hint'.tr,
+                    actionLabel: 'sv_home_s_browse'.tr,
                     onAction: () => body.onTab('my_courses'),
                   )
                 : const SizedBox.shrink(),
@@ -810,7 +810,7 @@ List<Widget> studentHomeStatCards(MeHome home, ValueChanged<String> onTab) {
         AppStatCard(
           icon: Icons.auto_stories_rounded,
           value: '${cp.length}',
-          label: 'my_courses'.tr,
+          label: 'sv_my_courses'.tr,
           tone: AppBlockTone.emerald,
           onTap: () => onTab('my_courses'),
         ),
@@ -834,7 +834,7 @@ List<Widget> studentHomeStatCards(MeHome home, ValueChanged<String> onTab) {
         AppStatCard(
           icon: Icons.emoji_events_rounded,
           value: '$done',
-          label: 'home_s_done_courses'.tr,
+          label: 'sv_home_s_done_courses'.tr,
           tone: AppBlockTone.gold,
           onTap: () => onTab('my_courses'),
         ),
@@ -886,7 +886,7 @@ class _MarketingFeeds extends StatelessWidget {
         ParentComponent(
           featureKey: 'student_home.courses',
           child: HomeSectionTitle(
-            'my_courses'.tr,
+            'sv_my_courses'.tr,
             actionLabel: 'show_more'.tr,
             onAction: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => CoursesListScreen(homeCourses: provider.myCourses, forMyCourses: true))),
           ),

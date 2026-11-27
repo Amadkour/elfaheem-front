@@ -96,7 +96,7 @@ class _MyCoursesScreenState extends State<MyCoursesScreen> {
     // a desktop window: the wide page, the grid takes as many columns as fit and the panel opens beside it
     return BasePage(
       key: const ValueKey('my_courses'),
-      appBar: ScreenAppBar(title: 'courses'.tr, showBack: !kIsWeb),
+      appBar: ScreenAppBar(title: 'sv_courses'.tr, showBack: !kIsWeb),
       useWebCard: true,
       width: AppWidth.wide,
       child: SafeArea(
@@ -104,7 +104,7 @@ class _MyCoursesScreenState extends State<MyCoursesScreen> {
           area: AppArea.learn,
           child: MasterDetailScaffold(
             controller: _panel,
-            rootLabel: 'courses'.tr,
+            rootLabel: 'sv_courses'.tr,
             deepLinks: true,
             actions: (ref, s) => _actions(context, ref, s),
             list: MyCoursesBody(controller: _search, panel: _panel, onContinue: (c) => _openPage(context, c)),
@@ -405,7 +405,7 @@ class _CourseList extends StatelessWidget {
     if (controller.text.trim().isNotEmpty || provider.activeFilter != CourseStatus.all) {
       return CourseListEmpty(
         icon: Icons.search_off_rounded,
-        message: 'course_list_not_found'.tr,
+        message: 'sv_course_list_not_found'.tr,
         actionLabel: 'course_list_clear_search'.tr,
         onAction: () {
           controller.clear();
@@ -417,15 +417,15 @@ class _CourseList extends StatelessWidget {
     if (scope.isOrg) {
       return CourseListEmpty(
         icon: Icons.apartment_rounded,
-        message: 'course_scope_org_empty_student'.tr,
-        actionLabel: 'course_scope_browse_org'.tr,
+        message: 'sv_course_scope_org_empty_student'.tr,
+        actionLabel: 'sv_course_scope_browse_org'.tr,
         onAction: () => _browseOrg(context, scope.orgId!),
       );
     }
     return CourseListEmpty(
       icon: Icons.menu_book_rounded,
-      message: 'course_list_empty'.tr,
-      actionLabel: 'course_list_browse'.tr,
+      message: 'sv_course_list_empty'.tr,
+      actionLabel: 'sv_course_list_browse'.tr,
       onAction: () => Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => CoursesListScreen(homeCourses: context.read<HomeProvider>().otherCourses, forMyCourses: false),
       )),

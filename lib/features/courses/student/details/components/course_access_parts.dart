@@ -66,7 +66,7 @@ class CourseAccessNote extends StatelessWidget {
     final c = context.colors;
     final pending = mode == EnrollBarMode.pending;
     final title = pending ? 'course_pay_review_title'.tr : (access == null ? '' : accessReasonText(access!));
-    final hint = pending ? 'course_pay_review_hint'.tr : null;
+    final hint = pending ? 'sv_course_pay_review_hint'.tr : null;
     final color = pending ? c.warning : c.danger;
     return Container(
       width: double.infinity,

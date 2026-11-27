@@ -146,7 +146,7 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
       width: AppWidth.wide,
       enableFooterWidget: false,
       appBar: ScreenAppBar(
-        title: mine ? 'my_courses'.tr : (widget.openSearch ? 'search'.tr : 'explorer_courses'.tr),
+        title: mine ? 'sv_my_courses'.tr : (widget.openSearch ? 'search'.tr : 'explorer_courses'.tr),
       ),
       child: SafeArea(
         child: AppAreaScope(
@@ -198,7 +198,7 @@ class _CoursesListScreenState extends State<CoursesListScreen> {
                   : (courses.isEmpty && !hasMore)
                   ? AppEmpty(
                 icon: Icons.menu_book_rounded,
-                title: 'no_courses_in_section'.tr,
+                title: 'sv_no_courses_in_section'.tr,
               )
                   : ParentComponent(
                 featureKey: 'courses_list.list',

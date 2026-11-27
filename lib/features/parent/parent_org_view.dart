@@ -584,7 +584,7 @@ class _SessionRow extends StatelessWidget {
         if (s.courseId != null) _courseChip(s.courseId!, s.courseName.isEmpty ? s.heading : s.courseName),
         if (s.status == ParentSessionStatus.changed) AppStatusBadge(label: t('تغيّرت', 'Changed'), tone: AppTone.warning, dense: true),
         if (cancelled) AppStatusBadge(label: t('أُلغيت', 'Cancelled'), tone: AppTone.danger, dense: true),
-        if (s.online) AppStatusBadge(label: t('أونلاين', 'Online'), tone: AppTone.info, icon: Icons.videocam_outlined, dense: true),
+        if (s.online) AppStatusBadge(label: t('عن بعد', 'Online'), tone: AppTone.info, icon: Icons.videocam_outlined, dense: true),
       ],
     );
   }

@@ -491,7 +491,7 @@ class ParentChildOverviewCard extends StatelessWidget {
         if (ch.todaySessions.isEmpty)
           Padding(
             padding: const EdgeInsets.only(top: AppSpace.xxs),
-            child: Text('pl_ov_no_sessions'.tr, style: AppType.meta(context)),
+            child: Text('sv_pl_ov_no_sessions'.tr, style: AppType.meta(context)),
           )
         else
           for (final (i, s) in ch.todaySessions.indexed) ...[

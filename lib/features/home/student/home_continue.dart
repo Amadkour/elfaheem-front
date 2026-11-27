@@ -222,7 +222,7 @@ class StudentFreeDayBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     final e = next;
     // what comes next on one line, when on its own (a date never wraps away from its time)
-    final line = e == null ? 'home_s_free_hint'.tr : 'home_next_lecture'.tr.replaceAll('{n}', e.title);
+    final line = e == null ? 'sv_home_s_free_hint'.tr : 'home_next_lecture'.tr.replaceAll('{n}', e.title);
     final when = e == null ? null : '${AppTime.date(e.start, pattern: 'EEE d MMM')} · ${AppTime.time(e.start)}';
     return AppBlock(
       key: const ValueKey('student_home.free_day'),

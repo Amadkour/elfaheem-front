@@ -697,8 +697,8 @@ class _ChildReportCard extends StatelessWidget {
       if (courses.isNotEmpty)
         PlSection(
           icon: Icons.menu_book_outlined,
-          title: 'pl_sec_courses'.tr,
-          hint: 'pl_sec_courses_hint'.tr,
+          title: 'sv_pl_sec_courses'.tr,
+          hint: 'sv_pl_sec_courses_hint'.tr,
           child: Column(children: [
             for (var i = 0; i < courses.length; i++) ...[
               if (i > 0) _rule(context),

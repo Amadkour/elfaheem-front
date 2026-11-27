@@ -9431,7 +9431,7 @@
   },
   "sa_overall_hint": {
     "en": "The overall score combines the attendance rate and the average exam results in this course.",
-    "ar": "الدرجة الكلية تجمع بين نسبة الحضور ومتوسط نتائج الاختبارات في هذا الكورس."
+    "ar": "الدرجة الكلية تجمع بين نسبة الحضور ومتوسط نتائج الاختبارات في هذا الدورة."
   },
   "sa_passed_exams": {
     "en": "Exams passed",
@@ -9475,7 +9475,7 @@
   },
   "sa_ins_att_low": {
     "en": "You missed {sessions}. Catch up on them before the next one.",
-    "ar": "غيابك مرتفع: فاتتك {sessions}. راجع ما فاتك قبل الجلسة القادمة."
+    "ar": "غيابك مرتفع: فاتتك {sessions}. راجع ما فاتك قبل الحصة القادمة."
   },
   "sa_ins_exam_all_passed": {
     "en": "You passed every exam you took ({n}).",
@@ -26387,5 +26387,109 @@
   "sa_live_join_meeting": {"en": "Join the meeting", "ar": "ادخل الاجتماع"},
   "sa_study_grade_is": {"en": "Your grade: {grade}", "ar": "صفّك: {grade}"},
   "sa_study_change": {"en": "Change", "ar": "غيّر"},
-  "sa_study_track": {"en": "Your track", "ar": "مسارك"}
+  "sa_study_track": {"en": "Your track", "ar": "مسارك"},
+  "sv_course_scope_org_empty_student": {
+    "en": "You have no courses in this organization yet",
+    "ar": "لا دورات لك في هذه المؤسسة بعد"
+  },
+  "sv_course_scope_browse_org": {
+    "en": "Browse its courses",
+    "ar": "تصفّح دوراتها"
+  },
+  "sv_courses": {
+    "en": "Courses",
+    "ar": "الدورات"
+  },
+  "sv_my_courses": {
+    "en": "My Courses",
+    "ar": "دوراتي"
+  },
+  "sv_no_courses_in_section": {
+    "en": "No courses in this section",
+    "ar": "لا توجد دورات في هذا القسم"
+  },
+  "sv_course_hero_private": {
+    "en": "Private",
+    "ar": "دورة خاصة"
+  },
+  "sv_sessions_empty": {
+    "en": "No sessions yet",
+    "ar": "لا توجد حصص بعد"
+  },
+  "sv_pl_sec_courses": {
+    "en": "Courses",
+    "ar": "الدورات"
+  },
+  "sv_pl_sec_courses_hint": {
+    "en": "The ring is the course completion. Icons: sessions attended · study time · exam average · missed sessions.",
+    "ar": "الدائرة هي نسبة إتمام الدورة. الأيقونات: الحصص المحضورة · وقت المذاكرة · متوسط الاختبارات · الحصص الفائتة."
+  },
+  "sv_home_s_free_hint": {
+    "en": "Use it to catch up on recorded sessions",
+    "ar": "استغله لمتابعة الحصص المسجلة"
+  },
+  "sv_home_s_no_courses": {
+    "en": "No courses yet",
+    "ar": "لا دورات بعد"
+  },
+  "sv_home_s_no_courses_hint": {
+    "en": "Enroll in a course and it shows up here",
+    "ar": "اشترك في دورة وسيظهر هنا"
+  },
+  "sv_home_s_browse": {
+    "en": "Browse courses",
+    "ar": "تصفح الدورات"
+  },
+  "sv_home_s_done_courses": {
+    "en": "Courses finished",
+    "ar": "دورات أنهيتها"
+  },
+  "sv_home_courses_all": {
+    "en": "All courses ({n})",
+    "ar": "كل الدورات ({n})"
+  },
+  "sv_pl_ov_no_sessions": {
+    "en": "No sessions today",
+    "ar": "لا حصص اليوم"
+  },
+  "sv_home_online": {
+    "en": "Online",
+    "ar": "عن بعد"
+  },
+  "sv_home_sum_sessions_one": {
+    "en": "1 session today",
+    "ar": "حصة واحدة اليوم"
+  },
+  "sv_home_sum_sessions": {
+    "en": "{n} sessions today",
+    "ar": "{n} حصص اليوم"
+  },
+  "sv_course_list_browse": {
+    "en": "Browse courses",
+    "ar": "تصفّح الدورات"
+  },
+  "sv_course_list_empty": {
+    "en": "No courses here yet",
+    "ar": "لا توجد دورات هنا بعد"
+  },
+  "sv_course_list_not_found": {
+    "en": "No courses match your search",
+    "ar": "لا توجد دورات مطابقة"
+  },
+  "sv_course_pay_review_hint": {
+    "en": "The course opens as soon as the payment is confirmed",
+    "ar": "سنفتح الدورة فور تأكيد الدفع"
+  },
+  "sv_md_p7_search_grades": {
+    "en": "Search assessment or course",
+    "ar": "ابحث عن تقييم أو دورة"
+  },
+  "sv_md_p7_search_payments": {
+    "en": "Search by course",
+    "ar": "ابحث باسم الدورة"
+  },
+  "sv_md_p7_empty_left": {
+    "en": "You have not left any course",
+    "ar": "لم تنسحب من أي دورة"
+  }
 }

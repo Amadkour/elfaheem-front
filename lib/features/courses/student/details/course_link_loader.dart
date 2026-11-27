@@ -70,9 +70,9 @@ class _CourseLinkLoaderState extends State<CourseLinkLoader> {
         builder: (_) => teacherView ? AppNavigator.teacherCourseBuilder!(json) : CourseDetailScreen(course: model),
       ));
     } on ApiException catch (e) {
-      if (mounted) setState(() => _error = e.statusCode == 404 ? gt('الكورس غير موجود', 'Course not found') : e.message);
+      if (mounted) setState(() => _error = e.statusCode == 404 ? gt('الدورة غير موجودة', 'Course not found') : e.message);
     } catch (_) {
-      if (mounted) setState(() => _error = gt('تعذر فتح الكورس', 'Could not open the course'));
+      if (mounted) setState(() => _error = gt('تعذر فتح الدورة', 'Could not open the course'));
     }
   }
 
@@ -81,7 +81,7 @@ class _CourseLinkLoaderState extends State<CourseLinkLoader> {
     final c = context.colors;
     return Scaffold(
       backgroundColor: c.background,
-      appBar: AppHeader(title: gt('الكورس', 'Course')),
+      appBar: AppHeader(title: gt('الدورة', 'Course')),
       body: Center(
         child: _error == null
             ? const AppLoadingIndicator(size: 96)
