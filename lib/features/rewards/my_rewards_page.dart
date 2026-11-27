@@ -83,9 +83,9 @@ Future<void> chooseCouponCourse(BuildContext context, Coupon c) async {
         try {
           final r = await ApiClient().get('/api/v1/courses/$id');
           final name = r is Map ? '${r['title'] ?? r['name'] ?? ''}'.trim() : '';
-          titles[id] = name.isEmpty ? t('كورس رقم $id', 'Course #$id') : name;
+          titles[id] = name.isEmpty ? t('دورة رقم $id', 'Course #$id') : name;
         } catch (_) {
-          titles[id] = t('كورس رقم $id', 'Course #$id');
+          titles[id] = t('دورة رقم $id', 'Course #$id');
         }
       }),
   ]);
@@ -93,7 +93,7 @@ Future<void> chooseCouponCourse(BuildContext context, Coupon c) async {
   final pick = await showAppSheet<int>(
     context,
     (ctx) => AppSheetContent(
-      title: t('اختر كورسك', 'Choose your course'),
+      title: t('اختر دورتك', 'Choose your course'),
       icon: Icons.school_rounded,
       tone: AppTone.gold,
       children: [
