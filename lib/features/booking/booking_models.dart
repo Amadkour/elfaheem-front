@@ -383,11 +383,15 @@ class BkRequest {
     this.slotIds = const [],
     this.proposal,
     this.gender,
+    this.studentId,
   });
 
   final int subjectId, gradeId;
   final String mode, kind;
   final int? centreId, groupId;
+
+  /// A parent booking for a linked child (owner 2026-11-27): the child's id; null = the signed-in student.
+  final int? studentId;
   final String? details, gender;
   final List<int> slotIds;
   final BkProposal? proposal;
@@ -403,6 +407,7 @@ class BkRequest {
         if (kind == 'individual' && proposal == null) 'slot_ids': slotIds,
         if (kind == 'individual' && proposal != null) 'proposal': proposal!.toJson(),
         if (gender != null) 'gender': gender,
+        'student_id': ?studentId,
       };
 }
 
@@ -417,6 +422,7 @@ class BkQuote {
     this.currency,
     this.payNow = true,
     this.providers = const [],
+    this.bankTransfer = false,
   });
 
   factory BkQuote.fromJson(Object? raw) {
@@ -430,6 +436,7 @@ class BkQuote {
       currency: bkStr(m['currency']),
       payNow: m['pay_now'] != false,
       providers: [for (final p in (m['providers'] is List ? m['providers'] as List : const [])) '$p'],
+      bankTransfer: m['bank_transfer'] == true,
     );
   }
 
@@ -443,6 +450,68 @@ class BkQuote {
   /// False for a proposal: paid once the team fixes the time.
   final bool payNow;
   final List<String> providers;
+
+  /// The payer may pay this booking by bank transfer (the country's list has it and the admin's switch is on).
+  final bool bankTransfer;
+}
+
+/// The latest bank transfer of a booking's seat (BookingView `transfer`).
+class BkTransferState {
+  const BkTransferState({required this.paymentId, required this.status, this.amount, this.currency, this.reason});
+
+  static BkTransferState? fromJson(Object? raw) {
+    final m = bkMap(raw);
+    final id = bkInt(m['payment_id']);
+    if (id == null) return null;
+    return BkTransferState(
+      paymentId: id,
+      status: bkStr(m['status']) ?? 'pending',
+      amount: bkNum(m['amount']),
+      currency: bkStr(m['currency']),
+      reason: bkStr(m['rejection_reason']),
+    );
+  }
+
+  final int paymentId;
+
+  /// pending | approved | rejected
+  final String status;
+  final double? amount;
+  final String? currency, reason;
+
+  bool get pending => status == 'pending';
+  bool get rejected => status == 'rejected';
+}
+
+/// Where to send a bank transfer and what the proof form asks for (confirm / pay with `bank_transfer`).
+class BkTransferInfo {
+  const BkTransferInfo({
+    this.bankName,
+    this.accountName,
+    this.iban,
+    this.swift,
+    this.instructions,
+    this.needPhone = false,
+    this.needReference = false,
+  });
+
+  static BkTransferInfo? fromJson(Object? raw) {
+    if (raw is! Map) return null;
+    final m = bkMap(raw);
+    final req = bkMap(m['requirements']);
+    return BkTransferInfo(
+      bankName: bkStr(m['bank_name']),
+      accountName: bkStr(m['account_name']),
+      iban: bkStr(m['iban']),
+      swift: bkStr(m['swift_code']),
+      instructions: bkStr(m['instructions']),
+      needPhone: req['require_sender_phone'] == true,
+      needReference: req['require_transfer_reference'] == true,
+    );
+  }
+
+  final String? bankName, accountName, iban, swift, instructions;
+  final bool needPhone, needReference;
 }
 
 /// One booking (BookingView).
@@ -465,6 +534,7 @@ class BkBooking {
     this.currency,
     this.holdUntil,
     this.checkoutUrl,
+    this.transfer,
   });
 
   factory BkBooking.fromJson(Object? raw) {
@@ -489,6 +559,7 @@ class BkBooking {
       currency: bkStr(m['currency']),
       holdUntil: bkUtc(m['hold_until']),
       checkoutUrl: bkStr(co['url'] ?? co['checkout_url']),
+      transfer: BkTransferState.fromJson(m['transfer']),
     );
   }
 
@@ -510,6 +581,9 @@ class BkBooking {
   final DateTime? holdUntil;
   final String? checkoutUrl;
 
+  /// The seat's latest bank transfer, or null.
+  final BkTransferState? transfer;
+
   bool get active => status == 'active';
   bool get payable => const {'scheduled', 'pending_payment', 'offered'}.contains(status);
 
@@ -519,16 +593,23 @@ class BkBooking {
 
 /// The open checkout of a confirm / pay answer.
 class BkConfirmResult {
-  const BkConfirmResult({required this.booking, this.checkoutUrl});
+  const BkConfirmResult({required this.booking, this.checkoutUrl, this.transfer});
 
   factory BkConfirmResult.fromJson(Object? raw) {
     final m = bkMap(raw);
     final co = bkMap(m['checkout']);
-    return BkConfirmResult(booking: BkBooking.fromJson(m['booking']), checkoutUrl: bkStr(co['url'] ?? co['checkout_url']));
+    return BkConfirmResult(
+      booking: BkBooking.fromJson(m['booking']),
+      checkoutUrl: bkStr(co['url'] ?? co['checkout_url']),
+      transfer: BkTransferInfo.fromJson(m['transfer']),
+    );
   }
 
   final BkBooking booking;
   final String? checkoutUrl;
+
+  /// Set when the booking is paid by bank transfer: the bank details and the proof form's rules.
+  final BkTransferInfo? transfer;
 
   bool get canOpen => checkoutUrl != null && checkoutUrl!.startsWith('https://');
 }
@@ -588,7 +669,10 @@ class BkPayInfo {
   final String? approx;
   final String? approxNote, chargeNote;
 
-  /// The methods the booking checkout can take (a card or a wallet on the gateway's page; a bank transfer is not a
-  /// booking flow).
-  List<BkPayMethod> get bookable => [for (final x in methods) if (x.flow != 'manual') x];
+  /// The methods the booking checkout can take: a card or a wallet on the gateway's page, and the bank transfer
+  /// (proof + the team's review, owner 2026-11-27). Other manual methods are not a booking flow.
+  List<BkPayMethod> get bookable => [for (final x in methods) if (x.flow != 'manual' || x.key == kBkTransfer) x];
 }
+
+/// The bank-transfer method key (payments.md section 1).
+const String kBkTransfer = 'bank_transfer';

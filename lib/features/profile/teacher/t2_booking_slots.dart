@@ -6,8 +6,9 @@
 //                            TeacherSlotsView; "Add a time" → TeacherSlotForm (POST …/slots); remove an open time
 //                            (DELETE …/slots/{id}, 409 `slot_taken` once a student booked it).
 //   TeacherSlotsView         plain values (test/ui/wire_layout_test.dart).
-//   TeacherSlotForm          subject (required), grade (optional), the first day and time (the viewer's zone through
-//                            AppTime, sent as UTC); remote only: in-person times are set by the platform team.
+//   TeacherSlotForm          subject (required), grade (optional), remote or in person (owner 2026-11-27: then a
+//                            centre from GET /booking/teacher/centres, required; hidden under `booking.in_person`),
+//                            the first day and time (the viewer's zone through AppTime, sent as UTC).
 //                            409 `slot_overlap` / `teacher_gender_unknown`, 403 `not_approved` show their text.
 library;
 
@@ -285,9 +286,55 @@ class TeacherSlotForm extends StatefulWidget {
   State<TeacherSlotForm> createState() => _TeacherSlotFormState();
 }
 
+/// One centre of GET /booking/teacher/centres: its name with the city (and district) for the picker.
+class TeacherCentre {
+  const TeacherCentre({required this.id, required this.label});
+
+  static TeacherCentre? tryParse(Object? raw) {
+    if (raw is! Map || raw['id'] is! num) return null;
+    final ar = AppConfig.lang == 'ar';
+    String name(Object? m) {
+      if (m is! Map) return '';
+      final a = '${m['name_ar'] ?? ''}', e = '${m['name_en'] ?? ''}';
+      return ar ? (a.isEmpty ? e : a) : (e.isEmpty ? a : e);
+    }
+
+    final place = [name(raw['city']), name(raw['district'])].where((s) => s.isNotEmpty).join(ar ? '، ' : ', ');
+    final n = name(raw);
+    return TeacherCentre(id: (raw['id'] as num).toInt(), label: place.isEmpty ? n : '$n · $place');
+  }
+
+  final int id;
+  final String label;
+}
+
 class _TeacherSlotFormState extends State<TeacherSlotForm> {
   late final ApiClient _api = widget.api ?? ApiClient();
   int? _subject, _grade;
+  String _mode = 'remote';
+  int? _centre;
+  List<TeacherCentre>? _centres;
+  bool _centresLoading = false;
+
+  bool get _inPersonOn => !AppConfig.disableList.contains('booking.in_person');
+
+  Future<void> _pickMode(String m) async {
+    setState(() {
+      _mode = m;
+      _error = null;
+    });
+    if (m != 'in_person' || _centres != null || _centresLoading) return;
+    setState(() => _centresLoading = true);
+    try {
+      final r = await _api.get('/api/v1/booking/teacher/centres');
+      final items = r is Map && r['items'] is List ? r['items'] as List : const [];
+      if (mounted) setState(() => _centres = [for (final x in items) ?TeacherCentre.tryParse(x)]);
+    } catch (e) {
+      if (mounted) setState(() => _error = teacherSlotErrorText(e));
+    } finally {
+      if (mounted) setState(() => _centresLoading = false);
+    }
+  }
   late DateTime _wall;
   bool _saving = false;
   String? _error;
@@ -326,6 +373,10 @@ class _TeacherSlotFormState extends State<TeacherSlotForm> {
       setState(() => _error = 't2_slot_pick_subject'.tr);
       return;
     }
+    if (_mode == 'in_person' && _centre == null) {
+      setState(() => _error = 'ow_slot_pick_centre'.tr);
+      return;
+    }
     final at = AppTime.fromZone(_wall).toUtc();
     if (!at.isAfter(DateTime.now().toUtc())) {
       setState(() => _error = 't2_slot_future'.tr);
@@ -339,7 +390,8 @@ class _TeacherSlotFormState extends State<TeacherSlotForm> {
       final r = await _api.post('/api/v1/booking/teacher/slots', body: {
         'edu_subject_id': _subject,
         'grade_id': ?_grade,
-        'mode': 'remote',
+        'mode': _mode,
+        if (_mode == 'in_person') 'centre_id': _centre,
         'starts_at': at.toIso8601String(),
         'weekly': true,
       });
@@ -393,6 +445,34 @@ class _TeacherSlotFormState extends State<TeacherSlotForm> {
             ],
             onChanged: _saving ? null : (v) => setState(() => _grade = v),
           ),
+          if (_inPersonOn) ...[
+            const SizedBox(height: AppSpace.sm),
+            AppDropdown<String>(
+              key: const ValueKey('t2.slot.mode'),
+              value: _mode,
+              decoration: InputDecoration(labelText: 'ow_slot_mode'.tr),
+              items: [
+                DropdownMenuItem(value: 'remote', child: Text('t2_slot_mode_remote'.tr)),
+                DropdownMenuItem(value: 'in_person', child: Text('t2_slot_mode_in_person'.tr)),
+              ],
+              onChanged: _saving ? null : (v) => _pickMode(v ?? 'remote'),
+            ),
+          ],
+          if (_mode == 'in_person') ...[
+            const SizedBox(height: AppSpace.sm),
+            if (_centresLoading)
+              const AppListSkeleton(items: 1, padding: EdgeInsets.zero)
+            else if ((_centres ?? const []).isEmpty)
+              AppBanner(icon: Icons.info_outline_rounded, text: 'ow_slot_no_centres'.tr)
+            else
+              AppDropdown<int>(
+                key: const ValueKey('t2.slot.centre'),
+                value: _centre,
+                decoration: InputDecoration(labelText: 'ow_slot_centre'.tr),
+                items: [for (final c in _centres!) DropdownMenuItem(value: c.id, child: Text(c.label, overflow: TextOverflow.ellipsis))],
+                onChanged: _saving ? null : (v) => setState(() => _centre = v),
+              ),
+          ],
         ],
         const SizedBox(height: AppSpace.sm),
         Row(children: [

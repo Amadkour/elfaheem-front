@@ -22,6 +22,7 @@ import 'dart:async' show unawaited;
 import 'package:flutter/foundation.dart' show ValueNotifier;
 
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart' show ThemeConfigProvider;
+import 'package:flutter_education_app/config/app_config.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/offline/sync/offline_reads.dart';
 import 'package:flutter_education_app/core/offline/sync/outbox.dart';
@@ -155,6 +156,8 @@ class StudyProfile {
     this.gradeId,
     this.areaId,
     this.gender,
+    this.interestIds,
+    this.interestNames = const [],
   });
 
   final String? stage;
@@ -173,6 +176,11 @@ class StudyProfile {
   final String? countryCode;
   final int? stageId, gradeId, areaId;
   final String? gender;
+
+  /// The fields (category ids) the student picked (owner 2026-11-27, the roadmap's interests); null = not loaded /
+  /// not touched (PUT leaves them as they are), [] = none. [interestNames] are the server's names, for display.
+  final List<int>? interestIds;
+  final List<String> interestNames;
 
   static const empty = StudyProfile();
 
@@ -198,6 +206,11 @@ class StudyProfile {
       gradeId: _n(j['grade_id']),
       areaId: _n(j['area_id']),
       gender: _s(j['gender']),
+      interestIds: j['interest_ids'] is List ? [for (final x in j['interest_ids'] as List) ?_n(x)] : null,
+      interestNames: [
+        for (final x in (j['interests'] is List ? j['interests'] as List : const []))
+          if (x is Map) ?_s(AppConfig.lang == 'ar' ? (x['name_ar'] ?? x['name_en']) : (x['name_en'] ?? x['name_ar'])),
+      ],
     );
   }
 
@@ -226,8 +239,28 @@ class StudyProfile {
       'school_name': schoolName,
       'parent_phone': parentPhone,
       if (withDob) 'dob': dob,
+      'interest_ids': ?interestIds,
     };
   }
+
+  /// The picked fields replaced (the form's interests chips).
+  StudyProfile withInterests(List<int> ids) => StudyProfile(
+        stage: stage,
+        grade: grade,
+        track: track,
+        schoolName: schoolName,
+        governorate: governorate,
+        city: city,
+        parentPhone: parentPhone,
+        dob: dob,
+        countryCode: countryCode,
+        stageId: stageId,
+        gradeId: gradeId,
+        areaId: areaId,
+        gender: gender,
+        interestIds: ids,
+        interestNames: interestNames,
+      );
 
   /// The catalog choice (country, stage, grade, track, area, gender) replaced as one; the old keys follow the ids.
   StudyProfile withEdu({
@@ -254,6 +287,8 @@ class StudyProfile {
         gradeId: gradeId,
         areaId: areaId,
         gender: gender,
+        interestIds: interestIds,
+        interestNames: interestNames,
       );
 
   /// What is still missing when the stage and grade come from the catalog [stages] (ids), else the old rule.
@@ -304,6 +339,8 @@ class StudyProfile {
       gradeId: gradeId,
       areaId: areaId,
       gender: gender,
+      interestIds: interestIds,
+      interestNames: interestNames,
     );
   }
 
@@ -324,6 +361,8 @@ class StudyProfile {
       gradeId: gradeId,
       areaId: areaId,
       gender: gender,
+      interestIds: interestIds,
+      interestNames: interestNames,
     );
   }
 
@@ -379,10 +418,15 @@ class StudyProfile {
       other.stageId == stageId &&
       other.gradeId == gradeId &&
       other.areaId == areaId &&
-      other.gender == gender;
+      other.gender == gender &&
+      _sameIds(other.interestIds, interestIds);
+
+  static bool _sameIds(List<int>? a, List<int>? b) =>
+      a == null || b == null ? a == b : a.length == b.length && [for (var i = 0; i < a.length; i++) a[i] == b[i]].every((x) => x);
 
   @override
-  int get hashCode => Object.hash(stage, grade, track, schoolName, governorate, city, parentPhone, dob, countryCode, stageId, gradeId, areaId, gender);
+  int get hashCode => Object.hash(stage, grade, track, schoolName, governorate, city, parentPhone, dob, countryCode, stageId, gradeId, areaId, gender,
+      interestIds == null ? null : Object.hashAll(interestIds!));
 }
 
 /// The super admin's settings (also in the public auth policy).
@@ -545,3 +589,20 @@ String? eduErrorText(String? code) => switch (code) {
       'consent_version_required' => t('تعذّر تسجيل الموافقة، حاول مرة أخرى', 'The consent could not be recorded, try again'),
       _ => null,
     };
+
+/// The fields a student may pick as interests (GET /categories, the top ones), as (id, name); [] when the list
+/// cannot be read (the form then shows no interests block).
+Future<List<(int, String)>> loadStudyInterestChoices({ApiClient? api}) async {
+  try {
+    final r = await (api ?? ApiClient()).get('/api/v1/categories');
+    final items = r is Map ? r['items'] : r;
+    final ar = AppConfig.lang == 'ar';
+    return [
+      for (final c in (items is List ? items : const []))
+        if (c is Map && c['id'] is num && c['parent_id'] == null)
+          ((c['id'] as num).toInt(), '${(ar ? (c['name_ar'] ?? c['name_en']) : (c['name_en'] ?? c['name_ar'])) ?? ''}'),
+    ].where((x) => x.$2.trim().isNotEmpty).toList();
+  } catch (_) {
+    return const [];
+  }
+}

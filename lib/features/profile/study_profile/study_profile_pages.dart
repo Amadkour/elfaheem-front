@@ -88,11 +88,18 @@ class _StudyProfileStepPageState extends State<StudyProfileStepPage> {
   late StudyProfile _value = widget.initial;
   bool _showErrors = false;
   StudyEduData? _edu;
+  List<(int, String)> _interests = const [];
 
   @override
   void initState() {
     super.initState();
     _loadEdu(widget.initial.countryCode);
+    _loadInterests();
+  }
+
+  Future<void> _loadInterests() async {
+    final v = await loadStudyInterestChoices();
+    if (mounted) setState(() => _interests = v);
   }
 
   Future<void> _loadEdu(String? country) async {
@@ -137,6 +144,7 @@ class _StudyProfileStepPageState extends State<StudyProfileStepPage> {
             compact: true,
             edu: _edu,
             onCountry: _loadEdu,
+            interestChoices: _interests,
             onChanged: (v) {
               setState(() => _value = v);
               widget.onChanged?.call(v);
@@ -184,6 +192,7 @@ class _StudyProfilePageState extends State<StudyProfilePage> {
   String? _error;
   bool _saving = false, _showErrors = false;
   StudyEduData? _edu;
+  List<(int, String)> _interests = const [];
 
   @override
   void initState() {
@@ -191,6 +200,12 @@ class _StudyProfilePageState extends State<StudyProfilePage> {
     StudyProfileSync.wireSync();
     StudyProfileSync.latest.addListener(_onSync);
     _load();
+    _loadInterests();
+  }
+
+  Future<void> _loadInterests() async {
+    final v = await loadStudyInterestChoices();
+    if (mounted) setState(() => _interests = v);
   }
 
   @override
@@ -298,6 +313,7 @@ class _StudyProfilePageState extends State<StudyProfilePage> {
           showErrors: _showErrors,
           edu: _edu,
           onCountry: _loadEdu,
+          interestChoices: _interests,
           onChanged: (v) => setState(() => _value = v),
         ),
         AppSpace.gapMd,

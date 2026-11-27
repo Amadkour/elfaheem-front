@@ -3,7 +3,8 @@
 // The booking flow's state (BookFlow): what the student picked in each step, the server's lists, and the move to
 // the next step. One controller per flow, owned by the page (not a global provider). The picks survive a sign-in in
 // between (4ب "حجزك محفوظ لين تكمّل"): [saveDraft] before leaving for the sign-in page, [restoreDraft] when the
-// flow opens again for the same subject and grade.
+// flow opens again for the same subject and grade. A parent books for a linked child with [studentId] (owner
+// 2026-11-27): every call names the child, and the booking is the child's.
 library;
 
 import 'dart:convert';
@@ -35,8 +36,10 @@ class BkFlowController extends ChangeNotifier {
     this.gradeTitle,
     this.subjectKey,
     this.courseId,
+    this.studentId,
+    this.childName,
     BookingApi? api,
-  }) : api = api ?? BookingApi();
+  }) : api = api ?? BookingApi(studentId: studentId);
 
   final int subjectId, gradeId;
 
@@ -49,6 +52,10 @@ class BkFlowController extends ChangeNotifier {
   /// The course page the flow was opened from (the sign-in resumes it).
   final String? courseId;
   final BookingApi api;
+
+  /// A parent's linked child the booking is for (null: the signed-in student), and the child's name for the review.
+  final int? studentId;
+  final String? childName;
 
   // ── where we are ──────────────────────────────────────────────────────────
   /// 1 how · 2 group or individual · 3 the time · 4 review and pay · 5 done.
@@ -94,6 +101,9 @@ class BkFlowController extends ChangeNotifier {
   String? method;
   BkBooking? booked;
 
+  /// The bank details of a booking confirmed for a bank transfer (the proof form comes next).
+  BkTransferInfo? transferInfo;
+
   // ═══════════════════════════════════════════════════════════════════════════
 
   String get subjectLabel => options?.subject.label.isNotEmpty == true ? options!.subject.label : (subjectTitle ?? '');
@@ -117,6 +127,15 @@ class BkFlowController extends ChangeNotifier {
       ];
 
   String? get knownGender => gender ?? options?.gender;
+
+  /// The methods the review offers: the payer's bookable ones, without the bank transfer when the quote says the
+  /// payer cannot use it.
+  List<BkPayMethod> get payMethods => [
+        for (final m in payInfo?.bookable ?? const <BkPayMethod>[])
+          if (m.key != kBkTransfer || (quote?.bankTransfer ?? false)) m,
+      ];
+
+  bool get payByTransfer => method == kBkTransfer;
 
   BkCity? get city => centres?.cities.where((c) => c.id == cityId).firstOrNull;
   BkDistrict? get district {
@@ -283,8 +302,6 @@ class BkFlowController extends ChangeNotifier {
     final futures = <Future<void>>[
       api.payMethods(amount: price).then((p) {
         payInfo = p;
-        final keys = [for (final m in p.bookable) m.key];
-        if (method == null || !keys.contains(method)) method = keys.firstOrNull;
       }).catchError((_) {}),
     ];
     // a guest may not send a write: the review is drawn from the picks, the server's quote comes after the sign-in
@@ -294,6 +311,8 @@ class BkFlowController extends ChangeNotifier {
       }));
     }
     await Future.wait(futures);
+    final keys = [for (final m in payMethods) m.key];
+    if (method == null || !keys.contains(method)) method = keys.firstOrNull;
     notifyListeners();
   }
 
@@ -578,8 +597,9 @@ class BkFlowController extends ChangeNotifier {
     busy = true;
     notifyListeners();
     try {
-      final r = await api.confirm(request, provider: payInfo?.provider);
+      final r = await api.confirm(request, provider: payByTransfer ? kBkTransfer : payInfo?.provider);
       booked = r.booking;
+      transferInfo = r.transfer;
       return r;
     } finally {
       busy = false;
@@ -602,6 +622,36 @@ class BkFlowController extends ChangeNotifier {
     }
     notifyListeners();
     return booked?.active == true;
+  }
+
+  /// Sends the bank-transfer proof of the confirmed booking. Null when sent, else the error text.
+  Future<String?> sendTransfer({
+    required String senderName,
+    String? senderPhone,
+    String? reference,
+    required String fileName,
+    String? filePath,
+    Uint8List? fileBytes,
+  }) async {
+    final id = booked?.id;
+    if (id == null) return null;
+    busy = true;
+    notifyListeners();
+    try {
+      booked = await api.sendTransfer(id,
+          senderName: senderName,
+          senderPhone: senderPhone,
+          reference: reference,
+          fileName: fileName,
+          filePath: filePath,
+          fileBytes: fileBytes);
+      return null;
+    } catch (e) {
+      return bkErrorText(e);
+    } finally {
+      busy = false;
+      notifyListeners();
+    }
   }
 
   void done() {

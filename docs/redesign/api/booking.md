@@ -261,3 +261,55 @@ The teacher's groups and their rosters are the existing `GET /me/packages` and `
 Payment methods per country, VAT lines and the monthly renewal of a booking are the payments package; the
 privacy sweep of the existing package / course payloads is the privacy package; country, time zone and curriculum
 lists are the international package.
+
+## Owner decisions 2026-11-27 (branch `rd/ow-book`, no migration)
+
+Test `tests/redesign/e2e_owner_booking.py` (back). Back changelog: `FLUTTER_API_CHANGES.md` (2026-11-27).
+
+### A parent books and pays for a linked child
+
+Every student route above (`options`, `centres`, `groups`, `slots`, `quote`, `confirm`, `me`, `{id}/pay`,
+`{id}/cancel`, `{id}/transfer`, `groups/{id}/notify` (+ DELETE), `notify-other-time`) accepts `student_id`: a query
+parameter on GET / DELETE, a body (or form) field on POST. The caller must be a parent with an ACTIVE link to that
+student; anyone else (no link, an inactive link, an unknown id, a student naming someone else) gets 403
+`child_not_linked`. The booking, the seat and the payment belong to the child (his own `GET /booking/me` lists it);
+the gender and the city come from the child's study profile. A parent without `student_id` still gets 403
+`students_only` on `confirm`. App: `ParentBookPage` → `openBookFlow(studentId:, childName:)`; `BookingApi(studentId:)`
+adds it to every call.
+
+### Bank transfer in booking
+
+- `quote` gains `"bank_transfer": true|false` — the payer's (the caller's, so the parent's) country method list has
+  `bank_transfer` (payments.md §1) and the admin's switch is on. The app also needs it in `GET /payments/methods`.
+- `confirm` / `{id}/pay` with `"provider": "bank_transfer"` (+ `lang`) hold the seat without a card checkout:
+  `{"booking": BookingView, "checkout": null, "transfer": {"bank_name", "account_name", "iban", "swift_code",
+  "instructions", "requirements": {"require_sender_phone", "require_transfer_reference", …}, "currency"}}`. The hold
+  is `transfer_hold_hours` (48, booking settings) instead of 30 minutes. 409 `transfer_unavailable`.
+- `POST /api/v1/booking/{id}/transfer` (multipart: `sender_name`, `sender_phone?`, `transfer_reference?`,
+  `student_id?`, `proof_image`) → 201 `{"booking"}`. 422 `bad_value {field}` for a field the admin requires, 409
+  `transfer_pending` (one proof at a time; `pay` answers the same while it waits), 409 `not_payable`. An open card
+  checkout of the seat is closed. The platform admins are notified.
+- BookingView gains `"transfer": {"payment_id", "status": "pending" | "approved" | "rejected", "amount", "currency",
+  "rejection_reason", "submitted_at"} | null`; `checkout` stays null while a transfer is the open payment.
+- Staff: `GET /api/v1/admin/booking/transfers?status=pending|approved|rejected|all` → `{"items": [{"payment_id",
+  "booking_id", "status", "amount", "currency", "student": {user_id, name}, "payer": {user_id, name, role},
+  "sender_name", "sender_phone", "transfer_reference", "proof_url", "rejection_reason", "submitted_at",
+  "reviewed_at"}], "total"}`; `POST …/{payment_id}/approve` → the seat is paid exactly like a verified card payment
+  (`result: paid`); `POST …/{payment_id}/reject {"reason"}` → the payment fails, the seat stays held
+  (`transfer_hold_hours`) for a new proof or a card. 409 `transfer_reviewed`, 404 `transfer_not_found`, 422 `reason`.
+  (No app page for this list yet: the admin booking console is the place for it.)
+
+### Interests on the study profile
+
+`GET /api/v1/me/study-profile` → `profile.interest_ids` (category ids) and `profile.interests` (`[{id, name_ar,
+name_en}]`). `PUT` accepts `interest_ids` (≤ 12; unknown ids dropped; absent = unchanged, `[]` = none — back to the
+inferred ones). `POST /api/v1/auth/register` accepts `interest_ids`, or `study_profile.interest_ids`, for a student.
+The same store as the roadmap's "My interests" (`learning_prefs.interest_ids`, `PUT /me/learning-prefs`). App: the
+join flow's delivery step and `StudyProfileForm` (`interestChoices`, from `GET /categories`) show the chips.
+
+### Teachers: in-person times at a centre
+
+`GET /api/v1/booking/teacher/centres?country=` (teacher) → `{"items": [{…centre, "city": {id, name_ar, name_en},
+"district": {…} | null}], "in_person": true}`; `in_person: false` and no items while `booking.in_person` is off.
+`POST /booking/teacher/slots` with `"mode": "in_person"` needs `centre_id` (422 `bad_value {field: centre_id}`, 404
+`centre_not_found` for an unknown or inactive one, 409 `mode_unavailable` while `booking.in_person` is off).
