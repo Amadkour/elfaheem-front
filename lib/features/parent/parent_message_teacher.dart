@@ -8,11 +8,11 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_shell_nav.dart' show AppShellNav;
 
 import '../../config/app_config.dart';
+import 'pa_kit.dart';
 import 'parent_pulse.dart';
 
 /// The kill switch of the action (the home asks before offering it).
@@ -44,7 +44,7 @@ Future<bool> showParentMessageTeacher(
   return true;
 }
 
-/// Which teacher: only asked when the child has more than one and none was chosen.
+/// Which teacher (Pa2Today `screen=msg`): only asked when the child has more than one and none was chosen.
 class ParentMessageTeacherSheet extends StatelessWidget {
   const ParentMessageTeacherSheet({super.key, required this.childName, required this.teachers, this.childId, this.courseId});
 
@@ -54,29 +54,27 @@ class ParentMessageTeacherSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
-    return AppSheetContent(title: 'pp_msg_title'.tr, children: [
-      Text('pp_msg_note'.tr.replaceAll('{child}', childName.split(' ').first), style: appText(12.5, w: FontWeight.w400, c: c.textMedium, h: 1.4)),
-      const SizedBox(height: AppSpace.sm),
-      for (final t in teachers)
-        InkWell(
-          borderRadius: BorderRadius.circular(AppRadius.card),
-          onTap: () => Navigator.of(context).pop(t),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
-            child: Row(children: [
-              AppAvatar(name: t.name, url: t.imageUrl.isEmpty ? null : t.imageUrl, size: 44),
-              const SizedBox(width: AppSpace.sm),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(t.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(14, w: FontWeight.w600, c: c.textDark)),
-                  Text(t.course, maxLines: 1, overflow: TextOverflow.ellipsis, style: appText(12, w: FontWeight.w400, c: c.textMedium)),
-                ]),
-              ),
-              Icon(Icons.chevron_right_rounded, size: AppIconSize.md, color: c.textLight),
-            ]),
+    final first = childName.split(' ').first;
+    return AppSheetContent(
+      title: 'pa_msg_title'.tr.replaceAll('{name}', first),
+      icon: Icons.chat_bubble_outline_rounded,
+      children: [
+        PaNote(icon: Icons.chat_bubble_outline_rounded, text: 'pa_msg_note'.tr.replaceAll('{name}', first)),
+        const SizedBox(height: AppSpace.md),
+        Text('pa_pick_teacher'.tr, style: AppType.tileTitle(context)),
+        const SizedBox(height: AppSpace.sm),
+        for (final t in teachers) ...[
+          AppTile(
+            leading: AppAvatar(name: t.name, url: t.imageUrl.isEmpty ? null : t.imageUrl, size: AppDashSize.glyph),
+            title: t.name,
+            subtitle: t.course,
+            trailing: const Icon(Icons.chevron_right_rounded),
+            selected: t.courseId == courseId,
+            onTap: () => Navigator.of(context).pop(t),
           ),
-        ),
-    ]);
+          const SizedBox(height: AppSpace.sm),
+        ],
+      ],
+    );
   }
 }

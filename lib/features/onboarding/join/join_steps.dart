@@ -157,6 +157,7 @@ class JoinFlowView extends StatelessWidget {
     this.onGoTo,
     this.onSecondary,
     this.onLinkChild,
+    this.parentExtra,
   });
 
   final JoinStep step;
@@ -178,6 +179,10 @@ class JoinFlowView extends StatelessWidget {
 
   /// A signed-in parent's "Link my child" on the confirm step.
   final VoidCallback? onLinkChild;
+
+  /// A parent's extra block under the child-code field on the contact step (the parent group's "create your child's
+  /// account" fields, lib/features/parent/signup/); null = none.
+  final Widget? parentExtra;
 
   final List<EduCountry> countries;
   final EduCountryCatalog? catalog;
@@ -436,6 +441,7 @@ class JoinFlowView extends StatelessWidget {
             icon: Icons.link_rounded,
             ltr: true,
           ),
+        if (draft.isParent && parentExtra != null) parentExtra!,
       ]);
 
   String _levelsText() {

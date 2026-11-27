@@ -167,25 +167,21 @@ class PlSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.colors;
+    // the redesign's section head (Pa2Reports): the icon box, the title and its line under it, then the body
     return AppCard(
       margin: const EdgeInsets.only(bottom: AppSpace.md),
-      padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.md, AppSpace.md, AppSpace.md + AppSpace.xxs),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+          AppIconBox(icon: icon),
+          const SizedBox(width: AppSpace.sm),
           Expanded(
-            child: Semantics(header: true, child: Text(title, style: AppType.section(context))),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Semantics(header: true, child: Text(title, style: AppType.section(context))),
+              if (hint != null) Text(hint!, style: AppType.meta(context)),
+            ]),
           ),
           ?trailing,
-          Padding(
-            padding: const EdgeInsetsDirectional.only(start: AppSpace.xs, top: AppSpace.xxs),
-            child: Icon(icon, size: AppIconSize.md, color: c.textLight),
-          ),
         ]),
-        if (hint != null) ...[
-          const SizedBox(height: AppSpace.xxs),
-          Text(hint!, style: AppType.meta(context).copyWith(height: 1.45)),
-        ],
         const SizedBox(height: AppSpace.md),
         child,
       ]),
@@ -271,18 +267,25 @@ class PlInsightTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // a tinted tile: green is good news, the warning tone wants a look (Pa2Reports "أهم الملاحظات")
+    final kit = context.colors.kit;
+    final tone = switch (level) { 'good' => kit.ok, 'warn' || 'bad' => kit.warn, _ => kit.primaryTone };
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: AppSpace.xs),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        PlToneWell(icon: plLevelIcon(level), tone: plLevelColor(context, level)),
-        const SizedBox(width: AppSpace.sm),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.only(top: AppSpace.xxs + AppBorder.focus),
-            child: Text(text, style: AppType.row(context).copyWith(height: 1.5)),
+      padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs),
+      child: Container(
+        padding: const EdgeInsets.all(AppSpace.sm),
+        decoration: BoxDecoration(color: tone.tint, borderRadius: BorderRadius.circular(AppRadius.tile)),
+        child: Row(children: [
+          Container(
+            width: AppDashSize.glyph,
+            height: AppDashSize.glyph,
+            decoration: BoxDecoration(color: context.colors.cardBg, borderRadius: BorderRadius.circular(AppRadius.glyph)),
+            child: Icon(plLevelIcon(level), size: AppIconSize.md, color: tone.ink),
           ),
-        ),
-      ]),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(child: Text(text, style: AppType.row(context).copyWith(color: tone.ink))),
+        ]),
+      ),
     );
   }
 }

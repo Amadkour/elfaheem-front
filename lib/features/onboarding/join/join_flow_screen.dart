@@ -22,6 +22,7 @@ import 'package:flutter_education_app/features/auth/register_screen.dart';
 import 'package:flutter_education_app/features/onboarding/explore_launcher.dart';
 import 'package:flutter_education_app/features/parent/parent_consent.dart';
 import 'package:flutter_education_app/features/parent/parent_link_providers.dart';
+import 'package:flutter_education_app/features/parent/signup/pa_join_child_fields.dart';
 
 import 'join_draft.dart';
 import 'join_steps.dart';
@@ -253,6 +254,11 @@ class _JoinFlowScreenState extends State<JoinFlowScreen> {
       onSecondary: _d.isTeacher ? _explore : (auth.isAuthenticated ? null : _register),
       onLinkChild: _d.isParent && auth.isAuthenticated && auth.isParent && _childCode.text.trim().isNotEmpty
           ? _linkChild
+          : null,
+      // the parent group's hook: the child's account is created after sign-up (PaChildDraft, parent dashboard)
+      parentExtra: _d.isParent && !auth.isAuthenticated
+          ? PaJoinChildFields(
+              country: _d.country, stageId: _d.stageId, gradeId: _d.gradeId, track: _d.trackKey, delivery: _d.delivery)
           : null,
     );
   }

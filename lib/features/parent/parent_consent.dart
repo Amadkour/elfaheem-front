@@ -1,11 +1,11 @@
 // lib/features/parent/parent_consent.dart — a parent's consent to link a child under the country's minor age
 // (Learning Hub F3, CONTRACT §3, D-1311).
 //   ParentConsentBody          the consent text (version [kConsentVersion]) and its checkbox; plain values
-//   showParentConsentDialog    the dialog: the box must be ticked before "I agree" works; true when agreed
+//   showParentConsentDialog    the sheet (Pa2Kids `screen=consent`): the box must be ticked before "I agree" works; true when agreed
 //   ConsentNeededNotice        the line + "Give consent" button on a child card whose `needs_consent` is true
 //   ConsentRequiredView        a child tab's whole-page state for 403 `consent_required` (plain values)
 //   ParentConsentRequired      the same with its action: the dialog, then POST; `onGranted` reloads the tab
-//   revokeParentConsentFlow    "Revoke consent" on a child card: GET (is there one?), appConfirm, DELETE
+//   revokeParentConsentFlow    "Revoke consent" on a child card: GET (is there one?), the sheet (`screen=revoke`), DELETE
 // The server answers 422 `consent_required` to a redeem without consent; `needs_consent` in /parent/children marks an
 // already linked child. POST /parent/children/{id}/consent {accepted: true, text_version} records it for the latter.
 // Phase 10 (D-1371): consent belongs to the parent-student pair; the child's games / Quran / grammar routes answer
@@ -20,7 +20,7 @@ import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/api_error_text.dart';
 import 'package:flutter_education_app/design/app_notice.dart';
 import 'package:flutter_education_app/design/app_kit.dart';
-import 'package:flutter_education_app/design/app_overlays.dart';
+import 'package:flutter_education_app/features/parent/pa_kit.dart';
 
 /// The version of the consent text below; sent as `text_version`. Change it with the text.
 const kConsentVersion = 'v1';
@@ -45,32 +45,38 @@ class ParentConsentBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final set = AppAreaScope.of(context);
     return Column(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (childName != null && childName!.isNotEmpty) ...[
-          Text(childName!, style: AppType.section(context)),
-          AppSpace.gapXs,
-        ],
         Text(consentText(), style: AppType.body(context)),
         AppSpace.gapSm,
-        InkWell(
-          key: const ValueKey('consent.box'),
-          borderRadius: AppRadius.controlAll,
-          onTap: () => onChanged(!accepted),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: AppTouch.min),
-            child: Row(
-              children: [
-                Checkbox(
-                  value: accepted,
-                  activeColor: c.primary,
-                  semanticLabel: _t('أوافق على الإقرار أعلاه', 'I agree to the statement above'),
-                  onChanged: (v) => onChanged(v ?? false),
-                ),
-                Expanded(child: Text(_t('أقرّ وأوافق', 'I confirm and agree'), style: AppType.row(context))),
-              ],
+        Semantics(
+          checked: accepted,
+          child: InkWell(
+            key: const ValueKey('consent.box'),
+            borderRadius: BorderRadius.circular(AppRadius.tile),
+            onTap: () => onChanged(!accepted),
+            child: Container(
+              constraints: const BoxConstraints(minHeight: AppTouch.primary),
+              padding: const EdgeInsets.symmetric(horizontal: AppSpace.xs),
+              decoration: BoxDecoration(
+                color: c.kit.well,
+                borderRadius: BorderRadius.circular(AppRadius.tile),
+                border: Border.all(color: accepted ? set.a : c.kit.line, width: AppBorder.strong),
+              ),
+              child: Row(
+                children: [
+                  Checkbox(
+                    value: accepted,
+                    activeColor: set.a,
+                    semanticLabel: _t('أوافق على الإقرار أعلاه', 'I agree to the statement above'),
+                    onChanged: (v) => onChanged(v ?? false),
+                  ),
+                  Expanded(child: Text(_t('أقرّ وأوافق', 'I confirm and agree'), style: AppType.row(context))),
+                ],
+              ),
             ),
           ),
         ),
@@ -79,50 +85,52 @@ class ParentConsentBody extends StatelessWidget {
   }
 }
 
-class _ConsentDialogBody extends StatefulWidget {
-  const _ConsentDialogBody({required this.childName});
+class ParentConsentSheet extends StatefulWidget {
+  const ParentConsentSheet({required this.childName, this.grade});
   final String? childName;
+  final String? grade;
 
   @override
-  State<_ConsentDialogBody> createState() => _ConsentDialogBodyState();
+  State<ParentConsentSheet> createState() => ParentConsentSheetState();
 }
 
-class _ConsentDialogBodyState extends State<_ConsentDialogBody> {
+class ParentConsentSheetState extends State<ParentConsentSheet> {
   bool _on = false;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ParentConsentBody(accepted: _on, childName: widget.childName, onChanged: (v) => setState(() => _on = v)),
-        AppSpace.gapMd,
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            AppButton.ghost(label: _t('إلغاء', 'Cancel'), onPressed: () => Navigator.of(context).pop(false)),
-            AppSpace.gapXs,
-            AppButton.primary(
+    final name = widget.childName?.trim() ?? '';
+    final sub = [
+      if (name.isNotEmpty) _t('على متابعة $name', 'To follow $name'),
+      if ((widget.grade ?? '').isNotEmpty) widget.grade!,
+    ].join(_t('، ', ', '));
+    return Padding(
+      padding: const EdgeInsets.all(AppSpace.md),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          PaSheetHead(icon: Icons.shield_outlined, title: _t('موافقة ولي الأمر', 'Parent consent'), subtitle: sub),
+          AppSpace.gapMd,
+          ParentConsentBody(accepted: _on, onChanged: (v) => setState(() => _on = v)),
+          AppSpace.gapMd,
+          AppButtonRow(
+            primary: AppButton.primary(
               key: const ValueKey('consent.agree'),
               label: _t('أوافق', 'I agree'),
               onPressed: _on ? () => Navigator.of(context).pop(true) : null,
             ),
-          ],
-        ),
-      ],
+            secondary: [AppButton.secondary(label: _t('إلغاء', 'Cancel'), onPressed: () => Navigator.of(context).pop(false))],
+          ),
+        ],
+      ),
     );
   }
 }
 
-/// Ask for the consent. True only when the box is ticked and "I agree" is pressed.
-Future<bool> showParentConsentDialog(BuildContext context, {String? childName}) async {
-  final r = await showAppDialog<bool>(
-    context,
-    title: _t('موافقة ولي الأمر', 'Parent consent'),
-    icon: Icons.verified_user_outlined,
-    body: _ConsentDialogBody(childName: childName),
-  );
+/// Ask for the consent (a sheet). True only when the box is ticked and "I agree" is pressed.
+Future<bool> showParentConsentDialog(BuildContext context, {String? childName, String? grade}) async {
+  final r = await showAppSheet<bool>(context, (_) => paRole(ParentConsentSheet(childName: childName, grade: grade)));
   return r == true;
 }
 
@@ -135,28 +143,19 @@ class ConsentNeededNotice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          _t('هذا الطالب دون السن القانونية: نحتاج موافقتك على الربط.',
-              'This student is under the legal age: we need your consent to the link.'),
-          style: AppType.meta(context).copyWith(color: context.colors.warning),
-        ),
-        AppSpace.gapXs,
-        Align(
-          alignment: AlignmentDirectional.centerStart,
-          child: AppButton.tonal(
-            key: const ValueKey('consent.give'),
-            label: _t('إعطاء الموافقة', 'Give consent'),
-            icon: Icons.verified_user_outlined,
-            size: AppButtonSize.sm,
-            busy: busy,
-            onPressed: busy ? null : onGive,
-          ),
-        ),
-      ],
+    return AppTile(
+      icon: Icons.lock_outline_rounded,
+      tone: context.colors.kit.accent(AppAccent.grape),
+      title: _t('تنتظر موافقتك', 'Waiting for your consent'),
+      subtitle: _t('دون السن النظامية: نعرض الألعاب والحفظ والنحو بعد موافقتك.',
+          'Under the legal age: games, Quran and grammar show after you consent.'),
+      trailing: AppButton.primary(
+        key: const ValueKey('consent.give'),
+        label: _t('أعطِ الموافقة', 'Give consent'),
+        size: AppButtonSize.sm,
+        busy: busy,
+        onPressed: busy ? null : onGive,
+      ),
     );
   }
 }
@@ -167,7 +166,8 @@ bool isConsentRequired(Object e) {
   return (e.code ?? e.detail['code']?.toString()) == 'consent_required';
 }
 
-/// A child tab's state when the server needs this parent's consent first: why, and the action that gives it.
+/// A child tab's state when the server needs this parent's consent first (Pa2Kids `screen=locked`): why, and the
+/// action that gives it.
 class ConsentRequiredView extends StatelessWidget {
   const ConsentRequiredView({super.key, required this.onGive, this.childName, this.busy = false});
 
@@ -178,18 +178,36 @@ class ConsentRequiredView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final name = childName?.trim() ?? '';
-    return AppEmpty(
+    final first = name.split(' ').first;
+    final c = context.colors;
+    return paRole(Center(
       key: const ValueKey('consent.required'),
-      icon: Icons.verified_user_outlined,
-      title: _t('نحتاج موافقتك أولاً', 'Your consent is needed first'),
-      message: name.isEmpty
-          ? _t('هذا الطالب دون السن القانونية، فلا نعرض بياناته لولي الأمر إلا بعد موافقته.',
-              'This student is under the legal age, so their data is shown to a parent only after the parent consents.')
-          : _t('$name دون السن القانونية، فلا نعرض بياناته لولي الأمر إلا بعد موافقته.',
-              '$name is under the legal age, so their data is shown to a parent only after the parent consents.'),
-      actionLabel: _t('إعطاء الموافقة', 'Give consent'),
-      onAction: busy ? null : onGive,
-    );
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(AppSpace.md),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: AppWidth.form.max),
+          child: AppCard(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              AppIconBox(icon: Icons.lock_outline_rounded, size: AppDashSize.disc, tone: c.kit.accent(AppAccent.grape)),
+              AppSpace.gapSm,
+              Text(_t('نحتاج موافقتك أول', 'We need your consent first'), textAlign: TextAlign.center, style: AppType.pageTitle(context)),
+              AppSpace.gapXs,
+              Text(
+                first.isEmpty
+                    ? _t('هذا الطالب دون السن النظامية، فما نعرض بياناته لولي الأمر إلا بعد موافقته. الموافقة تنسجّل مرة وحدة وتقدر تسحبها متى ما بغيت.',
+                        'This student is under the legal age, so their data is shown to a parent only after the parent consents. You give it once and can withdraw it at any time.')
+                    : _t('$first دون السن النظامية، فما نعرض بياناته لولي الأمر إلا بعد موافقته. الموافقة تنسجّل مرة وحدة وتقدر تسحبها متى ما بغيت.',
+                        '$first is under the legal age, so their data is shown to a parent only after the parent consents. You give it once and can withdraw it at any time.'),
+                textAlign: TextAlign.center,
+                style: AppType.body(context).copyWith(color: c.textMedium),
+              ),
+              AppSpace.gapMd,
+              AppButton.primary(label: _t('أعطِ الموافقة', 'Give consent'), busy: busy, onPressed: busy ? null : onGive),
+            ]),
+          ),
+        ),
+      ),
+    ));
   }
 }
 
@@ -236,7 +254,7 @@ class _ParentConsentRequiredState extends State<ParentConsentRequired> {
 }
 
 /// "Revoke consent" on a child card: reads the pair's consent first (an adult child or no consent: nothing to
-/// revoke, said so), then asks with [appConfirm] and sends DELETE. True when a consent was revoked.
+/// revoke, said so), then asks in a sheet (Pa2Kids `screen=revoke`) and sends DELETE. True when a consent was revoked.
 Future<bool> revokeParentConsentFlow(BuildContext context, int studentId, String childName, {ApiClient? api}) async {
   final client = api ?? ApiClient();
   try {
@@ -246,15 +264,7 @@ Future<bool> revokeParentConsentFlow(BuildContext context, int studentId, String
       return false;
     }
     if (!context.mounted) return false;
-    final ok = await appConfirm(
-      context,
-      danger: true,
-      confirmLabel: _t('سحب الموافقة', 'Revoke consent'),
-      message: _t(
-          'سحب موافقتك على متابعة $childName؟ لن ترى ألعابه وحفظه ونحوه حتى توافق مرة أخرى. يبقى الربط كما هو.',
-          'Revoke your consent for $childName? You will not see their games, Quran and grammar until you consent '
-              'again. The link stays.'),
-    );
+    final ok = await showAppSheet<bool>(context, (_) => paRole(ParentRevokeSheet(childName: childName))) == true;
     if (!ok) return false;
     await client.delete('/api/v1/parent/children/$studentId/consent');
     showAppNotice(_t('سُحبت موافقتك', 'Your consent was revoked'));
@@ -262,5 +272,39 @@ Future<bool> revokeParentConsentFlow(BuildContext context, int studentId, String
   } catch (e) {
     showAppNotice(apiErrorText(ApiException.from(e)), error: true);
     return false;
+  }
+}
+
+class ParentRevokeSheet extends StatelessWidget {
+  const ParentRevokeSheet({required this.childName});
+  final String childName;
+
+  @override
+  Widget build(BuildContext context) {
+    final first = childName.split(' ').first;
+    return Padding(
+      padding: const EdgeInsets.all(AppSpace.md),
+      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+        AppIconBox(icon: Icons.warning_amber_rounded, size: AppDashSize.disc, tone: context.colors.kit.error),
+        AppSpace.gapMd,
+        Text(_t('تسحب موافقتك على متابعة $first؟', 'Withdraw your consent to follow $first?'), style: AppType.pageTitle(context)),
+        AppSpace.gapXs,
+        Text(
+          _t('ما راح تشوف ألعاب $first وحفظه ونحوه لين توافق مرة ثانية. الربط يبقى مثل ما هو، وتقدر تشوف التقارير والتنبيهات عادي.',
+              "You will not see $first's games, Quran and grammar until you consent again. The link stays, and reports and alerts work as before."),
+          style: AppType.body(context).copyWith(color: context.colors.textMedium),
+        ),
+        AppSpace.gapMd,
+        AppButtonRow(
+          primary: AppButton.danger(
+            key: const ValueKey('consent.revoke.confirm'),
+            label: _t('اسحب الموافقة', 'Withdraw consent'),
+            dangerOutline: true,
+            onPressed: () => Navigator.of(context).pop(true),
+          ),
+          secondary: [AppButton.secondary(label: _t('تراجع', 'Go back'), onPressed: () => Navigator.of(context).pop(false))],
+        ),
+      ]),
+    );
   }
 }
