@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_education_app/features/home/teacher/teacher_models.dart';
-import 'package:flutter_test/flutter_test.dart';
 
 import '../fake_api.dart';
 import 't2_fakes.dart';

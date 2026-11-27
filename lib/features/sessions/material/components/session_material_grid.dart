@@ -19,7 +19,7 @@ import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/api_client.dart';
 import 'package:flutter_education_app/core/app_time.dart';
 import 'package:flutter_education_app/core/live/event_wait.dart';
-import 'package:flutter_education_app/design/app_kit.dart' show showAppSheet, AppSheetHeader, AppBanner, AppListSkeleton;
+import 'package:flutter_education_app/design/app_kit.dart' show showAppSheet, AppListSkeleton;
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/utils/helpers.dart';
 import 'package:flutter_education_app/utils/widget/rating_widget.dart';

@@ -34,6 +34,7 @@ import 'package:flutter_education_app/core/routing/deferred_screens.dart';
 import 'package:flutter_education_app/core/personal_access.dart' show PersonalAccess, enablePersonalFix, enablePersonalLabel;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter_education_app/core/app_identity.dart';
 import 'package:flutter_education_app/core/app_mode.dart';
 import 'package:flutter_education_app/core/home/me_home.dart' show MeHomeService, MeLiveRoom, MeOnboardingItem;
 import 'package:flutter_education_app/core/offline/app_connectivity.dart';
@@ -621,7 +622,7 @@ TeacherHeroLine teacherHeroLine({
         : 't1_hm_h_live_last'.tr;
     return TeacherHeroLine(title: title.replaceAll('{c}', running.courseName), subtitle: summary, live: true);
   }
-  if (courses.isEmpty) return TeacherHeroLine(title: 't1_hm_h_first'.tr, subtitle: 't1_hm_h_first_sub'.tr, first: true);
+  if (courses.isEmpty) return TeacherHeroLine(title: _firstHeadline(), subtitle: 't1_hm_h_first_sub'.tr, first: true);
   final waiting = todoCount ?? pending.values.fold<int>(0, (a, b) => a + b);
   if (today.isEmpty && liveMeetings == 0 && waiting == 0 && !inboxWaiting) {
     final coming = [...schedule.where((s) => !s.isToday)]..sort((a, b) => teacherSessionUtc(a, a.startTime).compareTo(teacherSessionUtc(b, b.startTime)));
@@ -1085,3 +1086,9 @@ const _kTeacherTabs = ['home', 'my_courses', 'my_schedule', 'analysis', 'my_prof
 /// Whether the shell shows the tab at full-order index [i]: it drops `teacher_tab_<label>` (feature kill switch).
 bool teacherTabOn(int i) =>
     i >= 0 && i < _kTeacherTabs.length && !AppConfig.disableList.contains('teacher_tab_${_kTeacherTabs[i]}');
+
+/// The first-visit headline names the app from the admin-set identity (never a hard-coded brand).
+String _firstHeadline() {
+  final app = AppIdentity.instance.name;
+  return app.isEmpty ? 't1_hm_h_first_plain'.tr : 't1_hm_h_first'.tr.replaceAll('{app}', app);
+}
