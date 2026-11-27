@@ -82,3 +82,7 @@ Course chat
   (created on the first reply): answer `{message, created, redirected: true, conversation_id: <the direct chat>}`;
   with attachments 422 `chat_reply_attachments` (upload them in the direct chat); a teacher's block answers as there.
 - Student ↔ student direct chats stay off unless the teacher's / organization's `student_dm` switch is on (unchanged).
+
+## Phase 9 addendum: the public live page
+
+`GET /api/v1/public/live/{token}` now returns `guests_joined: null` for everyone (the page never learns how many guests are in; the host reads the count from the guest-link payload) and a new `full: bool`, true when the guest limit (`max_guests`) is reached. Show "room is full" from `full`; `max_guests` stays for the limit itself.
