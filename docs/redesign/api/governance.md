@@ -73,13 +73,16 @@ key, card, iban, signature, …) as `"***"`. Upload bodies are never read.
   set.
 - Built-in roles `super_admin` and `admin` are listed but locked: 409 `builtin_role` on edit or delete. Deleting a
   custom role sends its admins back to `admin`.
-- Routes check a permission with `admin_perm("…")`; today the publish queue (`courses.review`) and the audit log
-  (`audit.view`) do. The older admin routes still accept every admin.
+- Every admin route group maps to a permission and ONE app-wide dependency enforces it (§3.4). The publish queue
+  and the audit log also keep their own `admin_perm("…")`.
 
-Permission catalog (groups): courses (`courses.review`, `courses.manage`) · people (`users.manage`,
-`accounts.approve`, `devices.manage`) · money (`payments.review`, `payouts.manage`, `fees.manage`) · content
-(`content.manage`, `ads.manage`, `help.manage`) · platform (`settings.manage`, `features.manage`, `orgs.manage`) ·
-oversight (`audit.view`). `roles.manage` is the super admin's alone.
+Permission catalog (groups, 32 keys; labels come from the server in both languages): courses (`courses.review`,
+`courses.manage`, `categories.manage`, `certificates.manage`, `exams.policy`) · people (`users.manage`,
+`accounts.approve`, `devices.manage`, `students.manage`, `teachers.manage`, `parents.manage`) · money
+(`finance.view`, `payments.review`, `payouts.manage`, `fees.manage`, `markets.manage`, `booking.manage`,
+`store.manage`) · content (`content.manage`, `ads.manage`, `help.manage`, `landing.manage`, `learning.manage`,
+`broadcast.send`) · platform (`settings.manage`, `features.manage`, `orgs.manage`, `ai.manage`, `releases.manage`,
+`data.manage`, `demand.view`) · oversight (`audit.view`). `roles.manage` is the super admin's alone.
 
 - `GET /api/v1/admin/roles` → `{roles: [{id, key, name_ar, name_en, builtin, permissions, admins_count}], catalog:
   [{id, title_ar, title_en, items: [{key, title_ar, title_en}]}], admins: [{id, name, role, role_id, is_active}]}`.
@@ -91,3 +94,41 @@ oversight (`audit.view`). `roles.manage` is the super admin's alone.
   role) → `{user_id, role_id, permissions}`. 404 `admin_not_found` (not an admin), 409 `super_admin_fixed`.
 - `GET /api/v1/admin/roles/me` (any admin) → `{role: {id, key, name_ar, name_en, builtin}, permissions,
   can_edit_roles}`.
+
+### 3.4 Custom roles gate the admin area (rd/ow-roles)
+
+- `ADMIN_ROUTE_RULES` (back `features/admin_gov/admin_rbac.py`) maps each admin route group to one permission; the
+  first match wins. `admin_area_guard`, an app-wide FastAPI dependency in `main.py`, refuses ONLY an admin holding a
+  custom role that lacks it: 403 `{code: "permission_denied", message, message_en, permission}`. A super admin and a
+  plain admin (built-in role, no assignment) pass exactly as before; non-admins fall through to the route's own check.
+- Map (under `/api/v1/admin/` unless noted): `users`, `usernames`, `admins` → `users.manage` (but `users/{id}/devices`
+  · `reset-devices` → `devices.manage`, `users/{id}/approve|reject` → `accounts.approve`, `users/{id}/enroll…` ·
+  `courses…` · `subscription…` → `students.manage`; the list `GET /admin/users?role=student|teacher` also accepts
+  `students.manage` / `teachers.manage`) · `accounts`, `required-documents`, `requirements` → `accounts.approve` ·
+  `teachers` → `teachers.manage` (`teachers/{id}/earnings` → `payouts.manage`) · `course-students`, `subscriptions`,
+  `study-profile` → `students.manage` · `parent-link` → `parents.manage` · `publish-queue` → `courses.review` ·
+  `courses`, `course-trash`, `recommendations`, `packages` → `courses.manage` · `categories` → `categories.manage` ·
+  `certificates` → `certificates.manage` · `exam-policy`, `grades` → `exams.policy` · `finance`,
+  `overview/income-breakdown` → `finance.view` · `payouts`, `withdrawals` → `payouts.manage` · `payments/catalog|
+  currency-rates|vat-rules` → `markets.manage` · other `payments`, `payment-methods` and `/api/v1/payments/transfers/…`
+  · refunds · verify → `payments.review` · `fees`, `points`, `subscription-plans` → `fees.manage` · `booking` →
+  `booking.manage` · `store` → `store.manage` · `teacher-demand` → `demand.view` · `ads` → `ads.manage` · `help`,
+  `features/guide` → `help.manage` · `content`, `legal`, writes on `/api/v1/app-content/about|terms` →
+  `content.manage` · `landing` → `landing.manage` · `edu`, `games`, `nahw`, `quran`, `self-learning`, `rewards`,
+  `badges` → `learning.manage` · `messages`, `chat` → `broadcast.send` · `features`, writes on
+  `/api/v1/disable-items` → `features.manage` · `settings`, `platform-settings`, `live-settings`, `module-settings`,
+  `themes`, writes on `/api/v1/theme` → `settings.manage` · `orgs` → `orgs.manage` · `ai-controls` → `ai.manage` ·
+  `app-releases`, writes on `/app/…` → `releases.manage` · `data-lab`, `/api/v1/datacenter`, `/admin/excel`,
+  `/admin/seed` → `data.manage` · `audit-log` → `audit.view`.
+- Open to every admin: `/admin/me`, `/admin/profile`, `/admin/overview`, `/admin/search`, `/admin/lookup`,
+  `/admin/roles/me`. The RAG console and the model hub run in their own services and are not gated there yet: the app
+  hides them by `ai.manage`.
+- The caller's effective set: `GET /api/v1/admin/roles/me` → `permissions` (and `role.builtin`), and
+  `GET /api/v1/auth/me` → `admin_permissions` (null for a non-admin).
+- App: `AdminPerms.instance` (`lib/features/admin/governance/admin_perms.dart`) reads `/admin/roles/me` once when the
+  admin home opens; only a custom role (`builtin: false`) limits anything. Each More-hub service carries `perm`
+  (`AdminService.perm`, filtered in `visibleServices`); the Students / Courses / Teachers tabs need
+  `users.manage|students.manage` / `courses.manage` / `users.manage|teachers.manage`; a hub tab with no allowed
+  service is hidden. The roles editor draws the server catalog, so every key above is listed, grouped, in both
+  languages.
+- e2e: back `tests/redesign/e2e_admin_role_scope.py`.

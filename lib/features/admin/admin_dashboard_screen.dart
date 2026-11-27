@@ -63,6 +63,7 @@ import 'admin_premium_widgets.dart';
 import 'admin_profile_page.dart';
 import 'admin_providers.dart' show AdminPendingPayoutsProvider;
 import 'admin_services_hub.dart';
+import 'governance/admin_perms.dart' show AdminPerms;
 import 'admin_users_page.dart';
 import 'package:flutter_education_app/features/payments/enrollment_request/teacher_transfers_provider.dart';
 import 'package:flutter_education_app/design/app_icons.dart';
@@ -97,6 +98,31 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   late final List<DashboardItem> _mobileItems;
   late final List<DashboardItem> _wideItems;
+
+  // Custom admin roles (governance.md §3.4): the permissions a head tab needs (any one), and the group a hub tab
+  // shows (hidden when none of its services is allowed). [_head] keeps the logical indices 0-3 that the overview's
+  // shortcuts and the search use; [_shown] is the list the shell draws now.
+  late final List<DashboardItem> _head;
+  final Map<DashboardItem, List<String>> _needs = {};
+  final Map<DashboardItem, String> _hubGroup = {};
+  List<DashboardItem> _shown = const [];
+
+  void _openLogical(int i) {
+    if (i < 0 || i >= _head.length) return;
+    final at = _shown.indexOf(_head[i]);
+    if (at >= 0) _tabs.onChangeTab(at);
+  }
+
+  List<DashboardItem> _visible(BuildContext context, List<DashboardItem> all) {
+    if (!AdminPerms.instance.limited) return all;
+    final groups = {for (final g in adminServiceGroups(context, watch: false)) g.id: g};
+    return [
+      for (final it in all)
+        if (AdminPerms.instance.allowsAny(_needs[it] ?? const []) &&
+            (_hubGroup[it] == null || (groups[_hubGroup[it]]?.visibleServices.isNotEmpty ?? false)))
+          it,
+    ];
+  }
 
   // One counter per data tab (0-3). Refreshing bumps it, which re-creates that
   // tab's page (so it reloads its data) without touching the admin pages, UNLESS the page registered its own reload
@@ -138,9 +164,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   // (`complaints_updated`, `attention_changed` related_type complaint); it was loaded once and kept counting them.
   StreamSubscription<LiveEvent>? _live;
 
+  void _onPerms() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
+    AdminPerms.instance.addListener(_onPerms);
     _live = LiveEvents.instance.listen({LiveEvents.complaints, LiveEvents.attentionChanged}, (e) {
       if (!mounted || !_isAdmin) return;
       // a decision on this device (DecisionRefresh) may have been a complaint status / reply
@@ -155,7 +186,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       titleKey: 'admin_dashboard',
       epoch: _epochs[0],
       onRefresh: () => _refreshTab(0),
-      child: AdminOverviewPage(onOpenTab: _tabs.onChangeTab),
+      child: AdminOverviewPage(onOpenTab: _openLogical),
     );
     final students = _AdminTab(
       slot: _slots[1],
@@ -221,6 +252,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       ),
     ];
 
+    _head = head;
+    _needs[head[1]] = const ['users.manage', 'students.manage'];
+    _needs[head[2]] = const ['courses.manage'];
+    _needs[head[3]] = const ['users.manage', 'teachers.manage'];
+
     // ── phone: 5 tabs ──────────────────────────────────────────────────
     _mobileItems = [
       ...head,
@@ -238,8 +274,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     ];
 
     // ── web / rail: 9 tabs ─────────────────────────────────────────────
-    DashboardItem hub(IconData o, IconData a, String label, String groupId) =>
-        DashboardItem(
+    DashboardItem hub(IconData o, IconData a, String label, String groupId) {
+      final item = DashboardItem(
           o,
           a,
           label,
@@ -257,6 +293,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             _ => const [],
           },
         );
+      _hubGroup[item] = groupId;
+      return item;
+    }
 
     _wideItems = [
       ...head,
@@ -310,6 +349,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && _isAdmin) {
+        unawaited(AdminPerms.instance.load()); // custom admin roles: once per admin home (governance.md §3.4)
         _payouts.refresh();
         _complaints.refreshCount();
         context.read<TeacherTransfersProvider>().ensureLoaded();
@@ -321,12 +361,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   List<AdminSearchPage> _searchPages(BuildContext context, List<DashboardItem> items) {
     final groups = adminServiceGroups(context, watch: false);
     return [
-      for (var i = 0; i < 4 && i < items.length; i++)
-        AdminSearchPage(
-          label: items[i].label.tr,
-          icon: items[i].selectedIcon,
-          onOpen: () => _tabs.onChangeTab(i),
-        ),
+      for (var i = 0; i < _head.length; i++)
+        if (items.contains(_head[i]))
+          AdminSearchPage(
+            label: _head[i].label.tr,
+            icon: _head[i].selectedIcon,
+            onOpen: () => _openLogical(i),
+          ),
       for (final g in groups)
         for (final s in g.visibleServices)
           if (s.featureKey == null || !AppConfig.disableList.contains(s.featureKey))
@@ -348,7 +389,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       case 'admins':
         showAdminUserDetail(context, userId: h.id, role: 'admin');
       case 'courses':
-        _tabs.onChangeTab(2);
+        _openLogical(2);
       case 'organizations':
         push(const AdminOrganizationsPage());
       case 'payments':
@@ -359,6 +400,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   @override
   void dispose() {
     _live?.cancel();
+    AdminPerms.instance.removeListener(_onPerms);
     _tabs.dispose();
     _payouts.dispose();
     _complaints.dispose();
@@ -409,7 +451,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 }
 
                 final w = constraints.maxWidth;
-                final items = w >= Breakpoints.mobile ? _wideItems : _mobileItems;
+                final items = _shown = _visible(context, w >= Breakpoints.mobile ? _wideItems : _mobileItems);
 
                 // The two layouts have different tab counts → never point past the end.
                 final current = tabs.currentTab.clamp(0, items.length - 1);
@@ -421,7 +463,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 final pages = _searchPages(context, items);
                 return AppCommandPaletteScope(
                   onOpen: () => showAdminGlobalSearch(context, pages: pages, onOpenHit: (h) => _openHit(context, h)),
-                  child: AppShell(width: w, currentIndex: current, onTap: onTap, items: items),
+                  // a custom role's set arriving re-creates the shell once (its hubs read the set while building)
+                  child: AppShell(
+                    key: ValueKey(AdminPerms.instance.revision),
+                    width: w,
+                    currentIndex: current,
+                    onTap: onTap,
+                    items: items,
+                  ),
                 );
               },
             ),

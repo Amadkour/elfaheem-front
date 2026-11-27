@@ -96,6 +96,8 @@ import 'package:flutter_education_app/features/games/admin/games_admin_page.dart
 import 'package:flutter_education_app/features/games/admin/v4/hub_page.dart' show GamesHubPage;
 import 'package:flutter_education_app/features/self_learning/admin/sl_admin_page.dart' show SlAdminPage;
 
+import 'package:flutter_education_app/features/admin/governance/admin_perms.dart' show AdminPerms;
+
 // ── model ────────────────────────────────────────────────────────────────────
 class AdminService {
   const AdminService({
@@ -109,6 +111,7 @@ class AdminService {
     this.visible = true,
     this.label,
     this.desc,
+    this.perm,
   });
 
   final String labelKey;
@@ -133,6 +136,10 @@ class AdminService {
 
   /// false → hidden (e.g. super-admin only items for a plain admin).
   final bool visible;
+
+  /// The admin permission the page's routes need (governance.md §3.4); null = any admin. Only an admin holding a
+  /// custom role is limited (AdminPerms).
+  final String? perm;
 }
 
 class AdminServiceGroup {
@@ -153,7 +160,7 @@ class AdminServiceGroup {
   final List<AdminService> services;
 
   List<AdminService> get visibleServices =>
-      services.where((s) => s.visible).toList();
+      services.where((s) => s.visible && AdminPerms.instance.allows(s.perm)).toList();
 
   /// Sum of the badges inside the group (used for the sidebar tab badge).
   int get badgeTotal => visibleServices.fold(0, (a, s) => a + (s.badge ?? 0));
@@ -187,6 +194,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
       services: [
         AdminService(
           labelKey: 'svc_datacenter',
+          perm: 'data.manage',
           descKey: 'svc_datacenter_d',
           icon: Icons.insights_rounded,
           colors: AdminPalette.indigo,
@@ -194,6 +202,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'svc_requirements',
+          perm: 'accounts.approve',
           descKey: 'svc_requirements_d',
           label: t('إشعارات تتطلب الإقرار', 'Notices to acknowledge'),
           icon: Icons.fact_check_rounded,
@@ -202,6 +211,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'svc_ads',
+          perm: 'ads.manage',
           descKey: 'svc_ads_d',
           icon: Icons.campaign_rounded,
           colors: AdminPalette.orange,
@@ -209,6 +219,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'svc_organizations',
+          perm: 'orgs.manage',
           descKey: 'svc_organizations_d',
           icon: Icons.account_balance_rounded,
           colors: AdminPalette.teal,
@@ -216,6 +227,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'send_message',
+          perm: 'broadcast.send',
           descKey: 'svc_send_message_d',
           icon: Icons.send_rounded,
           colors: AdminPalette.blue,
@@ -223,6 +235,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'admin_admins',
+          perm: 'users.manage',
           descKey: 'svc_admins_d',
           icon: Icons.admin_panel_settings_rounded,
           colors: AdminPalette.indigo,
@@ -241,6 +254,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'ow_al_title',
+          perm: 'audit.view',
           descKey: 'ow_svc_audit_d',
           icon: Icons.history_rounded,
           colors: AdminPalette.slate,
@@ -249,6 +263,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'admin_parent_linking',
+          perm: 'parents.manage',
           descKey: 'svc_pl_requests_d',
           label: t('ربط أولياء الأمور', 'Parent linking'),
           icon: Icons.family_restroom_rounded,
@@ -258,6 +273,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         // the sign-up's study step, the home card, the required fields (D-794, super admin)
         AdminService(
           labelKey: 'svc_study_profile',
+          perm: 'students.manage',
           descKey: 'svc_study_profile_d',
           label: t('بيانات الدراسة للطلاب', 'Student study details'),
           desc: t('خطوة المرحلة والصف عند التسجيل، بطاقة «أكمل ملفك الدراسي»، والحقول المطلوبة',
@@ -290,6 +306,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         // D-1121: new accounts waiting for approval (the admin.users attention count)
         AdminService(
           labelKey: 'svc_pending_accounts',
+          perm: 'accounts.approve',
           descKey: 'svc_pending_accounts_d',
           label: t('حسابات تنتظر الموافقة', 'Accounts waiting for approval'),
           desc: t('وافق على الحسابات الجديدة أو ارفضها', 'Approve or reject new accounts'),
@@ -301,6 +318,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         // courses teachers sent for publishing while "Review before publishing" is on (governance.md §1)
         AdminService(
           labelKey: 'ow_pq_title',
+          perm: 'courses.review',
           descKey: 'ow_svc_pq_d',
           icon: Icons.fact_check_rounded,
           colors: AdminPalette.teal,
@@ -309,6 +327,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'enrollment_requests',
+          perm: 'students.manage',
           descKey: 'svc_enrollment_d',
           icon: Icons.how_to_reg_rounded,
           colors: AdminPalette.green,
@@ -318,6 +337,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'a1_device_requests',
+          perm: 'devices.manage',
           descKey: 'a1_device_requests_d',
           icon: Icons.phonelink_setup_rounded,
           colors: AdminPalette.slate,
@@ -325,6 +345,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'a1_cert_requests',
+          perm: 'certificates.manage',
           descKey: 'a1_cert_requests_d',
           icon: Icons.workspace_premium_rounded,
           colors: AdminPalette.violet,
@@ -333,6 +354,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'pl_requests_title',
+          perm: 'parents.manage',
           descKey: 'svc_pl_requests_d',
           icon: Icons.link_rounded,
           colors: AdminPalette.green,
@@ -351,6 +373,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
       services: [
         AdminService(
           labelKey: 'payout',
+          perm: 'payouts.manage',
           descKey: 'svc_payout_d',
           icon: Icons.account_balance_wallet_rounded,
           colors: AdminPalette.rose,
@@ -364,6 +387,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'subscriptions',
+          perm: 'students.manage',
           descKey: 'svc_subscriptions_d',
           icon: Icons.workspace_premium_rounded,
           colors: AdminPalette.orange,
@@ -371,6 +395,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'admin_course_students',
+          perm: 'students.manage',
           descKey: 'admin_course_students_d',
           label: t('الدورات والطلاب', 'Courses & students'),
           desc: t('اشتراك كل طالب في كل دورة، سبب الوصول بالضبط، والتمديد أو المنح أو الإلغاء مع السجل',
@@ -383,6 +408,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'admin_course_trash',
+          perm: 'courses.manage',
           descKey: 'admin_course_trash_d',
           label: t('الكورسات المحذوفة', 'Deleted courses'),
           desc: t('سلة الكورسات المحذوفة: استرجاع الكورس بطلابه أو حذفه نهائياً مع السجل',
@@ -395,6 +421,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'admin_points',
+          perm: 'fees.manage',
           descKey: 'admin_points_d',
           label: t('النقاط والمحافظ', 'Points & wallets'),
           desc: t('طلبات شحن النقاط، أرصدة المستخدمين، وإعدادات باقة الاجتماعات المباشرة',
@@ -407,6 +434,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         // the champions' and referrers' rewards: rules, winners, coupons, referrals (Games v3 §3.3); super admin only
         AdminService(
           labelKey: 'admin_rewards',
+          perm: 'learning.manage',
           descKey: 'admin_rewards_d',
           label: t('المكافآت والقسائم', 'Rewards & coupons'),
           desc: t('قواعد مكافآت الأبطال والدعوات، والقسائم، ومراجعة الدعوات',
@@ -419,6 +447,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'apm_title',
+          perm: 'payments.review',
           descKey: 'svc_payment_methods_d',
           icon: Icons.credit_card_rounded,
           colors: AdminPalette.blue,
@@ -427,6 +456,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'admin_fees',
+          perm: 'fees.manage',
           descKey: 'admin_fees_d',
           label: t('الرسوم', 'Fees'),
           desc: t('نسب الرسوم لكل وسيلة دفع والمنصة والضريبة، وسياسة من يتحمل الرسوم',
@@ -437,6 +467,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'admin_payments',
+          perm: 'finance.view',
           descKey: 'svc_payments_history_d',
           icon: Icons.receipt_long_rounded,
           colors: AdminPalette.teal,
@@ -446,6 +477,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         // currency rates, payment methods per country, VAT rules and the tax number (redesign payments package)
         AdminService(
           labelKey: 'a2_svc_markets',
+          perm: 'markets.manage',
           descKey: 'a2_svc_markets_d',
           icon: Icons.public_rounded,
           colors: AdminPalette.teal,
@@ -466,6 +498,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
       services: [
         AdminService(
           labelKey: 'categories',
+          perm: 'categories.manage',
           descKey: 'svc_categories_d',
           icon: Icons.category_rounded,
           colors: AdminPalette.teal,
@@ -474,6 +507,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         // the booking package's staff side: prices, in-person centres, groups, time requests (every platform admin)
         AdminService(
           labelKey: 'a2_svc_booking',
+          perm: 'booking.manage',
           featureKey: kAdminBookingKey,
           descKey: 'a2_svc_booking_d',
           icon: Icons.event_seat_rounded,
@@ -482,6 +516,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'a2_svc_demand',
+          perm: 'demand.view',
           descKey: 'a2_svc_demand_d',
           icon: Icons.how_to_reg_rounded,
           colors: AdminPalette.violet,
@@ -493,6 +528,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         // orders are the super admin's only (`/admin/store/*` answers 403 admin_required to admin / developer)
         AdminService(
           labelKey: 'admin_store',
+          perm: 'store.manage',
           descKey: 'admin_store_d',
           label: t('المتجر الرقمي', 'Digital store'),
           desc: isSuper
@@ -505,6 +541,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'a1_help_admin',
+          perm: 'help.manage',
           descKey: 'a1_help_admin_d',
           icon: Icons.help_center_rounded,
           colors: AdminPalette.indigo,
@@ -514,6 +551,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         // the education levels of every country (learning hub phase 2, D-1304)
         AdminService(
           labelKey: 'admin_edu_levels',
+          perm: 'learning.manage',
           descKey: 'admin_edu_levels_d',
           label: t('المراحل الدراسية', 'Education levels'),
           desc: t('المراحل والصفوف والمواد والمناطق لكل دولة', 'Stages, grades, subjects and areas for each country'),
@@ -527,6 +565,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         // organization, and each country's student tabs; super admin only
         AdminService(
           labelKey: 'admin_modules',
+          perm: 'settings.manage',
           descKey: 'admin_modules_d',
           label: t('مفاتيح الوحدات', 'Module switches'),
           desc: t('قواعد المتجر والألعاب والقرآن لكل المنصة أو لدولة أو لمؤسسة، وتبويبات الطلاب لكل دولة',
@@ -540,6 +579,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         // Quran teachers: verify and review the cards (6.R #5, D-1347); super admin only, hidden with the Quran tab
         AdminService(
           labelKey: 'admin_quran',
+          perm: 'learning.manage',
           descKey: 'admin_quran_d',
           label: t('معلمو القرآن', 'Quran teachers'),
           desc: t('توثيق معلمي القرآن ومراجعة بطاقاتهم قبل النشر', 'Verify Quran teachers and review their cards before they publish'),
@@ -552,6 +592,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         // every subject's teacher profiles: the review queue (Learning Hub v2, D-1623); admins and super admins
         AdminService(
           labelKey: 'admin_teacher_review',
+          perm: 'teachers.manage',
           descKey: 'admin_teacher_review_d',
           label: t('مراجعة المعلمين', 'Teacher review'),
           desc: t('ملفات معلمي القرآن والتجويد والفقه والنحو ومستنداتهم: اعتماد أو رفض مع السبب',
@@ -564,6 +605,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         // grammar (nahw) content editor (6.R #8, D-1349); super admin only, kill switch admin.nahw
         AdminService(
           labelKey: 'admin_nahw',
+          perm: 'learning.manage',
           descKey: 'admin_nahw_d',
           label: t('محتوى النحو', 'Grammar content'),
           desc: t('مستويات النحو ودروسها وتمارينها', 'The grammar levels, lessons and exercises'),
@@ -576,6 +618,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         // Games v4 hub: templates, subjects, content, review, levels, analytics + the classic editor (T64); kill switch admin.games_content
         AdminService(
           labelKey: 'admin_games_hub',
+          perm: 'learning.manage',
           descKey: 'admin_games_hub_d',
           label: t('مركز الألعاب', 'Games hub'),
           desc: t('القوالب والمواد والأسئلة والمراجعة والمستويات والتحليلات', 'Templates, subjects, questions, review, levels and analytics'),
@@ -588,6 +631,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         // educational games editor (Learning Hub v2 §3, D-1589); super admin only, kill switch admin.games
         AdminService(
           labelKey: 'admin_games',
+          perm: 'learning.manage',
           descKey: 'admin_games_d',
           label: t('الألعاب التعليمية', 'Educational games'),
           desc: t('محتوى الألعاب وترتيبها ونشرها، مع معاينة مباشرة', 'The games\' content, order and publishing, with a live preview'),
@@ -600,6 +644,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         // self-learning lessons and review questions (Learning Hub v2 §5, D-1607); super admin only
         AdminService(
           labelKey: 'admin_self_learning',
+          perm: 'learning.manage',
           descKey: 'admin_self_learning_d',
           icon: Icons.auto_stories_rounded,
           colors: AdminPalette.teal,
@@ -640,6 +685,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'admin_devices',
+          perm: 'devices.manage',
           descKey: 'svc_devices_d',
           icon: Icons.devices_other_rounded,
           colors: AdminPalette.slate,
@@ -647,6 +693,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'auth_settings_title',
+          perm: 'settings.manage',
           descKey: 'svc_auth_d',
           icon: Icons.verified_user_rounded,
           colors: AdminPalette.indigo,
@@ -654,6 +701,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'admin_username_stats',
+          perm: 'users.manage',
           descKey: 'admin_username_stats_d',
           label: t('أسماء المستخدمين', 'Usernames'),
           desc: t('هل يستخدم الناس اسم المستخدم: من أكّده أو غيّره، وطرق تسجيل الدخول',
@@ -674,6 +722,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'required_documents_title',
+          perm: 'accounts.approve',
           descKey: 'svc_documents_d',
           icon: Icons.folder_shared_rounded,
           colors: AdminPalette.teal,
@@ -692,6 +741,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
       services: [
         AdminService(
           labelKey: 'theme',
+          perm: 'settings.manage',
           descKey: 'svc_theme_d',
           icon: Icons.palette_rounded,
           colors: AdminPalette.violet,
@@ -699,6 +749,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'svc_platform_settings',
+          perm: 'settings.manage',
           descKey: 'svc_platform_settings_d',
           icon: Icons.settings_suggest_rounded,
           colors: AdminPalette.indigo,
@@ -706,6 +757,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'admin_live_settings',
+          perm: 'settings.manage',
           descKey: 'admin_live_settings_d',
           label: liveSettingsTitle(),
           desc: t('الترميز، ضعف الشبكة، جودة الكاميرات والشاشة، ومكان التسجيل — لكل الأجهزة دون تحديث',
@@ -718,6 +770,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'admin_landing',
+          perm: 'landing.manage',
           descKey: 'admin_landing_d',
           label: landingTitle(),
           desc: t('حد الطلبات على أرقام الصفحة الرئيسية، واختيار آراء الطلاب الحقيقية التي تظهر للزوار',
@@ -730,6 +783,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'admin_recommendations',
+          perm: 'courses.manage',
           descKey: 'admin_recommendations_d',
           label: t('التوصيات', 'Recommendations'),
           desc: t('ما يُقترح على الطلاب: الأرقام حسب السبب، وأوزان المحرّك', 'What students are suggested: numbers per reason and the engine’s weights'),
@@ -741,6 +795,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'features',
+          perm: 'features.manage',
           descKey: 'svc_features_d',
           icon: Icons.dashboard_customize_rounded,
           colors: AdminPalette.blue,
@@ -748,6 +803,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'dl_admin_title',
+          perm: 'data.manage',
           descKey: 'dl_admin_sub',
           icon: Icons.science_rounded,
           colors: AdminPalette.teal,
@@ -757,6 +813,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         // Export Studio (D-130): the export log, scheduled exports and shared links; each section has its own key
         AdminService(
           labelKey: 'exs_center_title',
+          perm: 'data.manage',
           descKey: 'exs_center_admin',
           desc: t('سجل التصدير، التصدير المجدول، والروابط المشتركة', 'The export log, scheduled exports and shared links'),
           icon: Icons.ios_share_rounded,
@@ -765,6 +822,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'svc_app_assistant',
+          perm: 'ai.manage',
           descKey: 'svc_app_assistant_d',
           label: t('لوحة المساعد الذكي', 'AI assistant console'),
           desc: t('إعدادات النموذج والوكلاء، التحليلات، تجربة الأسئلة مع مسارها، ومستندات التطبيق',
@@ -777,6 +835,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         // the model hub (D-152): the models behind the assistant, the exam grader and the paper scanner
         AdminService(
           labelKey: 'svc_ai_models',
+          perm: 'ai.manage',
           descKey: 'svc_ai_models_d',
           label: t('نماذج الذكاء الاصطناعي', 'AI Models'),
           desc: t('تنزيل النماذج واختبارها وتفعيلها والرجوع عنها، النموذج الاحتياطي، حدود الموارد، وسجل التغييرات',
@@ -791,6 +850,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         // The Exam Hub (D-350): every exam, its correction and its results in one place
         AdminService(
           labelKey: 'svc_exam_hub',
+          perm: 'exams.policy',
           descKey: 'svc_exam_hub_d',
           label: t('الاختبارات', 'Exams'),
           desc: t('إنشاء الاختبارات وتصحيحها ونتائجها من مكان واحد', 'Create exams, correct them and publish results in one place'),
@@ -802,6 +862,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         // the platform's exam policy and every exam switch (D-1130): ONE place for how exams work
         AdminService(
           labelKey: 'svc_exam_policy',
+          perm: 'exams.policy',
           descKey: 'svc_exam_policy_d',
           label: t('إعدادات الاختبارات', 'Exam settings'),
           desc: t('ما يبدأ به كل اختبار جديد، حدود المنصة، وطرق الإنشاء والتصحيح', 'What every new exam starts with, the platform limits, and the ways to create and grade'),
@@ -820,6 +881,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         // paper exams (D-155): the global library of bubble-sheet types, learned sheets, approvals
         AdminService(
           labelKey: 'svc_omr_templates',
+          perm: 'exams.policy',
           descKey: 'svc_omr_templates_d',
           label: t('أنواع أوراق التظليل', 'Bubble sheet types'),
           desc: t('مكتبة أوراق التظليل وإصداراتها، تعليم المنصة ورقة جديدة، واعتماد أوراق المعلمين',
@@ -833,6 +895,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         // grades (D-244): whether parents see their child's grades — always / when published / never
         AdminService(
           labelKey: 'svc_parent_grades',
+          perm: 'exams.policy',
           descKey: 'svc_parent_grades_d',
           label: t('رؤية أولياء الأمور للدرجات', 'What parents see of grades'),
           desc: t('القاعدة الافتراضية للمنصة: دائماً، عند النشر، أو أبداً', 'The platform default: always, when published, or never'),
@@ -845,6 +908,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         // the grading-corrections store (it was reachable only from inside Platform settings)
         AdminService(
           labelKey: 'admin_feedback_settings',
+          perm: 'settings.manage',
           descKey: 'admin_feedback_settings_d',
           label: t('بيانات تصحيح الامتحانات', 'Grading feedback store'),
           desc: t('جمع تصحيحات المعلمين لتحسين التصحيح الآلي: التفعيل، الافتراضي للمؤسسات، مدة الاحتفاظ، والتصدير',
@@ -856,6 +920,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'admin_flags_title',
+          perm: 'features.manage',
           descKey: 'svc_flags_d',
           label: t('علامات المراجعة والقراءة للطلاب', 'Student review & read flags'),
           icon: Icons.flag_rounded,
@@ -866,6 +931,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         // with a live preview and the link; "Build a version" (Codemagic / runner) is its primary action
         AdminService(
           labelKey: 'svc_app_releases',
+          perm: 'releases.manage',
           descKey: 'svc_app_releases_d',
           label: t('إصدارات التطبيق', 'App versions'),
           desc: t('أحدث إصدار وأقل إصدار مسموح لكل منصة، ورسالة التحديث مع معاينتها، وبناء إصدار جديد',
@@ -876,6 +942,7 @@ List<AdminServiceGroup> adminServiceGroups(BuildContext context, {bool watch = t
         ),
         AdminService(
           labelKey: 'terms_and_conditions',
+          perm: 'content.manage',
           descKey: 'svc_terms_d',
           label: t('من نحن والشروط', 'About & terms'),
           icon: Icons.gavel_rounded,
