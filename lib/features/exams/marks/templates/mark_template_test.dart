@@ -14,6 +14,7 @@ import 'package:flutter_education_app/features/admin/admin_common.dart' show t;
 import 'package:flutter_education_app/features/exams/marks/mark_templates_api.dart';
 import 'package:flutter_education_app/features/exams/marks/templates/mark_canvas.dart' show fieldCaption;
 import 'package:flutter_education_app/features/exams/marks/templates/mark_template_common.dart';
+import 'package:flutter_education_app/config/app_config.dart';
 
 class MarkTemplateTestPage extends StatefulWidget {
   const MarkTemplateTestPage({super.key, required this.template, required this.spec, this.blank, this.api, this.picker});
@@ -228,7 +229,7 @@ class _FieldReadingCard extends StatelessWidget {
             Text(reading.value == null || reading.value!.isEmpty ? '—' : reading.value!, style: AppType.figure(context).copyWith(color: col), textDirection: TextDirection.ltr, maxLines: 2, overflow: TextOverflow.ellipsis),
             Text(statusText(reading), style: AppType.meta(context).copyWith(color: reading.ok ? c.textMedium : col)),
             if (!reading.ok && reading.candidates.isNotEmpty)
-              Text(t('احتمالات: ', 'Maybe: ') + reading.candidates.take(3).map((x) => '${x.$1} (${pct(x.$2)})').join('، '), style: AppType.meta(context), maxLines: 2, overflow: TextOverflow.ellipsis),
+              Text(t('احتمالات: ', 'Maybe: ') + reading.candidates.take(3).map((x) => '${x.$1} (${pct(x.$2)})').join((AppConfig.lang == 'ar' ? '، ' : ', ')), style: AppType.meta(context), maxLines: 2, overflow: TextOverflow.ellipsis),
           ]),
         ),
         AppSpace.gapXs,

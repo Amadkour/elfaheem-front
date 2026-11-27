@@ -217,7 +217,7 @@ class _CertSheetState extends State<_CertSheet> {
                         [
                           if (p.selected.isNotEmpty) '${'dl_exp_only'.tr} ${p.selected.length}',
                           if (already > 0) '$already ${'dl_cert_already'.tr}',
-                          if ((_plan?['preview'] as List?)?.isNotEmpty == true) (_plan!['preview'] as List).take(3).join('، '),
+                          if ((_plan?['preview'] as List?)?.isNotEmpty == true) (_plan!['preview'] as List).take(3).join((AppConfig.lang == 'ar' ? '، ' : ', ')),
                         ].join(' · '),
                         style: AppType.meta(context).copyWith(color: c.textMedium),
                       ),

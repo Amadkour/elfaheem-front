@@ -207,7 +207,7 @@ class _SubjectLessonPanelState extends State<SubjectLessonPanel> {
                 subtitle: [
                   if (e.questionCount > 0) sbQuestions(e.questionCount),
                   if ((e.duration ?? 0) > 0) sbMinutes(e.duration!),
-                ].join('، '),
+                ].join((AppConfig.lang == 'ar' ? '، ' : ', ')),
                 trailing: e.passed
                     ? AppStatusBadge(label: 'sb_subj_done'.tr, tone: AppTone.success, icon: Icons.check_rounded)
                     : Icon(Icons.chevron_right_rounded, color: context.colors.textLight),

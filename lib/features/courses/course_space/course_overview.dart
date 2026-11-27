@@ -1157,7 +1157,7 @@ class CourseTeamCard extends StatelessWidget {
     final ar = AppConfig.lang == 'ar';
     String taOf(CoursePerson p) {
       final gs = page.sections.groups.where((g) => g.ta?.id == p.id).map((g) => g.labelFor(ar)).toList();
-      return gs.isEmpty ? _t('مساعد تدريس', 'Teaching assistant') : '${_t('مساعد تدريس', 'Teaching assistant')} · ${gs.join('، ')}';
+      return gs.isEmpty ? _t('مساعد تدريس', 'Teaching assistant') : '${_t('مساعد تدريس', 'Teaching assistant')} · ${gs.join((AppConfig.lang == 'ar' ? '، ' : ', '))}';
     }
 
     final people = <Widget>[

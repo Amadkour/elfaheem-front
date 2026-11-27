@@ -604,7 +604,7 @@ class TeacherProfileView extends StatelessWidget {
     final hero = AppHero(
       kicker: p.status == 'approved' ? teacherG(p.gender, 'معلم موثّق', 'معلمة موثّقة', 'sd_teacher_verified'.tr) : null,
       title: p.name,
-      subtitle: [teacherGenderLabel(p.gender), if (p.subjects.isNotEmpty) teachersJoin(p.subjects.map(teacherSubjectLabel))].join('، '),
+      subtitle: [teacherGenderLabel(p.gender), if (p.subjects.isNotEmpty) teachersJoin(p.subjects.map(teacherSubjectLabel))].join((AppConfig.lang == 'ar' ? '، ' : ', ')),
       leading: p.avatarUrl != null && p.avatarUrl!.isNotEmpty
           ? AppAvatar(name: initial, url: p.avatarUrl, size: AppHero.leadingSize(false))
           : Container(
@@ -976,7 +976,7 @@ class _PackageViewState extends State<PackageView> {
         teacherSubjectLabel(p.subject),
         packageLevelLabel(p.level),
         if ((p.teacher?.name ?? '').isNotEmpty) p.teacher!.name,
-      ].join('، '),
+      ].join((AppConfig.lang == 'ar' ? '، ' : ', ')),
       icon: Icons.inventory_2_outlined,
     );
     final facts = AppCard(

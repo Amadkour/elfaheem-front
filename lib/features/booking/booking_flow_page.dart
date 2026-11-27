@@ -274,7 +274,7 @@ class _BookFlowPageState extends State<BookFlowPage> {
     final col = context.colors;
     final title = c.subjectLabel;
     final head = bkFill('bk_book_subject', {'subject': title});
-    final whole = [title, c.gradeLabel].where((s) => s.isNotEmpty).join('، ');
+    final whole = [title, c.gradeLabel].where((s) => s.isNotEmpty).join(bkComma);
     final bar = Row(children: [
       AppBackButton(onPressed: _back, onHero: true),
       const SizedBox(width: AppSpace.sm),
@@ -517,7 +517,7 @@ String? bkWhenText(BkFlowController c) {
   if (c.kind == 'group') {
     final g = c.group;
     if (g == null) return null;
-    final when = [bkDaysOf(g.times), if (g.times.isNotEmpty) bkTimeRange(g.times.first, c.classMinutes)].join('، ');
+    final when = [bkDaysOf(g.times), if (g.times.isNotEmpty) bkTimeRange(g.times.first, c.classMinutes)].join(bkComma);
     return '${bkGroupName(g.label)}: $when';
   }
   if (c.kind == 'individual') {
@@ -527,7 +527,7 @@ String? bkWhenText(BkFlowController c) {
         for (final d in c.proposalDays.toList()..sort((a, b) => bkWeekdayOrder(a).compareTo(bkWeekdayOrder(b)))) bkWeekdayName(d),
       ]);
       final periods = [for (final p in kBkPeriods) if (c.proposalPeriods.contains(p.$1)) 'bk_period_${p.$1}'.tr];
-      return periods.isEmpty ? days : '$days، ${periods.join(' ${'bk_or'.tr} ')}';
+      return periods.isEmpty ? days : '$days$bkComma${periods.join(' ${'bk_or'.tr} ')}';
     }
     final s = c.chosenSlots..sort((a, b) => (AppTime.toZone(a.startsAt).weekday % 7).compareTo(AppTime.toZone(b.startsAt).weekday % 7));
     if (s.isEmpty) return null;
@@ -703,7 +703,7 @@ class _Location extends StatelessWidget {
             const SizedBox(width: AppSpace.xs),
             Expanded(
               child: Text(
-                [city?.name.label, c.centre!.name.label, c.centre!.address!.label].whereType<String>().where((s) => s.isNotEmpty).join('، '),
+                [city?.name.label, c.centre!.name.label, c.centre!.address!.label].whereType<String>().where((s) => s.isNotEmpty).join(bkComma),
                 style: AppType.label(context).copyWith(color: col.textDark),
               ),
             ),
@@ -792,7 +792,7 @@ class _GroupStep extends StatelessWidget {
     if (c.timesLoading && g == null) return const AppListSkeleton(items: 3, withAvatar: false);
     if (g == null) return AppErrorState(message: c.timesError, onRetry: c.reloadTimes, compact: true);
     final branch = c.mode == 'in_person'
-        ? [c.city?.name.label, c.district?.name.label].whereType<String>().where((s) => s.isNotEmpty).join('، ')
+        ? [c.city?.name.label, c.district?.name.label].whereType<String>().where((s) => s.isNotEmpty).join(bkComma)
         : '';
     final other = _Link(
       label: c.notifiedOtherTime ? 'bk_other_time_done'.tr : 'bk_other_time'.tr,
@@ -1009,7 +1009,7 @@ class _ReviewStep extends StatelessWidget {
             'bk_mode_in_person'.tr,
             c.city?.name.label,
             c.district?.id == null ? null : bkFill('bk_district_named', {'name': c.district!.name.label}),
-          ].whereType<String>().where((s) => s.isNotEmpty).join('، ')
+          ].whereType<String>().where((s) => s.isNotEmpty).join(bkComma)
         : 'bk_mode_remote'.tr;
     final p = c.price;
     final info = c.payInfo;
@@ -1149,13 +1149,13 @@ class _DoneStepState extends State<_DoneStep> {
         (c.kind == 'group' ? c.group?.startsAt : (c.chosenSlots.isEmpty ? null : (c.chosenSlots..sort((a, b) => a.startsAt.compareTo(b.startsAt))).first.startsAt));
     final teacher = b?.teacher?.name ?? bkTeacherText(c) ?? '';
     final place = c.mode == 'in_person'
-        ? bkFill('bk_in_person_at', {'place': [c.city?.name.label, c.district?.name.label].whereType<String>().where((s) => s.isNotEmpty).join('، ')})
+        ? bkFill('bk_in_person_at', {'place': [c.city?.name.label, c.district?.name.label].whereType<String>().where((s) => s.isNotEmpty).join(bkComma)})
         : 'bk_mode_remote'.tr;
     final meta = [
       c.kind == 'group' ? bkGroupName(groupLabel) : 'bk_kind_individual_short'.tr,
       place,
       bkFill('bk_class_minutes', {'n': appDigits('${c.classMinutes}')}),
-    ].join('، ');
+    ].join(bkComma);
     final ticket = BkTicket(
       label: proposal ? 'bk_your_times'.tr : 'bk_first_class'.tr,
       time: proposal || first == null ? (bkWhenText(c) ?? '') : bkTimeRange(first, c.classMinutes),

@@ -29,7 +29,7 @@ class BkMineCard extends StatelessWidget {
     final c = context.colors;
     final kit = c.kit;
     final b = booking;
-    final hold = b.holdUntil == null ? '' : appDigits('${AppTime.date(b.holdUntil!, pattern: 'EEEE d MMMM')}، ${AppTime.time(b.holdUntil!)}');
+    final hold = b.holdUntil == null ? '' : appDigits('${AppTime.date(b.holdUntil!, pattern: 'EEEE d MMMM')}$bkComma${AppTime.time(b.holdUntil!)}');
     final (String line, KitTone tone, IconData icon) = switch (b.status) {
       'active' => ('bk_mine_active'.tr, kit.ok, Icons.event_available_rounded),
       'pending_payment' => (bkFill('bk_mine_pending', {'time': hold}), kit.warmTone, Icons.hourglass_bottom_rounded),
@@ -41,15 +41,15 @@ class BkMineCard extends StatelessWidget {
       _ => ('bk_mine_title'.tr, kit.primaryTone, Icons.event_note_rounded),
     };
     final when = b.nextClassAt != null
-        ? '${AppTime.date(b.nextClassAt!, pattern: 'EEEE d MMMM')}، ${bkTimeRange(b.nextClassAt!, b.classMinutes)}'
+        ? '${AppTime.date(b.nextClassAt!, pattern: 'EEEE d MMMM')}$bkComma${bkTimeRange(b.nextClassAt!, b.classMinutes)}'
         : (b.group != null && b.group!.times.isNotEmpty
-            ? '${bkDaysOf(b.group!.times)}، ${bkTimeRange(b.group!.times.first, b.classMinutes)}'
+            ? '${bkDaysOf(b.group!.times)}$bkComma${bkTimeRange(b.group!.times.first, b.classMinutes)}'
             : null);
     final what = [
       b.kind == 'group' && b.group != null ? bkGroupName(b.group!.label) : (b.kind == 'individual' ? 'bk_kind_individual_short'.tr : null),
       b.mode == 'in_person' ? 'bk_mode_in_person'.tr : 'bk_mode_remote'.tr,
       b.teacher?.name,
-    ].whereType<String>().where((s) => s.isNotEmpty).join('، ');
+    ].whereType<String>().where((s) => s.isNotEmpty).join(bkComma);
     return AppCard(
       variant: AppCardVariant.tint,
       tone: tone,

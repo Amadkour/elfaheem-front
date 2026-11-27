@@ -205,8 +205,8 @@ class IssuePhotosHeader extends StatelessWidget {
             AppBanner(
               icon: report!.allGood ? Icons.check_circle_outline_rounded : Icons.info_outline_rounded,
               text: report!.summary +
-                  (report!.unmatched.isEmpty ? '' : '\n${_t('بلا تطابق', 'No match')}: ${report!.unmatched.take(8).join('، ')}') +
-                  (report!.ambiguous.isEmpty ? '' : '\n${_t('تشبه أكثر من شخص', 'Fit several people')}: ${report!.ambiguous.take(8).join('، ')}'),
+                  (report!.unmatched.isEmpty ? '' : '\n${_t('بلا تطابق', 'No match')}: ${report!.unmatched.take(8).join((AppConfig.lang == 'ar' ? '، ' : ', '))}') +
+                  (report!.ambiguous.isEmpty ? '' : '\n${_t('تشبه أكثر من شخص', 'Fit several people')}: ${report!.ambiguous.take(8).join((AppConfig.lang == 'ar' ? '، ' : ', '))}'),
             ),
           ],
         ]),

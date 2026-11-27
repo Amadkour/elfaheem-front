@@ -216,7 +216,7 @@ class StoreItemView extends StatelessWidget {
     final meta = [
       if (item.pages != null && item.pages! > 0) storePagesText(item.pages!),
       if (item.fileSize > 0) storeSizeText(item.fileSize),
-    ].join('، ');
+    ].join((AppConfig.lang == 'ar' ? '، ' : ', '));
     // Stu2Store `screen=item`: the book on the store hero, the price card riding up over it, ONE forward button,
     // the cart, three rows of what you get, then about and the preview
     final hero = AppHero(
