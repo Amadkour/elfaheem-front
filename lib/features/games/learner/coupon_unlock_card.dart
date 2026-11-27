@@ -163,7 +163,7 @@ class _CouponUnlockCardState extends State<CouponUnlockCard> {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(t('انفتحت قسيمتك', 'Your coupon is unlocked'), style: AppType.bodyStrong(context)),
                 const SizedBox(height: AppSpace.xxs),
-                Text(t('اختر الكورس الذي تريده وخذ الخصم.', 'Choose the course you want and take the discount.'), style: AppType.meta(context)),
+                Text(t('اختر الدورة التي تريده وخذ الخصم.', 'Choose the course you want and take the discount.'), style: AppType.meta(context)),
               ]),
             ),
           ]),
@@ -184,7 +184,7 @@ class _CouponUnlockCardState extends State<CouponUnlockCard> {
         if (!locked && widget.onChooseCourse != null)
           AppButton.primary(
             key: ValueKey('rewards.coupon.${k.id}.choose'),
-            label: t('اختر كورسك', 'Choose your course'),
+            label: t('اختر دورتك', 'Choose your course'),
             icon: Icons.school_rounded,
             expand: true,
             onPressed: widget.onChooseCourse,
@@ -195,12 +195,12 @@ class _CouponUnlockCardState extends State<CouponUnlockCard> {
 
   String _scopeText(Coupon k) {
     final ids = k.courseIds;
-    if (ids == null || ids.isEmpty) return t('لكورس واحد تختاره', 'For one course you choose');
+    if (ids == null || ids.isEmpty) return t('لدورة واحدة تختاره', 'For one course you choose');
     if (ids.length == 1) {
       final title = widget.courseTitles[ids.first];
-      return title == null ? t('لكورس محدد', 'For one set course') : t('لكورس $title', 'For $title');
+      return title == null ? t('لدورة محددة', 'For one set course') : t('لدورة $title', 'For $title');
     }
-    return t('لكورس واحد من ${ids.length}', 'For one of ${ids.length} courses');
+    return t('لدورة واحدة من ${ids.length}', 'For one of ${ids.length} courses');
   }
 }
 

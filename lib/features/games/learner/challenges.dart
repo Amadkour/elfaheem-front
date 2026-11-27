@@ -583,7 +583,7 @@ class _GamesChallengesPageState extends State<GamesChallengesPage> {
               : const AppListSkeleton(items: 4, padding: EdgeInsets.zero))
           : MyChallengesView(items: _mine!, ageBand: widget.ageBand, onOpen: _open, onNew: _new);
     } else if (_courses.isEmpty) {
-      body = AppEmpty(icon: Icons.school_rounded, title: t('لا صفوف بعد', 'No classes yet'), message: t('اشترك في كورس لترى ترتيب صفّك', "Join a course to see your class's ranking"));
+      body = AppEmpty(icon: Icons.school_rounded, title: t('لا صفوف بعد', 'No classes yet'), message: t('اشترك في دورة لترى ترتيب صفّك', "Join a course to see your class's ranking"));
     } else {
       body = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         if (_courses.length > 1) ...[
