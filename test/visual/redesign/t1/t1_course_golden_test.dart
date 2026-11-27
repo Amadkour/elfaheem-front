@@ -11,6 +11,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/design/app_tokens.dart';
 import 'package:flutter_education_app/config/storage_service.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter_education_app/features/guest/guest_live_api.dart';
+import 'package:flutter_education_app/features/sessions/teacher/components/guest_link_sheet.dart';
+import 'package:flutter_education_app/features/sessions/teacher/components/session_options_sheet.dart';
+import 'package:flutter_education_app/features/upload/upload_progress_footer.dart';
+import 'package:flutter_education_app/features/upload/upload_task.dart';
 import 'package:flutter_education_app/features/sessions/material/components/add_material_sheet.dart';
 import 'package:flutter_education_app/features/sessions/material/material_guest_links_api.dart';
 import 'package:flutter_education_app/features/sessions/material/material_guest_links_sheet.dart';
@@ -117,4 +123,104 @@ void sheetTests() {
       ),
     ),
   );
+
+  testWidgets(
+    't1 course guest',
+    (t) => render(
+      t,
+      'guest',
+      () => SingleChildScrollView(
+        child: GuestLinkBody(
+          loading: false,
+          busy: false,
+          error: null,
+          link: const GuestLink(
+            url: 'https://nextbrain.site/g/ra3-7KQ2x',
+            token: 'ra3',
+            canPublish: true,
+            maxGuests: 10,
+            guestsJoined: 2,
+            hasPin: true,
+          ),
+          canPublish: true,
+          maxGuestsController: TextEditingController(text: '10'),
+          pinController: TextEditingController(),
+          editing: true,
+          showQr: false,
+          joinsOpen: true,
+          joins: [GuestJoinRecord(identity: 'g1', name: 'خالد الحربي', joinedAt: DateTime.utc(2026, 11, 24, 16, 34), ipMasked: '41.33.0.xx')],
+          joinsTotal: 2,
+          onRetry: () {},
+          onCanPublishChanged: (_) {},
+          onCreate: () {},
+          onCopy: () {},
+          onShare: () {},
+          onToggleQr: () {},
+          onToggleSettings: () {},
+          onSaveSettings: () {},
+          onRemovePin: () {},
+          onRotate: () {},
+          onRevoke: () {},
+          onToggleJoins: () {},
+          onRefreshJoins: () {},
+        ),
+      ),
+    ),
+  );
+
+  testWidgets(
+    't1 course options',
+    (t) => render(
+      t,
+      'options',
+      () => SessionOptionsBody(
+        title: 'المتتابعات الهندسية',
+        onPick: (_) {},
+        options: const [
+          SessionOption(id: 'live', icon: Icons.videocam_rounded, label: 'ابدأ البث', good: true),
+          SessionOption(id: 'guest', icon: Icons.link_rounded, label: 'رابط الضيوف'),
+          SessionOption(id: 'attendance', icon: Icons.how_to_reg_rounded, label: 'الحضور'),
+          SessionOption(id: 'exams', icon: Icons.quiz_outlined, label: 'الامتحانات'),
+          SessionOption(id: 'material', icon: Icons.attach_file_rounded, label: 'إضافة مرفق'),
+          SessionOption(id: 'edit', icon: Icons.tune_rounded, label: 'تعديل الحصة'),
+          SessionOption(id: 'delete', icon: Icons.delete_outline_rounded, label: 'حذف الحصة', danger: true),
+        ],
+      ),
+    ),
+  );
+
+  testWidgets('t1 course uploads', (t) {
+    UploadTask task(String name, int sent, int total, UploadStatus st) => UploadTask(
+          sessionId: 100,
+          fileName: name,
+          cancelToken: CancelToken(),
+          dio: Dio(),
+          path: '/x',
+          endpoint: '/x',
+          fields: const {},
+        )
+          ..sentBytes = sent
+          ..totalBytes = total
+          ..status = st;
+    return render(
+      t,
+      'uploads',
+      () => Align(
+        alignment: AlignmentDirectional.bottomCenter,
+        child: UploadProgressFooterView(
+          tasks: [
+            task('شرائح المتتابعات الهندسية.pdf', 62, 100, UploadStatus.uploading),
+            task('حل المسائل.mp4', 30, 100, UploadStatus.uploading),
+          ],
+          expanded: true,
+          overallProgress: 0.46,
+          activeCount: 2,
+          onToggle: () {},
+          onCancel: (_) {},
+          onRetry: (_) {},
+          onDismiss: (_) {},
+        ),
+      ),
+    );
+  });
 }
