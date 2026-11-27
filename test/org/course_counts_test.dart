@@ -18,7 +18,7 @@ void main() {
   test('CourseModel.fromJson keeps students_count / enrollment_count as sent', () {
     expect(CourseModel.fromJson({'id': 1, 'students_count': 5, ..._flags}).studentsCount, 5);
     expect(CourseModel.fromJson({'id': 1, 'enrollment_count': 3, ..._flags}).studentsCount, 3);
-    expect(CourseModel.fromJson({'id': 1, ..._flags}).studentsCount, 0);
+    expect(CourseModel.fromJson({'id': 1, ..._flags}).studentsCount, isNull); // a learner's view (D-1950)
   });
 
   test('RatingSummary.fromJson keeps total and average as sent', () {

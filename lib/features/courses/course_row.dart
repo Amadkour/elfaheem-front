@@ -153,7 +153,7 @@ class CourseCard extends StatelessWidget {
     final Widget footer;
     if (isTeacher) {
       footer = CourseStatsFooter(
-        students: c.studentsCount,
+        students: c.studentsCount ?? 0,
         sessions: c.sessionsCount,
         rating: c.rateSummary?.average,
       );

@@ -123,6 +123,12 @@ void _openSupport(BuildContext context, CourseModel course) {
   );
 }
 
+/// The hero's students stat: none when the server hides the count (null for a learner, D-1950), never "0 students".
+List<CourseSpaceStat> courseHeroStudentsStat(int? count) => [
+      if (count != null)
+        CourseSpaceStat(icon: Icons.groups_rounded, value: '$count', label: courseStatNoun(count, 'course_hero_students')),
+    ];
+
 // ═════════════════════════════════════════════════════════════════════════════
 // Screen
 // ═════════════════════════════════════════════════════════════════════════════
@@ -463,11 +469,7 @@ class _CoursePageState extends State<_CoursePage> {
           ? null
           : () => openPersonProfile(context, c.teacher!), // the one profile page when public (D-853)
       stats: [
-        CourseSpaceStat(
-          icon: Icons.groups_rounded,
-          value: '${c.studentsCount}',
-          label: courseStatNoun(c.studentsCount, 'course_hero_students'),
-        ),
+        ...courseHeroStudentsStat(c.studentsCount),
         CourseSpaceStat(
           icon: Icons.play_circle_outline_rounded,
           value: '${c.sessionsCount}',
