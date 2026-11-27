@@ -5,7 +5,6 @@ import 'package:flutter_education_app/features/onboarding/onboarding_screen.dart
 import 'package:flutter_education_app/features/onboarding/onboarding_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flutter_education_app/utils/widget/primary_button.dart';
 import 'package:flutter_education_app/features/auth/auth_widgets.dart' show AuthButton;
 
 import 'layout_harness.dart';
@@ -46,6 +45,29 @@ void main() {
     );
   });
 
+  testWidgets('GuestSearchScreen: the subject and grade sheets (S-A2)', (tester) async {
+    for (final pill in const ['guest_search.subject', 'guest_search.level']) {
+      await expectNoLayoutErrors(
+        tester,
+        () => GuestSearchScreen(loadOptions: _options, loadMatch: _match, onShow: (_, _) {}),
+        scaffold: false,
+        frames: 6,
+        act: (t) async {
+          if (pill == 'guest_search.level') {
+            await t.tap(find.byKey(const ValueKey('guest_search.subject')));
+            await t.pump(const Duration(milliseconds: 600));
+            await t.tap(find.byKey(const ValueKey('guest_search.subject.1')));
+            await t.tap(find.byKey(const ValueKey('guest_search.subject_done')));
+            await t.pump(const Duration(milliseconds: 600));
+          }
+          await t.ensureVisible(find.byKey(ValueKey(pill)));
+          await t.tap(find.byKey(ValueKey(pill)));
+          await t.pump(const Duration(milliseconds: 600));
+        },
+      );
+    }
+  });
+
   testWidgets('GuestSearchScreen fails soft with no data', (tester) async {
     await expectNoLayoutErrors(
       tester,
@@ -69,12 +91,14 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
     }
     expect(find.textContaining('12'), findsWidgets);
-    // the dropdowns above draw their labels above the well, so the mode chips sit below the 600 px test view
-    await tester.ensureVisible(find.byType(ChoiceChip).at(1));
-    await tester.tap(find.byType(ChoiceChip).at(1));
-    await tester.pump(const Duration(milliseconds: 400));
-    await tester.ensureVisible(find.byType(PrimaryButton));
-    await tester.tap(find.byType(PrimaryButton), warnIfMissed: false);
+    // the sentence's mode pill opens its sheet; "remote" picks and closes it (redesign S-A2)
+    await tester.ensureVisible(find.byKey(const ValueKey('guest_search.mode')));
+    await tester.tap(find.byKey(const ValueKey('guest_search.mode')));
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.tap(find.byKey(const ValueKey('guest_search.mode.online')));
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.ensureVisible(find.byKey(const ValueKey('guest_search.show')));
+    await tester.tap(find.byKey(const ValueKey('guest_search.show')), warnIfMissed: false);
     await tester.pump();
     expect(shownMode, 'online');
     expect(shown, isNull);
