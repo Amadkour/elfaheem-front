@@ -6,6 +6,8 @@
 library;
 
 import 'package:flutter/widgets.dart';
+import 'package:flutter_education_app/features/parent/parent_message_teacher.dart';
+import 'package:flutter_education_app/features/parent/parent_pulse.dart';
 import 'package:flutter_education_app/config/storage_service.dart';
 import 'package:flutter_education_app/features/parent/parent_dashboard_screen.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -24,9 +26,8 @@ void main() {
       act: (t) => paTap(t, const ValueKey('pa.kid.$paReem'))));
   testWidgets('pa today all', (t) => paRender(t, 'today_all', () => const ParentDashboardScreen(), storage: storage));
   testWidgets('pa today empty', (t) => paRender(t, 'today_empty', () => const ParentDashboardScreen(), storage: storage, api: paApi(kids: 0)));
-  testWidgets('pa today msg', (t) => paRender(t, 'today_msg', () => const ParentDashboardScreen(), storage: storage, langs: const ['ar'], grow: false,
-      act: (t) async {
-        await paTap(t, const ValueKey('pa.kid.$paReem'));
-        await paTap(t, const ValueKey('pa.today.message'));
-      }));
+  // a sheet is a route above the captured page: its content is drawn as the page
+  testWidgets('pa today msg', (t) => paRender(t, 'today_msg', () => SingleChildScrollView(child: ParentMessageTeacherSheet(childName: 'ريم العنزي', courseId: 1,
+      teachers: [for (final x in [(31, 'أ. ماجد الشهري', 'الرياضيات، مجموعة أ'), (32, 'أ. فهد المطيري', 'العلوم'), (33, 'أ. خالد العتيبي', 'الإنجليزي')]) PulseTeacher(id: x.$1, name: x.$2, courseId: x.$1 - 30, courseAr: x.$3, courseEn: x.$3)])),
+      storage: storage, pushed: true, langs: const ['ar']));
 }

@@ -85,16 +85,16 @@ class ParentConsentBody extends StatelessWidget {
   }
 }
 
-class _ConsentSheetBody extends StatefulWidget {
-  const _ConsentSheetBody({required this.childName, this.grade});
+class ParentConsentSheet extends StatefulWidget {
+  const ParentConsentSheet({required this.childName, this.grade});
   final String? childName;
   final String? grade;
 
   @override
-  State<_ConsentSheetBody> createState() => _ConsentSheetBodyState();
+  State<ParentConsentSheet> createState() => ParentConsentSheetState();
 }
 
-class _ConsentSheetBodyState extends State<_ConsentSheetBody> {
+class ParentConsentSheetState extends State<ParentConsentSheet> {
   bool _on = false;
 
   @override
@@ -130,7 +130,7 @@ class _ConsentSheetBodyState extends State<_ConsentSheetBody> {
 
 /// Ask for the consent (a sheet). True only when the box is ticked and "I agree" is pressed.
 Future<bool> showParentConsentDialog(BuildContext context, {String? childName, String? grade}) async {
-  final r = await showAppSheet<bool>(context, (_) => paRole(_ConsentSheetBody(childName: childName, grade: grade)));
+  final r = await showAppSheet<bool>(context, (_) => paRole(ParentConsentSheet(childName: childName, grade: grade)));
   return r == true;
 }
 
@@ -264,7 +264,7 @@ Future<bool> revokeParentConsentFlow(BuildContext context, int studentId, String
       return false;
     }
     if (!context.mounted) return false;
-    final ok = await showAppSheet<bool>(context, (_) => paRole(_RevokeSheet(childName: childName))) == true;
+    final ok = await showAppSheet<bool>(context, (_) => paRole(ParentRevokeSheet(childName: childName))) == true;
     if (!ok) return false;
     await client.delete('/api/v1/parent/children/$studentId/consent');
     showAppNotice(_t('سُحبت موافقتك', 'Your consent was revoked'));
@@ -275,8 +275,8 @@ Future<bool> revokeParentConsentFlow(BuildContext context, int studentId, String
   }
 }
 
-class _RevokeSheet extends StatelessWidget {
-  const _RevokeSheet({required this.childName});
+class ParentRevokeSheet extends StatelessWidget {
+  const ParentRevokeSheet({required this.childName});
   final String childName;
 
   @override

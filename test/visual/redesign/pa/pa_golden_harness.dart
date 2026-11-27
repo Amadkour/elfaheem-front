@@ -33,7 +33,7 @@ Future<void> paRender(
     'pa/$name',
     () => MultiProvider(
       providers: appProviders(storage: storage, api: ApiClient()),
-      child: pushed ? paRole(build()) : build(),
+      child: pushed ? paRole(Material(type: MaterialType.transparency, child: build())) : build(),
     ),
     storage: storage,
     langs: langs,

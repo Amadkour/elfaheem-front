@@ -16,30 +16,26 @@ import 'package:flutter_education_app/design/app_shell_nav.dart' show ShellChrom
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/design/app_tokens.dart' show AppWidth;
 import 'package:flutter_education_app/design/app_responsive.dart' show AppWidthBox;
-import 'package:flutter_education_app/features/profile/legal/legal_links.dart' show legalSettingsGroup;
-import 'package:flutter_education_app/config/theme/theme_config_provider.dart';
 import 'package:flutter_education_app/core/attention/attention_service.dart' show AttentionTabs;
 import 'package:flutter_education_app/design/app_kit.dart';
 import 'package:flutter_education_app/design/app_shell.dart';
 import 'package:flutter_education_app/features/auth/auth_provider.dart';
-import 'package:flutter_education_app/design/app_settings.dart';
-import 'package:flutter_education_app/features/profile/profile_provider.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/app_navigator.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
-import '../../design/app_switch.dart';
 import '../../design/calendar_entry.dart';
-import '../../utils/helpers.dart';
-import '../auth/reauth_sheet.dart';
 import 'package:flutter_education_app/features/messaging/notification/notifications_provider.dart';
-import '../../design/app_language_switch.dart' show AppLanguageTile;
-import 'package:flutter_education_app/features/profile/change_password_widget.dart';
-import 'package:flutter_education_app/features/profile/compalints/complaints_hub_page.dart';
-import 'package:flutter_education_app/features/profile/update_account_widget.dart';
+import 'pa_child_pages.dart';
 import 'pa_kit.dart';
+import 'pa_more_page.dart';
+import 'pay/pa_book_page.dart';
+import 'pay/pa_payments_page.dart';
+import 'signup/pa_add_child_page.dart';
+import 'signup/pa_child_api.dart';
+import 'signup/pa_child_code_page.dart';
 import 'parent_alerts_page.dart';
 import 'parent_children_page.dart';
 import 'parent_link_providers.dart';
@@ -49,12 +45,7 @@ import 'package:flutter_education_app/core/routing/deferred_screens.dart' show d
 import 'parent_overview_page.dart';
 import 'parent_reports_page.dart';
 import 'parent_widgets.dart';
-import 'package:flutter_education_app/design/app_icons.dart';
-import 'package:flutter_education_app/features/profile/display/display_settings_page.dart' show DisplaySettingsTile;
-import 'package:flutter_education_app/features/get_app/get_app_banner.dart' show GetAppTile;
-import 'package:flutter_education_app/features/rag/app_assistant.dart' show AppAssistantOpenTile, AppAssistantBubbleTile;
 import 'package:flutter_education_app/design/quick_meeting_entry.dart';
-import 'package:flutter_education_app/features/certificates/issue/cert_verify_page.dart' show CertVerifyEntryTile;
 import 'package:flutter_education_app/design/master_detail/entity_search_palette.dart';
 
 class ParentTabProvider extends ChangeNotifier {
@@ -96,6 +87,7 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
   /// Opens a tab by key; the Alerts tab optionally filtered on one child (null clears the filter).
   void _go(String key, {int? childId}) {
     if (key == 'alerts' && childId != _alerts.childId) _alerts.setChild(childId);
+    if (key == 'alerts') _kids.select(childId);
     final i = _index(key);
     if (i >= 0) _tabs.onChangeTab(i);
   }
@@ -149,6 +141,21 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
     ]);
   }
 
+  /// "Add your child": the form, then the children reload (the top bar's "+", the Children tab, the empty Today).
+  VoidCallback? get _addChild => paCreateChildOn()
+      ? () async {
+          if (!await paOpenAddChild(context)) return;
+          await Future.wait([_overview.load(silent: true), _link.loadAll()]);
+        }
+      : null;
+
+  /// "Book for your child" (kill switch `booking`), optionally with the child picked.
+  VoidCallback? get _book => paBookingOn() ? () => paPush<void>(context, const ParentBookPage()) : null;
+
+  /// "Payments and invoices" (kill switch `payments`).
+  VoidCallback? get _payments =>
+      AppConfig.disableList.contains('payments') ? null : () => paPush<void>(context, const ParentPaymentsPage());
+
   Widget _lazy(String key, Widget child) => _LazyTab(indexOf: () => _index(key), child: child);
 
   @override
@@ -157,6 +164,8 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
     AppNavigator.requestedTab.addListener(_onTabRequested);
     _overview.addListener(_onOverview);
     _link.addListener(_onLink);
+    ParentChildPage.codeBlock = PaChildCodeBlock.forRow;
+    ParentChildPage.onBook = paBookingOn() ? (ctx, id) => paPush<void>(ctx, ParentBookPage(childId: id)) : null;
     _byKey = {
       'today': DashboardItem(
         Icons.wb_sunny_outlined,
@@ -171,10 +180,12 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
             titleKey: 'pa_tab_today',
             helpPageId: 'home.parent',
             band: true,
+            onAdd: _addChild,
             child: ParentOverviewPage(
               onOpenAlerts: (childId) => _go('alerts', childId: childId),
               onOpenLink: () => _go('link'),
               onOpenChildren: () => _go('children'),
+              onAddChild: _addChild,
               // C2: my children's organizations under the day, nothing at all when no child is in one (kill switch
               // parent.org_view, one call: GET /org/parent/children)
               footer: deferredParentOrgChildrenCard(),
@@ -193,8 +204,9 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
           _ParentTab(
             titleKey: 'pl_tab_children',
             band: true,
+            onAdd: _addChild,
             epoch: _epochs['children'],
-            child: ParentChildrenPage(onOpenLinkTab: () => _go('link')),
+            child: ParentChildrenPage(onOpenLinkTab: () => _go('link'), onAddChild: _addChild),
           ),
         ),
       ),
@@ -203,14 +215,16 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
         Icons.insights_rounded,
         'pl_tab_reports',
         () => _refresh('reports'),
-        _lazy('reports', _ParentTab(titleKey: 'pl_tab_reports', epoch: _epochs['reports'], child: const ParentReportsPage())),
+        _lazy('reports', _ParentTab(titleKey: 'pl_tab_reports', band: true,
+            onAdd: _addChild, epoch: _epochs['reports'], child: const ParentReportsPage())),
       ),
       'alerts': DashboardItem(
         Icons.notifications_none_rounded,
         Icons.notifications_rounded,
         'pl_tab_alerts',
         () => _refresh('alerts'),
-        _lazy('alerts', _ParentTab(titleKey: 'pl_tab_alerts', epoch: _epochs['alerts'], width: AppWidth.content, child: const ParentAlertsPage())),
+        _lazy('alerts', _ParentTab(titleKey: 'pl_tab_alerts', band: true,
+            onAdd: _addChild, epoch: _epochs['alerts'], child: const ParentAlertsPage())),
         attentionKeys: const [AttentionTabs.parentAlerts],
       ),
       'link': DashboardItem(
@@ -226,13 +240,17 @@ class _ParentDashboardScreenState extends State<ParentDashboardScreen> {
         Icons.grid_view_rounded,
         'pl_tab_more',
         null,
-        _lazy('more', const _ParentTab(titleKey: 'pl_tab_more', child: _ParentMorePage())),
+        _lazy('more', _ParentTab(titleKey: 'pl_tab_more', child: ParentMorePage(onOpenLink: () => _go('link'), onBook: _book, onPayments: _payments))),
         attentionKeys: const [AttentionTabs.profile],
       ),
     };
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_isParent) return;
       _overview.load(); // ONE call for the first paint; the other tabs load when opened
+      // a child the join flow kept for after sign-up: created now (nothing at all when there is none)
+      paSendPendingChild(context, parentName: context.read<MyAuthProvider>().currentUser?.name.split(' ').first).then((_) {
+        if (mounted && _seededFrom != null) _overview.load(silent: true);
+      });
       context.read<NotificationsProvider>().fetchNotifications(); // the header's unread count, one request
     });
   }
@@ -316,7 +334,10 @@ class _LazyTabState extends State<_LazyTab> {
 }
 
 class _ParentTab extends StatelessWidget {
-  const _ParentTab({required this.titleKey, required this.child, this.epoch, this.width, this.band = false, this.helpPageId});
+  const _ParentTab({required this.titleKey, required this.child, this.epoch, this.width, this.band = false, this.helpPageId, this.onAdd});
+
+  /// The switcher's "+" (add a child); null = none.
+  final VoidCallback? onAdd;
 
   final String titleKey;
   final Widget child;
@@ -354,138 +375,7 @@ class _ParentTab extends StatelessWidget {
                 const QuickMeetingIcon(),
               ],
       ),
-      child: band ? Column(children: [const PaSwitcherBand(), Expanded(child: framed)]) : framed,
-    );
-  }
-}
-
-// ── "More" tab ────────────────────────────────────────────────────────────────
-class _ParentMorePage extends StatefulWidget {
-  const _ParentMorePage();
-
-  @override
-  State<_ParentMorePage> createState() => _ParentMorePageState();
-}
-
-class _ParentMorePageState extends State<_ParentMorePage> {
-  Future<void> _push(Widget s) async =>
-      await Navigator.of(context).push(MaterialPageRoute(builder: (_) => s));
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      context.read<ProfileProvider>().initData(context.read<MyAuthProvider>().currentUser);
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final p = context.watch<ProfileProvider>();
-    return AppSettingsPage(
-      header: AppSettingsHeader(
-        name: p.name,
-        role: p.role,
-        email: p.email,
-        username: p.username,
-        imageUrl: p.imageUrl,
-        heroTag: 'profile-user-${p.id}',
-      ),
-      groups: [
-        AppSettingsGroup(
-          title: 'account'.tr,
-          icon: Icons.account_circle_rounded,
-          children: [
-            const CertVerifyEntryTile(),
-            AppSettingsTile(
-              icon: Icons.manage_accounts_rounded,
-              color: c.primary,
-              label: 'update_account'.tr,
-              onTap: () async {
-                await _push(const EditAccountScreen(isTeacher: false));
-                if (mounted) {
-                  context.read<ProfileProvider>().initData(context.read<MyAuthProvider>().currentUser);
-                }
-              },
-            ),
-            AppSettingsTile(
-              icon: Icons.lock_reset_rounded,
-              color: c.accent2,
-              label: 'change_password'.tr,
-              onTap: () => _push(const ChangePasswordScreen()),
-            ),
-            const CalendarEntryTile(),
-            const ChatEntryTile(),
-          ],
-        ),
-        AppSettingsGroup(
-          title: 'settings'.tr,
-          icon: Icons.settings_rounded,
-          children: [
-            const AppLanguageTile(),
-            const DisplaySettingsTile(),
-            if (GetAppTile.available) const GetAppTile(), // web: the store / installer for this device
-            const AppAssistantOpenTile(),
-            const AppAssistantBubbleTile(),
-            AppSettingsTile(
-              icon: Icons.dark_mode_rounded,
-              color: c.textDark,
-              label: 'dark_mode'.tr,
-              trailing: AppSwitch(
-                value: p.darkMode,
-                onChanged: (b) async => await p.changeMode(b),
-                semanticLabel: 'dark_mode'.tr,
-              ),
-            ),
-            AppSettingsTile(
-              icon: Icons.support_agent_rounded,
-              color: c.primary,
-              label: 'complaints_and_support'.tr,
-              onTap: () => _push(const ComplaintsHubPage()), // D-086: New complaint + My complaints
-            ),
-          ],
-        ),
-        legalSettingsGroup(context), // privacy policy · terms of service (D-308)
-        AppSettingsGroup(
-          title: 'exit'.tr,
-          icon: DirIcons.exitToApp,
-          danger: true,
-          children: [
-            AppSettingsTile(
-              icon: DirIcons.logout,
-              color: c.danger,
-              label: 'logout'.tr,
-              onTap: () async {
-                final ok = await Helpers.confirmDialog(context);
-                if (ok == true && context.mounted) {
-                  await context.read<ProfileProvider>().logout(context);
-                }
-              },
-            ),
-            AppSettingsTile(
-              icon: Icons.delete_forever_rounded,
-              color: c.danger,
-              label: 'delete_account_title'.tr,
-              onTap: () async {
-                        final ok = await Helpers.confirmDialog(context,
-                            title: 'are_you_sure_to_delete_account'.tr, confirm: 'delete'.tr);
-                        if (ok != true || !context.mounted) return;
-                        final re = await askReauth(context); // current password (+ two-step code), S9
-                        if (re == null || !context.mounted) return;
-                        final p = context.read<ProfileProvider>();
-                        final after = await p.deleteAccount(context, password: re.password, mfaCode: re.mfaCode);
-                        if (after == null) {
-                          Helpers.showMessage(p.errorMessage ?? 'generic_error'.tr, isError: true);
-                          return;
-                        }
-                        Helpers.showMessage('your_account_will_deleted_successfully_through_14_days'.tr);
-              },
-            ),
-          ],
-        ),
-      ],
+      child: band ? Column(children: [PaSwitcherBand(onAdd: onAdd), Expanded(child: framed)]) : framed,
     );
   }
 }

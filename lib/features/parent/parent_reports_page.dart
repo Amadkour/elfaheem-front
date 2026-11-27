@@ -1,29 +1,25 @@
 // lib/features/parent/parent_reports_page.dart
-// Daily / weekly / monthly reports.
-//   ParentReportsPage          -> the "Reports" tab: ALL linked children
-//   ParentChildReportScreen    -> one child (opened from the children list)
-// The server returns the three periods of every child in ONE call (period=all), so switching
-// between Daily / Weekly / Monthly is instant. Day / week boundaries are computed by the server
-// (Africa/Cairo, weeks start on Saturday by default).
-//
-// Each report also shows "Marks from the teachers": the child's analytics profile (the same view the child has in
-// the student app — published marks with the class average). With several children, chips at the top show one.
-//
-// Warm Editorial (D-610 – D-629): the child's report opens on ONE block in the child's own tone (parentChildTone) —
-// the score ring is the page's memorable element, its figure rolls (AppOdometer) and the block leans a little under
-// the pointer (AppTilt.subtle); everything after it is paper: the findings, the figures (count up once), the trend
-// (the kit's AppBarChart), homework as an AppDonut, habits as bars that fill once.
+// Daily / weekly / monthly reports, redrawn for the redesign (Pa2Reports `screen=reports|child|how`, phase 4).
+//   ParentReportsPage          -> the "Reports" tab: one summary card per child (the score ring, the tier, one sentence,
+//                                 attendance / exams / homework with the change, two findings, Full report); the top
+//                                 bar's switcher narrows it to one child
+//   ParentChildReportScreen    -> one child: the hero carries the score ring, the tier, the sentence, "How is the score
+//                                 made?" (a sheet: the four parts, their weights and values) and what changed; then the
+//                                 findings, the teachers' marks, the figures, the trend, attendance, homework, habits,
+//                                 courses and the detail lists
+// The server returns the three periods of every child in ONE call (period=all), so switching between Daily / Weekly /
+// Monthly is instant. Day / week boundaries are computed by the server.
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/design/app_motion_kit.dart' show AppTilt;
+import 'package:flutter_education_app/core/app_digits.dart';
 import 'package:flutter_education_app/utils/widget/app_bar.dart';
 import 'package:flutter_education_app/utils/widget/base_page.dart';
 import 'package:provider/provider.dart';
 
 import '../../config/app_config.dart';
-import 'package:flutter_education_app/features/analytics/analytics_ui.dart' show anTr;
 import 'package:flutter_education_app/features/data_lab/data_lab_models.dart' show DlProfile;
+import 'pa_kit.dart';
 import 'parent_child_marks.dart';
 import 'parent_link_providers.dart';
 import 'parent_report_widgets.dart';
@@ -33,8 +29,7 @@ import 'package:flutter_education_app/features/admin/admin_common.dart' show Err
 import 'package:flutter_education_app/core/entities/entity_ref.dart';
 import 'package:flutter_education_app/design/master_detail/entity_chip.dart' show EntityLink;
 import 'package:flutter_education_app/design/master_detail/entity_navigator.dart';
-import 'package:flutter_education_app/design/master_detail/entity_panel_controller.dart';
-import 'package:flutter_education_app/design/master_detail/master_detail_scaffold.dart';
+import 'package:flutter_education_app/design/app_motion_kit.dart' show AppOdometer;
 
 const _periods = ['daily', 'weekly', 'monthly'];
 
@@ -48,6 +43,8 @@ DateTime _step(DateTime d, String period, int dir) {
       return d.add(Duration(days: dir));
   }
 }
+
+num _n(Map m, String k) => (m[k] as num?) ?? 0;
 
 // ═════════════════════════════════════════════════════════════════════════════
 class ParentReportsPage extends StatelessWidget {
@@ -64,10 +61,23 @@ class ParentChildReportScreen extends StatelessWidget {
   final String studentName;
 
   @override
-  Widget build(BuildContext context) => BasePage(
-    appBar: ScreenAppBar(title: studentName),
-    child: _ReportsBody(studentId: studentId, studentName: studentName),
-  );
+  Widget build(BuildContext context) => paRole(BasePage(
+        appBar: ScreenAppBar(title: 'pa_report_of'.tr.replaceAll('{name}', studentName.split(' ').first)),
+        child: Column(children: [
+          PaSwitcherBand(
+            showAll: false,
+            selectedId: studentId,
+            onSelect: (id) {
+              if (id == null || id == studentId) return;
+              final kid = PaKids.maybeOf(context, listen: false)?.kids.where((k) => k.id == id).firstOrNull;
+              Navigator.of(context).pushReplacement(MaterialPageRoute<void>(
+                builder: (_) => ParentChildReportScreen(studentId: id, studentName: kid?.name ?? ''),
+              ));
+            },
+          ),
+          Expanded(child: _ReportsBody(studentId: studentId, studentName: studentName)),
+        ]),
+      ));
 }
 
 class _ReportsBody extends StatefulWidget {
@@ -82,10 +92,7 @@ class _ReportsBody extends StatefulWidget {
 
 class _ReportsBodyState extends State<_ReportsBody> {
   late final ParentReportsProvider _p = ParentReportsProvider();
-  // A course of the report opens in the shared panel as the child sees it, under the child's name (D-290).
-  final _panel = EntityPanelController(rowKind: EntityKind.student);
-  String _period = 'daily';
-  int? _only; // several children: show one (null = all)
+  String _period = 'weekly';
 
   @override
   void initState() {
@@ -96,148 +103,432 @@ class _ReportsBodyState extends State<_ReportsBody> {
   @override
   void dispose() {
     _p.dispose();
-    _panel.dispose();
     super.dispose();
+  }
+
+  /// Daily / weekly / monthly and the date, on the hero.
+  Widget _controls(BuildContext context, ParentReportsProvider p) {
+    final c = context.colors;
+    final next = _step(p.refDate, _period, 1);
+    return Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+      AppTabs(
+        expand: true,
+        items: [for (final x in _periods) AppTabItem('pl_period_$x'.tr)],
+        index: _periods.indexOf(_period),
+        onChanged: (i) => setState(() => _period = _periods[i]),
+      ),
+      const SizedBox(height: AppSpace.xs),
+      Container(
+        decoration: BoxDecoration(
+          color: c.heroGlass,
+          borderRadius: BorderRadius.circular(AppRadius.pill),
+          border: Border.all(color: c.heroGlassBorder, width: AppBorder.hairline),
+        ),
+        child: Row(children: [
+          AppIconButton(
+            icon: Icons.chevron_left_rounded,
+            onHero: true,
+            tooltip: MaterialLocalizations.of(context).previousPageTooltip,
+            onPressed: () => p.setDate(_step(p.refDate, _period, -1)),
+          ),
+          Expanded(
+            child: Semantics(
+              button: true,
+              label: 'pa_pick_date'.tr,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(AppRadius.pill),
+                onTap: () async {
+                  final d = await showDatePicker(context: context, initialDate: p.refDate, firstDate: DateTime(2020), lastDate: DateTime.now());
+                  if (d != null) p.setDate(d);
+                },
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: AppTouch.min),
+                  child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Icon(Icons.calendar_month_rounded, size: AppIconSize.md, color: c.onHero),
+                    const SizedBox(width: AppSpace.xs),
+                    Flexible(
+                      child: Text(plDate(p.refDate), maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: AppType.row(context).copyWith(color: c.onHero, fontWeight: FontWeight.w600)),
+                    ),
+                  ]),
+                ),
+              ),
+            ),
+          ),
+          AppIconButton(
+            icon: Icons.chevron_right_rounded,
+            onHero: true,
+            tooltip: MaterialLocalizations.of(context).nextPageTooltip,
+            onPressed: next.isAfter(DateTime.now()) ? null : () => p.setDate(next),
+          ),
+        ]),
+      ),
+      const SizedBox(height: AppSpace.xs),
+      Text(paFmt('pa_tz_note', {'tz': AppTime.zoneInfo(AppTime.zoneId).label}), style: AppType.meta(context).copyWith(color: c.onHeroMuted)),
+    ]);
   }
 
   @override
   Widget build(BuildContext context) => ChangeNotifierProvider.value(
-    value: _p,
-    child: Consumer<ParentReportsProvider>(builder: (context, p, _) {
-      return MasterDetailScaffold(
-        controller: _panel,
-        rootLabel: 'md_p7_my_children'.tr,
-        list: Column(children: [
-        // period + date selector ------------------------------------------------
-        Padding(
-          padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, 0),
-          child: AppWidthBox(
-            width: AppWidth.reading,
-            gutters: false,
-            child: Column(children: [
-              AppTabs(
-                expand: true,
-                items: [for (final x in _periods) AppTabItem('pl_period_$x'.tr)],
-                index: _periods.indexOf(_period),
-                onChanged: (i) => setState(() => _period = _periods[i]),
-              ),
-              const SizedBox(height: AppSpace.xxs),
-              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                AppIconButton(
-                  icon: Icons.chevron_left_rounded,
-                  tooltip: MaterialLocalizations.of(context).previousPageTooltip,
-                  onPressed: () => p.setDate(_step(p.refDate, _period, -1)),
-                ),
-                Flexible(
-                  child: AppButton.ghost(
-                    icon: Icons.calendar_month_rounded,
-                    label: plDate(p.refDate),
-                    onPressed: () async {
-                      final d = await showDatePicker(
-                          context: context,
-                          initialDate: p.refDate,
-                          firstDate: DateTime(2020),
-                          lastDate: DateTime.now());
-                      if (d != null) p.setDate(d);
-                    },
-                  ),
-                ),
-                AppIconButton(
-                  icon: Icons.chevron_right_rounded,
-                  tooltip: MaterialLocalizations.of(context).nextPageTooltip,
-                  onPressed: _step(p.refDate, _period, 1).isAfter(DateTime.now())
-                      ? null
-                      : () => p.setDate(_step(p.refDate, _period, 1)),
-                ),
-              ]),
-            ]),
-          ),
-        ),
-        if (widget.studentId == null && p.children.length > 1)
-          SizedBox(
-            height: AppTouch.min + AppSpace.xs,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.xxs),
-              children: [
-                _childChip(context, null, anTr('pl_all_children', 'All children')),
-                for (final ch in p.children)
-                  if ((ch['student'] as Map?)?['id'] case final num id)
-                    _childChip(context, id.toInt(), '${(ch['student'] as Map)['name']}'),
-              ],
-            ),
-          ),
-        Expanded(
-          child: !p.loaded && p.isLoading
-              ? const AppListSkeleton(items: 4)
+        value: _p,
+        child: Consumer<ParentReportsProvider>(builder: (context, p, _) {
+          final kids = PaKids.maybeOf(context);
+          final rows = [
+            for (final ch in p.children)
+              if (ch[_period] is Map && (widget.studentId != null || kids?.selected == null || (ch['student'] as Map?)?['id'] == kids?.selected)) ch,
+          ];
+          Widget state() => !p.loaded && p.isLoading
+              ? const AppListSkeleton(items: 3, padding: EdgeInsets.zero)
               : !p.loaded && p.hasError
-              ? ErrorRetry(message: p.errorMessage ?? '', onRetry: p.reload)
-              : p.children.isEmpty
-              ? AppEmpty(icon: Icons.family_restroom_rounded, title: 'pl_no_children'.tr)
-              : AppRefresh(
+                  ? ErrorRetry(message: p.errorMessage ?? '', onRetry: p.reload)
+                  : AppEmpty(icon: Icons.family_restroom_rounded, title: 'pl_no_children'.tr);
+
+          // one child: the hero is that child's score
+          if (widget.studentId != null) {
+            final ch = rows.isEmpty ? null : rows.first;
+            final report = ch == null ? null : Map<String, dynamic>.from(ch[_period] as Map);
+            final hero = report == null
+                ? AppHero(title: widget.studentName, bottom: _controls(context, p))
+                : _ChildHero(
+                    childId: widget.studentId!,
+                    name: '${(ch!['student'] as Map)['name']}',
+                    report: report,
+                    controls: _controls(context, p),
+                  );
+            return PaHeroPage(
+              onRefresh: p.reload,
+              width: AppWidth.reading,
+              hero: hero,
+              body: report == null
+                  ? state()
+                  : _ChildReportCard(
+                      childId: widget.studentId,
+                      name: '${(ch!['student'] as Map)['name']}',
+                      report: report,
+                      period: _period,
+                      profile: p.profiles[widget.studentId],
+                    ),
+            );
+          }
+
+          final hero = AppHero(
+            kicker: 'pa_reports_kicker'.tr,
+            title: 'pa_reports_title_$_period'.tr,
+            subtitle: 'pa_reports_sub'.tr,
+            bottom: _controls(context, p),
+          );
+          return PaHeroPage(
             onRefresh: p.reload,
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(AppSpace.md, AppSpace.sm, AppSpace.md, AppSpace.lg),
-              children: [
-                for (final ch in p.children)
-                  if (ch[_period] is Map && (_only == null || (ch['student'] as Map?)?['id'] == _only))
-                    AppWidthBox(
-                      width: AppWidth.reading,
-                      gutters: false,
-                      child: _ChildReportCard(
+            width: AppWidth.reading,
+            hero: hero,
+            body: rows.isEmpty
+                ? state()
+                : PaStack(children: [
+                    for (final ch in rows)
+                      _ChildSummaryCard(
                         childId: ((ch['student'] as Map?)?['id'] as num?)?.toInt(),
                         name: '${(ch['student'] as Map)['name']}',
+                        grade: '${(ch['student'] as Map)['grade_name'] ?? ''}',
                         report: Map<String, dynamic>.from(ch[_period] as Map),
-                        period: _period,
-                        profile: p.profiles[((ch['student'] as Map?)?['id'] as num?)?.toInt()],
                       ),
-                    ),
-              ],
-            ),
-          ),
-        ),
-      ]),
+                  ]),
+          );
+        }),
       );
-    }),
-  );
+}
 
-  Widget _childChip(BuildContext context, int? id, String label) {
+// ═════════════════════════════════════════════════════════════════════════════
+//  The child's hero: the score ring, the tier, the sentence, how it is made, what changed
+// ═════════════════════════════════════════════════════════════════════════════
+class _ChildHero extends StatelessWidget {
+  const _ChildHero({required this.childId, required this.name, required this.report, required this.controls});
+
+  final int childId;
+  final String name;
+  final Map<String, dynamic> report;
+  final Widget controls;
+
+  @override
+  Widget build(BuildContext context) {
     final c = context.colors;
-    final on = _only == id;
-    final surface = on ? c.primary : c.cardBg;
-    final ink = on ? c.onHero : c.textDark;
-    final r = BorderRadius.circular(AppRadius.pill);
-    return Padding(
-      padding: const EdgeInsetsDirectional.only(end: AppSpace.xs),
-      child: Semantics(
-        button: true,
-        selected: on,
-        child: Material(
-          color: surface,
-          shape: RoundedRectangleBorder(borderRadius: r, side: BorderSide(color: on ? c.primary : c.divider, width: AppBorder.hairline)),
-          child: InkWell(
-            borderRadius: r,
-            onTap: () => setState(() => _only = id),
-            child: Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(AppSpace.xs, 0, AppSpace.md, 0),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                if (id == null)
-                  Icon(Icons.groups_rounded, size: AppIconSize.sm, color: ink)
-                else
-                  AppAvatar(name: label, size: AppSpace.lg),
-                const SizedBox(width: AppSpace.xs),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: AppSpace.xxxl * 3),
-                  child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: AppType.label(context).copyWith(color: ink, fontWeight: on ? FontWeight.w600 : FontWeight.w500)),
+    final score = report['score'] as Map;
+    final tier = '${score['tier']}';
+    final s = report['summary'] as Map, prev = report['previous_summary'] as Map;
+    final hw = report['homework'] as Map;
+    final wide = paWide(context);
+    final changes = <(bool, String)>[
+      if (prev.containsKey('score') && (_n(prev, 'score') != _n(score, 'value')))
+        (_n(score, 'value') >= _n(prev, 'score'), paFmt('pa_score_change', {'n': appDigits('${(_n(score, 'value') - _n(prev, 'score')).abs().round()}')})),
+      if (_n(prev, 'study_minutes') > 0 && _n(s, 'study_minutes') != _n(prev, 'study_minutes'))
+        (_n(s, 'study_minutes') > _n(prev, 'study_minutes'),
+            paFmt(_n(s, 'study_minutes') > _n(prev, 'study_minutes') ? 'pa_study_up' : 'pa_study_down',
+                {'n': plMinutes((_n(s, 'study_minutes') - _n(prev, 'study_minutes')).abs())})),
+      if (_n(hw, 'missing') > 0) (false, paFmt('pa_hw_missing_n', {'n': appDigits('${_n(hw, 'missing')}')})),
+    ];
+    final ring = PaScoreRing(value: _n(score, 'value'), size: wide ? AppDashSize.ring * 2 : AppDashSize.ring * 1.4);
+    final text = Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+      Row(children: [
+        PaKidAvatar(id: childId, name: name, size: AppTouch.min - AppSpace.xs),
+        const SizedBox(width: AppSpace.xs),
+        Flexible(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.section(context).copyWith(color: c.onHero))),
+      ]),
+      const SizedBox(height: AppSpace.xs),
+      Semantics(header: true, child: Text('pl_tier_$tier'.tr, style: AppType.headline(context).copyWith(color: c.onHero))),
+      const SizedBox(height: AppSpace.xxs),
+      Text('pl_tier_desc_$tier'.tr, style: AppType.body(context).copyWith(color: c.onHeroMuted)),
+      const SizedBox(height: AppSpace.sm),
+      AppButton.secondary(
+        key: const ValueKey('pa.report.how'),
+        label: 'pa_score_how'.tr,
+        icon: Icons.help_outline_rounded,
+        size: AppButtonSize.sm,
+        onPressed: () => showParentScoreSheet(context, score),
+      ),
+    ]);
+    return AppHeroSurface(
+      child: Padding(
+        padding: EdgeInsetsDirectional.fromSTEB(
+            wide ? AppSpace.lg : AppSpace.md, wide ? AppSpace.lg : AppSpace.md, wide ? AppSpace.lg : AppSpace.md, AppHeroMetrics.overlapPhone + AppSpace.md),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+            Expanded(child: text),
+            const SizedBox(width: AppSpace.sm),
+            ring,
+          ]),
+          if (changes.isNotEmpty) ...[
+            const SizedBox(height: AppSpace.md),
+            for (final ch in changes)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpace.xs),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpace.md, vertical: AppSpace.sm),
+                  decoration: BoxDecoration(color: c.heroGlass, borderRadius: BorderRadius.circular(AppRadius.pill)),
+                  child: Row(children: [
+                    Icon(ch.$1 ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                        color: ch.$1 ? c.kit.ok.color : c.kit.hotTone.color, size: AppIconSize.md),
+                    const SizedBox(width: AppSpace.xs),
+                    Expanded(child: Text(ch.$2, style: AppType.row(context).copyWith(color: c.onHero, fontWeight: FontWeight.w600))),
+                  ]),
                 ),
-              ]),
+              ),
+          ],
+          const SizedBox(height: AppSpace.sm),
+          controls,
+        ]),
+      ),
+    );
+  }
+}
+
+/// The score as a white ring on the hero: the figure and "of 100" in its middle.
+class PaScoreRing extends StatelessWidget {
+  const PaScoreRing({super.key, required this.value, required this.size});
+
+  final num value;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Semantics(
+      label: paFmt('pa_score_of', {'n': appDigits('${value.round()}')}),
+      child: ExcludeSemantics(
+        child: SizedBox.square(
+          dimension: size,
+          child: Stack(alignment: Alignment.center, children: [
+            SizedBox.square(
+              dimension: size,
+              child: CircularProgressIndicator(
+                value: (value / 100).clamp(0, 1).toDouble(),
+                strokeWidth: size * .1,
+                color: c.onHero,
+                backgroundColor: c.heroGlass,
+                strokeCap: StrokeCap.round,
+              ),
             ),
-          ),
+            Column(mainAxisSize: MainAxisSize.min, children: [
+              FittedBox(
+                child: AppOdometer(
+                  appDigits('${value.round()}'),
+                  style: AppType.figureLarge(context).copyWith(color: c.onHero, fontSize: size * .3, height: 1),
+                ),
+              ),
+              Text('pa_of_100'.tr, style: AppType.meta(context).copyWith(color: c.onHeroMuted)),
+            ]),
+          ]),
         ),
       ),
     );
   }
+}
+
+/// "How is the score made?" (Pa2Reports `screen=how`): the four parts, their weights and this period's values.
+Future<void> showParentScoreSheet(BuildContext context, Map score) =>
+    showAppSheet<void>(context, (_) => PaScoreSheet(score: score));
+
+/// The sheet's content (a widget of its own so the review renders can draw it).
+class PaScoreSheet extends StatelessWidget {
+  const PaScoreSheet({super.key, required this.score});
+  final Map score;
+
+  @override
+  Widget build(BuildContext ctx) {
+    final comps = plList(score['components']);
+    final kit = ctx.colors.kit;
+    final tones = {
+      'attendance': (Icons.schedule_rounded, kit.primaryTone),
+      'consistency': (Icons.check_rounded, kit.ok),
+      'performance': (Icons.star_outline_rounded, kit.warn),
+      'homework': (Icons.description_outlined, kit.hotTone),
+    };
+    return paRole(AppSheetContent(
+      title: 'pa_score_how'.tr,
+      icon: Icons.help_outline_rounded,
+      children: [
+        Text('pa_score_explain'.tr, style: AppType.body(ctx)),
+        const SizedBox(height: AppSpace.md),
+        for (final k in comps) ...[
+          AppCard(
+            variant: AppCardVariant.flat,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Row(children: [
+                AppIconBox(icon: (tones['${k['key']}'] ?? (Icons.analytics_rounded, kit.primaryTone)).$1, tone: (tones['${k['key']}'] ?? (Icons.analytics_rounded, kit.primaryTone)).$2),
+                const SizedBox(width: AppSpace.sm),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text('pl_comp_${k['key']}'.tr, style: AppType.tileTitle(ctx)),
+                    Text('pl_comp_desc_${k['key']}'.tr, style: AppType.meta(ctx)),
+                  ]),
+                ),
+                const SizedBox(width: AppSpace.xs),
+                AppStatusBadge(label: paFmt('pa_weight', {'n': appDigits('${k['weight']}%')})),
+              ]),
+              const SizedBox(height: AppSpace.sm),
+              Row(children: [
+                Expanded(
+                  child: AppProgressBar(
+                    value: ((k['value'] as num?) ?? 0).toDouble(),
+                    color: (tones['${k['key']}'] ?? (Icons.analytics_rounded, kit.primaryTone)).$2.color,
+                  ),
+                ),
+                const SizedBox(width: AppSpace.xs),
+                Text(appDigits('${((k['value'] as num?) ?? 0).round()}%'), style: AppType.label(ctx).copyWith(fontWeight: FontWeight.w700)),
+              ]),
+            ]),
+          ),
+          const SizedBox(height: AppSpace.sm),
+        ],
+        PaNote(icon: Icons.shield_outlined, text: 'pl_score_note'.tr),
+        const SizedBox(height: AppSpace.md),
+        AppButton.primary(label: 'pa_got_it'.tr, expand: true, onPressed: () => Navigator.of(ctx).pop()),
+      ],
+    ));
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  One child's summary on the Reports tab
+// ═════════════════════════════════════════════════════════════════════════════
+class _ChildSummaryCard extends StatelessWidget {
+  const _ChildSummaryCard({required this.childId, required this.name, required this.grade, required this.report});
+
+  final int? childId;
+  final String name, grade;
+  final Map<String, dynamic> report;
+
+  @override
+  Widget build(BuildContext context) {
+    final score = report['score'] as Map;
+    final tier = '${score['tier']}';
+    final s = report['summary'] as Map, prev = report['previous_summary'] as Map;
+    final att = report['attendance'] as Map, hw = report['homework'] as Map;
+    final insights = plList(report['insights']).take(2).toList();
+    final tierTone = switch (tier) { 'excellent' || 'good' => AppTone.success, 'fair' => AppTone.warning, _ => AppTone.danger };
+    final kit = context.colors.kit;
+    final ringTone = switch (tier) { 'excellent' || 'good' => kit.ok, 'fair' => kit.warn, _ => kit.live };
+    final examNow = s['exams_avg_percentage'] as num?, examOld = prev['exams_avg_percentage'] as num?;
+    String? delta(num? now, num? old) {
+      if (now == null || old == null || now == old) return null;
+      return appDigits('${now > old ? '▲' : '▼'} ${(now - old).abs().round()}%');
+    }
+
+    Widget fig(String label, String value, String? change) => Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(AppSpace.sm),
+            decoration: BoxDecoration(
+              color: kit.well,
+              borderRadius: BorderRadius.circular(AppRadius.tile),
+              border: Border.all(color: kit.line, width: AppBorder.strong),
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context)),
+              Text(value, maxLines: 1, style: AppType.statFigure(context, wide: false)),
+              if (change != null) Text(change, style: AppType.meta(context).copyWith(color: change.startsWith('▲') ? kit.ok.ink : kit.error.ink)),
+            ]),
+          ),
+        );
+    final id = childId;
+    return AppCard(
+      variant: AppCardVariant.tint,
+      tone: id == null ? null : paKidTone(context, id),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          AppProgressRing(
+            value: _n(score, 'value') / 100,
+            size: AppDashSize.ring,
+            tone: ringTone,
+            label: appDigits('${_n(score, 'value').round()}'),
+            semanticLabel: paFmt('pa_score_of', {'n': appDigits('${_n(score, 'value').round()}')}),
+          ),
+          const SizedBox(width: AppSpace.sm),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xxs, crossAxisAlignment: WrapCrossAlignment.center, children: [
+                Text(name, style: AppType.section(context)),
+                AppStatusBadge(label: 'pl_tier_$tier'.tr, tone: tierTone),
+              ]),
+              if (grade.isNotEmpty) Text(grade, style: AppType.meta(context)),
+              const SizedBox(height: AppSpace.xxs),
+              Text('pl_tier_desc_$tier'.tr, style: AppType.body(context)),
+            ]),
+          ),
+        ]),
+        const SizedBox(height: AppSpace.md),
+        Row(children: [
+          fig('pa_attendance'.tr, att['rate'] == null ? '—' : appDigits('${(att['rate'] as num).round()}%'), null),
+          const SizedBox(width: AppSpace.xs),
+          fig('pa_exams'.tr, examNow == null ? '—' : appDigits('${examNow.round()}%'), delta(examNow, examOld)),
+          const SizedBox(width: AppSpace.xs),
+          fig(
+            'pa_homework'.tr,
+            _n(hw, 'due') > 0 ? paFmt('pa_n_of_m', {'n': appDigits('${_n(hw, 'on_time')}'), 'm': appDigits('${_n(hw, 'due')}')}) : '—',
+            _n(hw, 'missing') > 0 ? appDigits('▼ ${_n(hw, 'missing')}') : null,
+          ),
+        ]),
+        if (insights.isNotEmpty) ...[
+          const SizedBox(height: AppSpace.sm),
+          for (final i in insights) PlInsightTile(level: '${i['level']}', text: plInsightText(i)),
+        ],
+        const SizedBox(height: AppSpace.sm),
+        AppButton.primary(
+          key: ValueKey('pa.report.full.$id'),
+          label: 'pa_full_report'.tr,
+          trailingIcon: Icons.chevron_right_rounded,
+          expand: true,
+          onPressed: id == null
+              ? null
+              : () => paPush<void>(context, ParentChildReportScreen(studentId: id, studentName: name)),
+        ),
+      ]),
+    );
+  }
+}
+
+/// A report finding as its sentence.
+String plInsightText(Map i) {
+  final params = Map<String, dynamic>.from(i['params'] as Map);
+  if (params.containsKey('slot')) params['slot'] = 'pl_slot_${params['slot']}'.tr;
+  return plFmt('pl_ins_${i['code']}', params);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -257,7 +548,6 @@ class _ChildReportCard extends StatelessWidget {
 
   Map get _s => report['summary'] as Map;
   Map get _prev => report['previous_summary'] as Map;
-  Map get _score => report['score'] as Map;
   Map get _att => report['attendance'] as Map;
   Map get _hw => report['homework'] as Map;
   Map get _beh => report['behavior'] as Map;
@@ -267,26 +557,15 @@ class _ChildReportCard extends StatelessWidget {
 
   String _pct(dynamic v) => v == null ? '—' : '${(v as num).round()}%';
 
-  String _insight(Map i) {
-    final params = Map<String, dynamic>.from(i['params'] as Map);
-    if (params.containsKey('slot')) params['slot'] = 'pl_slot_${params['slot']}'.tr;
-    return plFmt('pl_ins_${i['code']}', params);
-  }
-
-  static const double _ring = AppSpace.xxxl + AppSpace.xl;
-  static const double _avatar = AppTouch.min - AppSpace.xxs;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final tier = '${_score['tier']}';
-    final tierColor = plTierColor(context, tier);
     final insights = plList(report['insights']);
     final courses = plList(report['courses']);
     final exams = plList(report['exams']);
     final log = plList(report['attendance_log']);
     final assignments = plList(report['assignments']);
-    final range = period == 'daily' ? '${report['start']}' : '${report['start']}  –  ${report['end']}';
     final days = (report['days'] as List).length;
 
     // ── plain-language deltas ───────────────────────────────────────────────
@@ -295,65 +574,13 @@ class _ChildReportCard extends StatelessWidget {
     final examNow = _s['exams_avg_percentage'] as num?, examOld = _prev['exams_avg_percentage'] as num?;
 
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      // ── HERO: the child's block, the score ring its one key figure ──────────
-      Padding(
-        padding: const EdgeInsets.only(bottom: AppSpace.md),
-        child: AppTilt.subtle(
-          radius: AppRadius.block,
-          child: AppBlock(
-            tone: childId == null ? AppBlockTone.peach : parentChildTone(childId!),
-            hero: true,
-            child: Builder(builder: (context) {
-              final ink = AppBlock.colorsOf(context);
-              return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  AppAvatar(name: name, url: profile?.imageUrl, size: _avatar),
-                  const SizedBox(width: AppSpace.sm),
-                  Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Semantics(
-                        header: true,
-                        child: Text(name, maxLines: 2, overflow: TextOverflow.ellipsis, style: AppType.headline(context).copyWith(color: ink.ink)),
-                      ),
-                      Text(range, textDirection: TextDirection.ltr, style: AppType.meta(context).copyWith(color: ink.muted)),
-                    ]),
-                  ),
-                ]),
-                const SizedBox(height: AppSpace.lg),
-                Row(children: [
-                  PlScoreRing(value: _n(_score, 'value'), color: tierColor, size: _ring, light: true, memoryKey: 'parent.report.score.$childId.$period'),
-                  const SizedBox(width: AppSpace.lg),
-                  Expanded(
-                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('pl_tier_$tier'.tr, style: AppType.section(context).copyWith(color: ink.accentInk(tierColor))),
-                      const SizedBox(height: AppSpace.xxs),
-                      Text('pl_tier_desc_$tier'.tr, style: AppType.body(context).copyWith(color: ink.ink, height: 1.5)),
-                    ]),
-                  ),
-                ]),
-                const SizedBox(height: AppSpace.xs),
-                Align(
-                  alignment: AlignmentDirectional.centerEnd,
-                  child: AppButton.ghost(
-                    icon: Icons.help_outline_rounded,
-                    label: 'pl_score_how'.tr,
-                    size: AppButtonSize.sm,
-                    onPressed: () => _scoreSheet(context),
-                  ),
-                ),
-              ]);
-            }),
-          ),
-        ),
-      ),
-
       // ── WHAT STANDS OUT ─────────────────────────────────────────────────────
       if (insights.isNotEmpty)
         PlSection(
-          icon: Icons.lightbulb_outline_rounded,
-          title: 'pl_sec_insights'.tr,
-          hint: 'pl_sec_insights_hint'.tr,
-          child: Column(children: [for (final i in insights) PlInsightTile(level: '${i['level']}', text: _insight(i))]),
+          icon: Icons.star_outline_rounded,
+          title: 'pa_highlights'.tr,
+          hint: 'pa_highlights_hint'.tr,
+          child: Column(children: [for (final i in insights) PlInsightTile(level: '${i['level']}', text: plInsightText(i))]),
         ),
 
       // ── MARKS FROM THE TEACHERS (same view as the child's analytics profile) ─
@@ -769,36 +996,7 @@ class _ChildReportCard extends StatelessWidget {
     return Row(mainAxisSize: MainAxisSize.min, children: [
       Icon(i, size: AppIconSize.xs, color: color == null ? c.textLight : ink),
       const SizedBox(width: AppSpace.xxs),
-      Text(t, style: AppType.meta(context).copyWith(color: ink)),
+      Flexible(child: Text(t, maxLines: 1, overflow: TextOverflow.ellipsis, style: AppType.meta(context).copyWith(color: ink))),
     ]);
-  }
-
-  void _scoreSheet(BuildContext context) {
-    final comps = plList(_score['components']);
-    showAppSheet(
-      context,
-      (ctx) => AppSheetContent(title: 'pl_score_how'.tr, children: [
-            Text('pl_score_explain'.tr, style: AppType.body(ctx).copyWith(height: 1.5)),
-            const SizedBox(height: AppSpace.sm),
-            for (final k in comps)
-              PlBarRow(
-                icon: Icons.analytics_rounded,
-                label: 'pl_comp_${k['key']}'.tr,
-                fraction: (k['value'] as num) / 100,
-                value: '${(k['value'] as num).round()}%',
-                color: plPctColor(ctx, k['value'] as num),
-                highlight: true,
-              ),
-            const SizedBox(height: AppSpace.sm),
-            for (final k in comps)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: AppSpace.xxs / 2),
-                child: Text('${'pl_comp_${k['key']}'.tr} (${k['weight']}%): ${'pl_comp_desc_${k['key']}'.tr}',
-                    style: AppType.meta(ctx).copyWith(color: ctx.colors.textDark, height: 1.4)),
-              ),
-            const SizedBox(height: AppSpace.xs),
-            Text('pl_score_note'.tr, style: AppType.meta(ctx).copyWith(color: ctx.colors.textLight)),
-          ]),
-    );
   }
 }

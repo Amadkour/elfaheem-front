@@ -36,13 +36,9 @@ void main() {
         course: DlCourseBlock.fromJson((paProfile(paReem)['courses'] as List).first as Map<String, dynamic>),
       ), storage: storage, pushed: true));
   testWidgets('pa kids locked', (t) => paRender(t, 'kid_locked', () => ConsentRequiredView(childName: 'سارة العنزي', onGive: () {}), storage: storage, pushed: true));
-  testWidgets('pa kids consent', (t) => paRender(t, 'kid_consent', () => Builder(builder: (c) => GestureDetector(
-        key: const ValueKey('open'), onTap: () => showParentConsentDialog(c, childName: 'سارة العنزي', grade: 'الصف الرابع الابتدائي'),
-        child: const SizedBox.expand())), storage: storage, pushed: true, grow: false, langs: const ['ar'], act: (t) => paTap(t, const ValueKey('open'))));
-  testWidgets('pa kids revoke', (t) => paRender(t, 'kid_revoke', () => Builder(builder: (c) => GestureDetector(
-        key: const ValueKey('open'), onTap: () => revokeParentConsentFlow(c, paReem, 'ريم العنزي'),
-        child: const SizedBox.expand())), storage: storage, pushed: true, grow: false, langs: const ['ar'],
-        api: paApi(extra: {'GET /api/v1/parent/children/$paReem/consent': (_) => {'granted': true}}), act: (t) => paTap(t, const ValueKey('open'))));
+  // a sheet is a route above the captured page: its content is drawn as the page
+  testWidgets('pa kids consent', (t) => paRender(t, 'kid_consent', () => const ParentConsentSheet(childName: 'سارة العنزي', grade: 'الصف الرابع الابتدائي'), storage: storage, pushed: true, langs: const ['ar']));
+  testWidgets('pa kids revoke', (t) => paRender(t, 'kid_revoke', () => const ParentRevokeSheet(childName: 'ريم العنزي'), storage: storage, pushed: true, langs: const ['ar']));
   // keeps the helper referenced (tab keys differ per shell kind)
   test('helper', () => kidsTab);
 }

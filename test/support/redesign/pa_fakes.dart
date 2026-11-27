@@ -221,9 +221,9 @@ Map<String, dynamic> paReport({int score = 86, String tier = 'excellent'}) => {
         'points': [for (var i = 0; i < 7; i++) {'label': '2026-11-${22 + i}', 'minutes': 40 + i * 8, 'activities': 2 + i % 3, 'exam_avg': 80 + i}],
       },
       'insights': [
-        {'code': 'streak', 'level': 'good', 'params': {'n': 5}},
-        {'code': 'stays_full', 'level': 'good', 'params': {}},
-        {'code': 'exam_up', 'level': 'good', 'params': {'delta': 4}},
+        {'code': 'streak', 'level': 'good', 'params': {'days': 5}},
+        {'code': 'stays_full', 'level': 'good', 'params': {'pct': 96}},
+        {'code': 'exam_up', 'level': 'good', 'params': {'delta': 4, 'avg': 86}},
       ],
       'courses': [
         {'course_id': 1, 'name_ar': 'الرياضيات، مجموعة أ', 'name_en': 'Maths, group A', 'progress': 84, 'sessions': 2, 'minutes': 100, 'exam_avg': 92, 'missed': 0},
@@ -291,7 +291,25 @@ Map<String, FakeHandler> paRoutes({int kids = 3, bool pulse = true}) => {
       'GET /api/v1/parent/alerts': (_) => paAlerts(),
       'GET /api/v1/parent/reports': (_) => paReports(),
       'GET /api/v1/org/parent/children': (_) => {'children': []},
-      'GET /api/v1/my-payments': (_) => {'items': [], 'total': 0},
+      'GET /api/v1/my-payments': (_) => {
+            'items': [
+              {'id': 1191, 'student_id': 3, 'course_id': 1, 'amount': 449, 'status': 'completed', 'payment_method': 'mada', 'transaction_id': 'TX-88213', 'meta_data': {'currency': 'SAR'}, 'paid_at': _iso(_now.subtract(const Duration(days: 6))), 'created_at': _iso(_now.subtract(const Duration(days: 6)))},
+              {'id': 1184, 'student_id': 3, 'course_id': 3, 'amount': 199, 'status': 'completed', 'payment_method': 'card', 'meta_data': {'currency': 'SAR'}, 'paid_at': _iso(_now.subtract(const Duration(days: 11))), 'created_at': _iso(_now.subtract(const Duration(days: 11)))},
+              {'id': 1172, 'student_id': 3, 'course_id': 2, 'amount': 199, 'status': 'pending', 'payment_method': 'bank_transfer', 'meta_data': {'currency': 'SAR'}, 'created_at': _iso(_now.subtract(const Duration(days: 2)))},
+            ],
+            'total': 3,
+          },
+      'GET /api/v1/edu/countries': (_) => [
+            {'code': 'SA', 'name_ar': 'السعودية', 'name_en': 'Saudi Arabia', 'default': true},
+            {'code': 'KW', 'name_ar': 'الكويت', 'name_en': 'Kuwait'},
+            {'code': 'AE', 'name_ar': 'الإمارات', 'name_en': 'UAE'},
+          ],
+      'GET /api/v1/booking/options': (_) => {
+            'subject': {'id': 104, 'name_ar': 'الدراسات الاجتماعية', 'name_en': 'Social studies'},
+            'class_minutes': 50, 'group_size': {'min': 5, 'max': 10}, 'currency': 'SAR', 'price_period': 'month',
+            'modes': [{'key': 'remote', 'available': true}, {'key': 'in_person', 'available': false, 'reason': 'no_centre_here'}],
+            'kinds': [{'key': 'group', 'available': true, 'prices': {'remote': 199}}, {'key': 'individual', 'available': true, 'prices': {'remote': 449}}],
+          },
       'GET /api/v1/edu/catalog': (_) => paCatalog(),
       'GET /api/v1/notifications': (_) => {'items': [], 'unread': 5},
     };
