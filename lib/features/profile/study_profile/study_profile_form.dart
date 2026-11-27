@@ -9,6 +9,8 @@
 //   track      chips, secondary 2 – 3 only (science · math · literary)
 //   then       school or university · governorate (Egypt's 27 + "outside Egypt", which asks for a city) · date of
 //              birth ([showDob]: the sign-up form has its own) · a parent's phone
+//   interests  chips of the fields the student cares about ([interestChoices], owner 2026-11-27: the roadmap's
+//              interests, at most 12); hidden when no choices are given
 //
 // [compact] (the sign-up) folds the optional fields under "Add more details" unless the super admin made one of them
 // required, so the step stays two taps long. [showErrors] marks what is missing under each group.
@@ -51,7 +53,11 @@ class StudyProfileForm extends StatefulWidget {
     this.compact = false,
     this.edu,
     this.onCountry,
+    this.interestChoices = const [],
   });
+
+  /// The fields the student may pick as interests (id, name); empty = no interests block.
+  final List<(int, String)> interestChoices;
 
   /// The catalog (see [StudyEduData]); [onCountry] asks the page to load another country's catalog.
   final StudyEduData? edu;
@@ -284,6 +290,8 @@ class _StudyProfileFormState extends State<StudyProfileForm> {
           parentPhone: v.parentPhone,
           dob: v.dob,
           gender: v.gender,
+          interestIds: v.interestIds,
+          interestNames: v.interestNames,
         )),
       ),
       if (widget.edu == null && missing.contains('governorate')) _ErrorLine(_requiredText),
@@ -317,6 +325,14 @@ class _StudyProfileFormState extends State<StudyProfileForm> {
           style: AppType.meta(context),
         ),
       ),
+      if (widget.interestChoices.isNotEmpty) ...[
+        AppSpace.gapSm,
+        StudyInterestsPicker(
+          choices: widget.interestChoices,
+          picked: v.interestIds ?? const [],
+          onChanged: (ids) => widget.onChanged(widget.value.withInterests(ids)),
+        ),
+      ],
     ];
 
     return Column(
@@ -629,4 +645,38 @@ class _StudyLevelsPickerState extends State<_StudyLevelsPicker> {
       ],
     ]);
   }
+}
+
+/// "اهتماماتك": the fields as chips, many picks (at most [max]); the roadmap's interests (owner 2026-11-27).
+class StudyInterestsPicker extends StatelessWidget {
+  const StudyInterestsPicker({super.key, required this.choices, required this.picked, required this.onChanged, this.max = 12});
+
+  final List<(int, String)> choices;
+  final List<int> picked;
+  final ValueChanged<List<int>> onChanged;
+  final int max;
+
+  @override
+  Widget build(BuildContext context) => Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+        Text('ow_interests'.tr, style: AppType.tileTitle(context)),
+        const SizedBox(height: AppSpace.xxs),
+        Text('ow_interests_sub'.tr, style: AppType.meta(context)),
+        const SizedBox(height: AppSpace.xs),
+        Wrap(spacing: AppSpace.xs, runSpacing: AppSpace.xs, children: [
+          for (final (id, name) in choices)
+            AppChip(
+              key: ValueKey('study.interest.$id'),
+              label: name,
+              selected: picked.contains(id),
+              onTap: () {
+                final next = [...picked];
+                if (!next.remove(id)) {
+                  if (next.length >= max) return;
+                  next.add(id);
+                }
+                onChanged(next);
+              },
+            ),
+        ]),
+      ]);
 }

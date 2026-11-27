@@ -23,6 +23,7 @@ import 'package:flutter_education_app/features/onboarding/explore_launcher.dart'
 import 'package:flutter_education_app/features/parent/parent_consent.dart';
 import 'package:flutter_education_app/features/parent/parent_link_providers.dart';
 import 'package:flutter_education_app/features/parent/signup/pa_join_child_fields.dart';
+import 'package:flutter_education_app/features/profile/study_profile/study_profile_model.dart' show loadStudyInterestChoices;
 
 import 'join_draft.dart';
 import 'join_steps.dart';
@@ -47,6 +48,7 @@ class _JoinFlowScreenState extends State<JoinFlowScreen> {
   EduCountryCatalog? _catalog;
   bool _catalogLoading = false;
   bool _busy = false;
+  List<(int, String)> _interests = const [];
   final _address = TextEditingController();
   final _name = TextEditingController();
   final _phone = TextEditingController();
@@ -60,6 +62,9 @@ class _JoinFlowScreenState extends State<JoinFlowScreen> {
       _step = JoinStep.country;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) => _start());
+    loadStudyInterestChoices().then((v) {
+      if (mounted) setState(() => _interests = v);
+    });
   }
 
   @override
@@ -243,6 +248,7 @@ class _JoinFlowScreenState extends State<JoinFlowScreen> {
       name: _name,
       phone: _phone,
       childCode: _childCode,
+      interestChoices: _interests,
       loadAreas: (parent) => country == null
           ? Future.value(const <EduArea>[])
           : EduCatalog.instance.areas(country, parentId: parent),

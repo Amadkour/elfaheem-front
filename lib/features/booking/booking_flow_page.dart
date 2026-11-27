@@ -37,6 +37,7 @@ import 'package:flutter_education_app/features/booking/booking_flow_controller.d
 import 'package:flutter_education_app/features/booking/booking_models.dart';
 import 'package:flutter_education_app/features/booking/booking_parts.dart';
 import 'package:flutter_education_app/features/booking/booking_sign_in_sheet.dart';
+import 'package:flutter_education_app/features/booking/booking_transfer_sheet.dart';
 import 'package:flutter_education_app/features/guest/guest_state.dart';
 import 'package:flutter_education_app/features/payments/points/points_card_checkout.dart' show openPointsPaymentPage;
 import 'package:flutter_education_app/utils/widget/base_page.dart';
@@ -57,6 +58,8 @@ Future<bool> openBookFlow(
   String? subjectKey,
   String? courseId,
   bool resume = false,
+  int? studentId,
+  String? childName,
 }) async {
   final r = await Navigator.of(context).push<bool>(MaterialPageRoute(
     builder: (_) => BookFlowPage(
@@ -67,6 +70,8 @@ Future<bool> openBookFlow(
         gradeTitle: gradeTitle,
         subjectKey: subjectKey,
         courseId: courseId,
+        studentId: studentId,
+        childName: childName,
       ),
       resume: resume,
     ),
@@ -138,6 +143,18 @@ class _BookFlowPageState extends State<BookFlowPage> {
       if (b.active || b.status == 'proposed' || b.status == 'scheduled') {
         await BkFlowController.clearDraft();
         c.done();
+        return;
+      }
+      if (b.status == 'pending_payment' && r.transfer != null) {
+        // bank transfer (owner 2026-11-27): the seat is held; the proof is sent now or later from the subject page
+        final sent = await showBkTransferSheet(context, c);
+        if (!mounted) return;
+        if (sent) {
+          await BkFlowController.clearDraft();
+          c.done();
+        } else {
+          showAppNotice('ow_transfer_later'.tr);
+        }
         return;
       }
       if (b.status == 'pending_payment' && r.canOpen) {
@@ -997,7 +1014,7 @@ class _ReviewStep extends StatelessWidget {
   Widget build(BuildContext context) {
     final col = context.colors;
     final kit = col.kit;
-    final user = GuestState.active ? null : context.read<MyAuthProvider?>()?.currentUser?.name;
+    final user = c.childName ?? (GuestState.active ? null : context.read<MyAuthProvider?>()?.currentUser?.name);
     final payNow = c.quote?.payNow ?? !(c.kind == 'individual' && c.proposing);
     final modeWord = c.mode == 'in_person'
         ? [
@@ -1031,7 +1048,7 @@ class _ReviewStep extends StatelessWidget {
       total: p == null ? '—' : bkMoney(p, c.currency),
       note: notes,
     );
-    final methods = info?.bookable ?? const <BkPayMethod>[];
+    final methods = c.payMethods;
     final Widget pay;
     if (!payNow) {
       pay = Row(children: [
@@ -1059,6 +1076,7 @@ class _ReviewStep extends StatelessWidget {
                 selected: c.method == m.key,
                 tone: switch (m.key) {
                   'apple_pay' => null,
+                  kBkTransfer => kit.warmTone,
                   'card' => kit.accent(AppAccent.sun),
                   _ => kit.primaryTone,
                 },
@@ -1134,8 +1152,11 @@ class _DoneStepState extends State<_DoneStep> {
     final col = context.colors;
     final b = c.booked;
     final proposal = (b?.status == 'proposed') || (c.kind == 'individual' && c.proposing);
+    final reviewing = b?.transfer?.pending == true;
     final groupLabel = b?.group?.label ?? c.group?.label ?? '';
-    final message = proposal
+    final message = reviewing
+        ? 'ow_transfer_sent'.tr
+        : proposal
         ? bkFill('bk_done_proposal', {'h': appDigits('${c.options?.proposalHours ?? 24}')})
         : c.kind == 'group'
             ? bkFill('bk_done_group', {'label': groupLabel})
@@ -1174,7 +1195,7 @@ class _DoneStepState extends State<_DoneStep> {
         ),
       ),
       const SizedBox(height: AppSpace.md),
-      Text('bk_done_title'.tr, textAlign: TextAlign.center, style: AppType.headline(context)),
+      Text(reviewing ? 'ow_transfer_sent_title'.tr : 'bk_done_title'.tr, textAlign: TextAlign.center, style: AppType.headline(context)),
       const SizedBox(height: AppSpace.xs),
       Text(message, textAlign: TextAlign.center, style: AppType.body(context).copyWith(color: col.textMedium)),
       const SizedBox(height: AppSpace.lg),
