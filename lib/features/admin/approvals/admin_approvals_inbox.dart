@@ -12,8 +12,8 @@
 //   GET /api/v1/teacher/certificate-requests?status=pending         certificates (all, for admins)
 //   GET /api/v1/admin/parent-link/requests?status=pending           parent ⇄ student links
 //
-// The reference also lists courses waiting to be published: the server has no publish-approval queue yet (owner
-// question in the group's report), so that kind is not drawn.
+//   GET /api/v1/admin/publish-queue?status=pending_review          courses waiting to be published (governance.md §1,
+//                                                                   kill switch admin.publish_queue)
 library;
 
 import 'package:flutter/material.dart';
@@ -32,10 +32,12 @@ import 'package:provider/provider.dart';
 import '../adm_kit.dart';
 import '../admin_account_approval.dart' show AdminPendingAccountsPage;
 import '../admin_parent_requests_page.dart' show AdminParentRequestsPage;
+import '../governance/gov_api.dart' show GovApi, kPublishQueueKey;
+import '../governance/publish_queue_page.dart' show AdminPublishQueuePage;
 import '../sup/sup_kit.dart';
 
 /// The kinds of request the inbox gathers.
-enum AdmRequestKind { account, transfer, device, certificate, parentLink }
+enum AdmRequestKind { account, transfer, device, certificate, parentLink, course }
 
 /// One request of the inbox (plain values, so the list is testable without a server).
 class AdmRequest {
@@ -65,6 +67,7 @@ String admRequestKindLabel(AdmRequestKind k) => switch (k) {
       AdmRequestKind.device => 'a1_kind_device'.tr,
       AdmRequestKind.certificate => 'a1_kind_certificate'.tr,
       AdmRequestKind.parentLink => 'a1_kind_parent_link'.tr,
+      AdmRequestKind.course => 'ow_kind_course'.tr,
     };
 
 IconData admRequestKindIcon(AdmRequestKind k) => switch (k) {
@@ -73,6 +76,7 @@ IconData admRequestKindIcon(AdmRequestKind k) => switch (k) {
       AdmRequestKind.device => Icons.phonelink_setup_rounded,
       AdmRequestKind.certificate => Icons.workspace_premium_rounded,
       AdmRequestKind.parentLink => Icons.link_rounded,
+      AdmRequestKind.course => Icons.menu_book_rounded,
     };
 
 KitTone admRequestKindTone(BuildContext context, AdmRequestKind k) {
@@ -83,6 +87,7 @@ KitTone admRequestKindTone(BuildContext context, AdmRequestKind k) {
     AdmRequestKind.device => kit.accent(AppAccent.grape),
     AdmRequestKind.certificate => kit.ok,
     AdmRequestKind.parentLink => kit.accent(AppAccent.pink),
+    AdmRequestKind.course => kit.accent(AppAccent.mint),
   };
 }
 
@@ -108,7 +113,7 @@ class AdminApprovalsInboxPage extends StatefulWidget {
 }
 
 class _AdminApprovalsInboxPageState extends State<AdminApprovalsInboxPage> {
-  List<AdmRequest> _accounts = const [], _certs = const [], _links = const [];
+  List<AdmRequest> _accounts = const [], _certs = const [], _links = const [], _courses = const [];
   bool _loading = true;
   AdmRequestKind? _kind;
   String _q = '';
@@ -184,12 +189,20 @@ class _AdminApprovalsInboxPageState extends State<AdminApprovalsInboxPage> {
         await devices.load();
         return const <AdmRequest>[];
       }),
+      if (!off.contains(kPublishQueueKey))
+        _try(() async => [
+              for (final c in (await GovApi(api).queue(size: 50)).items)
+                AdmRequest(kind: AdmRequestKind.course, title: c.name, subtitle: c.teacherName, at: c.submittedAt),
+            ])
+      else
+        Future.value(const <AdmRequest>[]),
     ]);
     if (!mounted) return;
     setState(() {
       _accounts = results[0];
       _certs = results[1];
       _links = results[2];
+      _courses = results[5];
       _loading = false;
     });
   }
@@ -223,6 +236,7 @@ class _AdminApprovalsInboxPageState extends State<AdminApprovalsInboxPage> {
         ),
       ..._certs,
       ..._links,
+      ..._courses,
     ];
   }
 
@@ -233,6 +247,7 @@ class _AdminApprovalsInboxPageState extends State<AdminApprovalsInboxPage> {
       AdmRequestKind.device => const TeacherDeviceRequestsScreen(),
       AdmRequestKind.certificate => const CertificateRequestsScreen(),
       AdmRequestKind.parentLink => const AdminParentRequestsPage(),
+      AdmRequestKind.course => const AdminPublishQueuePage(),
     };
     await Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
     if (mounted) _load();
