@@ -142,7 +142,7 @@ class _GuestLivePageState extends State<GuestLivePage> {
     final info = _info;
     if (!mounted || _autoTried || !_prefsLoaded || info == null || !info.autoJoin || !info.isLive) return;
     if (_joining || _rateLimitSeconds > 0 || info.requiresPin || (info.recordingEnabled && !_consent)) return;
-    final full = info.maxGuests != null && info.guestsJoined >= info.maxGuests!;
+    final full = info.full; // the server says so (D-1950): the page never reads how many guests are in
     if (full) return;
     if (_signedIn && info.signedInJoin) {
       _autoTried = true;
@@ -669,7 +669,7 @@ class _SessionCardState extends State<_SessionCard> {
     final kit = c.kit;
     final info = widget.info;
     final live = info.isLive;
-    final full = info.maxGuests != null && info.guestsJoined >= info.maxGuests!;
+    final full = info.full; // the server says so (D-1950): the page never reads how many guests are in
     final limited = widget.rateLimitSeconds > 0;
     final needsConsent = info.recordingEnabled && !widget.consent;
     final kind = info.ref.kind; // D-106: a meeting says «اجتماع», a course session «الحصة»
@@ -772,9 +772,9 @@ class _SessionCardState extends State<_SessionCard> {
           const SizedBox(height: AppSpace.sm),
           AppBanner(
             key: const ValueKey('guest_live.full'),
-            icon: Icons.people_alt_rounded,
-            text: liveTr('guest_live_err_limit', kind),
-            color: c.warning,
+            icon: Icons.event_seat_outlined,
+            text: liveTr('sb_gl_room_full', kind),
+            color: c.textMedium,
           ),
         ],
         if (limited) ...[

@@ -116,8 +116,8 @@ class GuestLiveInfo {
     required this.isLive,
     required this.canPublish,
     required this.recordingEnabled,
-    required this.guestsJoined,
     required this.maxGuests,
+    this.full = false,
     this.requiresPin = false,
     this.kind = 'session',
     this.title = '',
@@ -141,8 +141,11 @@ class GuestLiveInfo {
   final bool isLive;
   final bool canPublish;
   final bool recordingEnabled;
-  final int guestsJoined;
   final int? maxGuests;
+
+  /// `full`: no guest seat is left. The page never reads how many guests are inside (D-1950); an older server
+  /// without the field means "not full", and the join itself still answers the limit.
+  final bool full;
 
   /// The visitor must type the link's PIN to join.
   final bool requiresPin;
@@ -193,8 +196,8 @@ class GuestLiveInfo {
       isLive: j['is_live'] == true,
       canPublish: j['can_publish'] == true,
       recordingEnabled: j['recording_enabled'] == true,
-      guestsJoined: (j['guests_joined'] as num?)?.toInt() ?? 0,
       maxGuests: (j['max_guests'] as num?)?.toInt(),
+      full: j['full'] == true,
       requiresPin: j['requires_pin'] == true,
       kind: kind == 'meeting' ? 'meeting' : 'session',
       title: (j['title'] ?? '').toString(),

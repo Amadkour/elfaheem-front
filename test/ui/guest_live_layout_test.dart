@@ -96,7 +96,6 @@ const _info = GuestLiveInfo(
   isLive: true,
   canPublish: false,
   recordingEnabled: true,
-  guestsJoined: 3,
   maxGuests: 10,
 );
 
@@ -130,7 +129,7 @@ Widget _page({
     );
 
 GuestLiveInfo _copy(GuestLiveInfo i,
-        {bool? isLive, bool? canPublish, bool? recording, int? joined, int? max, bool clearMax = false, bool? requiresPin}) =>
+        {bool? isLive, bool? canPublish, bool? recording, bool? full, int? max, bool clearMax = false, bool? requiresPin}) =>
     GuestLiveInfo(
       sessionId: i.sessionId,
       sessionName: i.sessionName,
@@ -139,8 +138,8 @@ GuestLiveInfo _copy(GuestLiveInfo i,
       isLive: isLive ?? i.isLive,
       canPublish: canPublish ?? i.canPublish,
       recordingEnabled: recording ?? i.recordingEnabled,
-      guestsJoined: joined ?? i.guestsJoined,
       maxGuests: clearMax ? null : (max ?? i.maxGuests),
+      full: full ?? i.full,
       requiresPin: requiresPin ?? i.requiresPin,
     );
 
@@ -337,7 +336,7 @@ void main() {
       );
       await expectNoLayoutErrors(
         tester,
-        () => _page(info: _copy(_info, joined: 10, max: 10)),
+        () => _page(info: _copy(_info, full: true)),
         act: (t) async => expect(find.byKey(const ValueKey('guest_live.full')), findsOneWidget),
       );
     });
